@@ -538,6 +538,7 @@ function renderDetail(){
     'Логистика и доставка': {},
     'Хранение': {},
     'Реклама и продвижение': {},
+    'ВБ Финанс (кредит)': {},
     'Штрафы и удержания': {},
     'Возвраты': {},
     'Прочие операции': {}
@@ -556,6 +557,8 @@ function renderDetail(){
       groups['Хранение'][name]=item;
     } else if(name.indexOf('родвижени')>=0||name.indexOf('реклам')>=0||name.indexOf('Продвижени')>=0){
       groups['Реклама и продвижение'][name]=item;
+    } else if(name.indexOf('ФИНАНС')>=0||name.indexOf('займ')>=0||name.indexOf('кредит')>=0||name.indexOf('МКК')>=0){
+      groups['ВБ Финанс (кредит)'][name]=item;
     } else if(name.indexOf('траф')>=0||name.indexOf('держани')>=0||name.indexOf('Штраф')>=0){
       groups['Штрафы и удержания'][name]=item;
     } else if(name.indexOf('озврат')>=0||name.indexOf('выдач')>=0||name.indexOf('ПВЗ')>=0){
@@ -565,7 +568,7 @@ function renderDetail(){
     }
   }
 
-  var icons={'Логистика и доставка':'🚚','Хранение':'📦','Реклама и продвижение':'📣','Штрафы и удержания':'⚠️','Возвраты':'↩️','Прочие операции':'📋'};
+  var icons={'Логистика и доставка':'🚚','Хранение':'📦','Реклама и продвижение':'📣','ВБ Финанс (кредит)':'🏦','Штрафы и удержания':'⚠️','Возвраты':'↩️','Прочие операции':'📋'};
   var html='';
 
   var groupKeys=Object.keys(groups);
@@ -593,7 +596,7 @@ function renderDetail(){
       var item=items[itemKeys[k]];
       var pct=Math.round(Math.abs(item.total)/maxAmt*100);
       var amtClass=item.total>=0?'pos':'';
-      var isPenGroup=groupName==='Штрафы и удержания';
+      var isPenGroup=groupName==='Штрафы и удержания'||groupName==='ВБ Финанс (кредит)';
       var secId='pen_'+g+'_'+k;
       html+='<div>';
       html+='<div class="detail-row">';
