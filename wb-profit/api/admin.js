@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,16 +23,16 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { action, code, plan, days, maxUses } = req.body;
+    const { action, code, plan, days, maxUses, id } = req.body;
     if (action === 'create_promo') {
-      const { data, error } = await supabase.from('promo_codes').insert({
+      const { data, error: err } = await supabase.from('promo_codes').insert({
         code: code.toUpperCase(), plan, days, max_uses: maxUses
       }).select().single();
-      if (error) return res.status(400).json({ error: error.message });
+      if (err) return res.status(400).json({ error: err.message });
       return res.status(200).json({ success: true, promo: data });
     }
     if (action === 'deactivate_promo') {
-      await supabase.from('promo_codes').update({ is_active: false }).eq('id', req.body.id);
+      await supabase.from('promo_codes').update({ is_active: false }).eq('id', id);
       return res.status(200).json({ success: true });
     }
   }
