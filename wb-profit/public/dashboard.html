@@ -527,20 +527,7 @@ function renderDetail(){
     totStorage+=r.storage_fee||0;
     totPenalty+=r.penalty||0;
   }
-  // Отдельно считаем рекламу
-  var advRows=rawData.filter(function(r){return isAdv(r.bonus_type_name);});
-  var advByOper={};
-  advRows.forEach(function(r){
-    var oper=r.bonus_type_name||'Реклама WB';
-    if(!advByOper[oper]) advByOper[oper]={count:0,total:0,rows:[]};
-    advByOper[oper].count++;
-    advByOper[oper].total+=Math.abs(r.deduction||0);
-    advByOper[oper].rows.push(r);
-    totAdv+=Math.abs(r.deduction||0);
-  });
-  Object.keys(advByOper).forEach(function(k){
-    groups['Реклама и продвижение'][k]={name:k,count:advByOper[k].count,total:-advByOper[k].total,rows:advByOper[k].rows};
-  });
+
 
   // Метрики
   var totalExpenses=totLogistic+totStorage+totPenalty+totAdv;
@@ -560,7 +547,7 @@ function renderDetail(){
     'Прочие операции': {}
   };
 
-  // Собираем отдельно ВБ Финанс из bonus_type_name
+  // Собираем ВБ Финанс
   var wbFinanceTotal=0, wbFinanceCount=0, wbFinanceRows=[];
   for(var fi=0;fi<rawData.length;fi++){
     var fr=rawData[fi];
@@ -579,6 +566,21 @@ function renderDetail(){
       rows:wbFinanceRows
     };
   }
+
+  // Собираем рекламу
+  var advRows=rawData.filter(function(r){return isAdv(r.bonus_type_name);});
+  var advByOper={};
+  advRows.forEach(function(r){
+    var oper='Реклама WB (Продвижение)';
+    if(!advByOper[oper]) advByOper[oper]={count:0,total:0,rows:[]};
+    advByOper[oper].count++;
+    advByOper[oper].total+=Math.abs(r.deduction||0);
+    advByOper[oper].rows.push(r);
+    totAdv+=Math.abs(r.deduction||0);
+  });
+  Object.keys(advByOper).forEach(function(k){
+    groups['Реклама и продвижение'][k]={name:k,count:advByOper[k].count,total:-advByOper[k].total,rows:advByOper[k].rows};
+  });
 
   var keys=Object.keys(byOper);
   for(var i=0;i<keys.length;i++){
