@@ -491,7 +491,7 @@ function process(raw){
     tS+=rd.storage_fee||0;
     tPn+=rd.penalty||0;
     var ded=Math.abs(rd.deduction||0);
-    if(rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0){
+    if((rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0)||(rd.supplier_oper_name&&rd.supplier_oper_name.indexOf('баланс')>=0)){
       tWbFin+=ded; // ВБ Финанс отдельно
     } else if(isAdv(rd.bonus_type_name)){
       tAd+=ded; // Реклама отдельно
@@ -536,7 +536,7 @@ function renderDetail(){
 
   for(var i=0;i<rawData.length;i++){
     var r=rawData[i];
-    var isWbFin=r.bonus_type_name&&r.bonus_type_name.indexOf('ФИНАНС')>=0;
+    var isWbFin=(r.bonus_type_name&&r.bonus_type_name.indexOf('ФИНАНС')>=0)||(r.supplier_oper_name&&r.supplier_oper_name.indexOf('баланс')>=0);
     var isAdvRow=isAdv(r.bonus_type_name);
     // ВБ Финанс и реклама идут в свои отдельные группы — пропускаем здесь
     if(isWbFin||isAdvRow) continue;
@@ -551,7 +551,8 @@ function renderDetail(){
     // Из удержаний тоже убираем ВБ Финанс и рекламу (дополнительная защита)
     var ded=r.deduction||0;
     var bonusLow=(r.bonus_type_name||'').toLowerCase();
-    if(bonusLow.indexOf('финанс')<0&&bonusLow.indexOf('продвижен')<0&&bonusLow.indexOf('реклам')<0){
+    var operLow=(r.supplier_oper_name||'').toLowerCase();
+    if(bonusLow.indexOf('финанс')<0&&bonusLow.indexOf('продвижен')<0&&bonusLow.indexOf('реклам')<0&&operLow.indexOf('баланс')<0){
       o.deduction+=Math.abs(ded);
     }
     o.other+=r.acceptance||0;
@@ -583,7 +584,8 @@ function renderDetail(){
   var wbFinanceTotal=0, wbFinanceCount=0, wbFinanceRows=[];
   for(var fi=0;fi<rawData.length;fi++){
     var fr=rawData[fi];
-    if(fr.bonus_type_name&&fr.bonus_type_name.indexOf('ФИНАНС')>=0){
+    var isWbFinRow=(fr.bonus_type_name&&fr.bonus_type_name.indexOf('ФИНАНС')>=0)||(fr.supplier_oper_name&&fr.supplier_oper_name.indexOf('баланс')>=0);
+    if(isWbFinRow){
       var famt=Math.abs(fr.deduction||0);
       wbFinanceTotal+=famt;
       wbFinanceCount++;
@@ -770,7 +772,7 @@ function upd(i,val){
     tS+=rd.storage_fee||0;
     tPn+=rd.penalty||0;
     var ded=Math.abs(rd.deduction||0);
-    if(rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0){
+    if((rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0)||(rd.supplier_oper_name&&rd.supplier_oper_name.indexOf('баланс')>=0)){
       tWbFin+=ded; // ВБ Финанс отдельно
     } else if(isAdv(rd.bonus_type_name)){
       tAd+=ded; // Реклама отдельно
