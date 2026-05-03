@@ -544,6 +544,26 @@ function renderDetail(){
     'Прочие операции': {}
   };
 
+  // Собираем отдельно ВБ Финанс из bonus_type_name
+  var wbFinanceTotal=0, wbFinanceCount=0, wbFinanceRows=[];
+  for(var fi=0;fi<rawData.length;fi++){
+    var fr=rawData[fi];
+    if(fr.bonus_type_name&&fr.bonus_type_name.indexOf('ФИНАНС')>=0){
+      var famt=Math.abs(fr.deduction||0);
+      wbFinanceTotal+=famt;
+      wbFinanceCount++;
+      wbFinanceRows.push(fr);
+    }
+  }
+  if(wbFinanceCount>0){
+    groups['ВБ Финанс (кредит)']['Платёж по договору займа МКК «ВБ ФИНАНС»']={
+      name:'Платёж по договору займа МКК «ВБ ФИНАНС»',
+      count:wbFinanceCount,
+      total:-wbFinanceTotal,
+      rows:wbFinanceRows
+    };
+  }
+
   var keys=Object.keys(byOper);
   for(var i=0;i<keys.length;i++){
     var name=keys[i];
@@ -557,8 +577,6 @@ function renderDetail(){
       groups['Хранение'][name]=item;
     } else if(name.indexOf('родвижени')>=0||name.indexOf('реклам')>=0||name.indexOf('Продвижени')>=0){
       groups['Реклама и продвижение'][name]=item;
-    } else if(name.indexOf('ФИНАНС')>=0||name.indexOf('займ')>=0||name.indexOf('кредит')>=0||name.indexOf('МКК')>=0){
-      groups['ВБ Финанс (кредит)'][name]=item;
     } else if(name.indexOf('траф')>=0||name.indexOf('держани')>=0||name.indexOf('Штраф')>=0){
       groups['Штрафы и удержания'][name]=item;
     } else if(name.indexOf('озврат')>=0||name.indexOf('выдач')>=0||name.indexOf('ПВЗ')>=0){
@@ -608,7 +626,7 @@ function renderDetail(){
         html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
       }
       if(isPenGroup){
-        var penRows=rawData.filter(function(rd){return rd.supplier_oper_name===item.name&&(rd.penalty>0||rd.deduction>0);});
+        var penRows=item.rows||rawData.filter(function(rd){return rd.supplier_oper_name===item.name&&(rd.penalty>0||rd.deduction>0);});
         if(penRows.length>0){
           html+='<button class="expand-btn" onclick="togglePen(this)">' + '▶ Показать детали (' + penRows.length + ' операций)</button>';
           html+='<div class="pen-section" id="'+secId+'">';
