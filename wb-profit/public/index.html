@@ -29,14 +29,13 @@ input:focus{border-color:rgba(0,0,0,.35)}
 .sp{width:16px;height:16px;border:2px solid #ddd;border-top-color:#555;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 .tw{overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1050px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:1100px}
 th{padding:8px 10px;text-align:left;font-weight:500;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
 td{padding:8px 10px;border-bottom:1px solid var(--border)}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg)}
 .ci{width:90px;text-align:right;padding:4px 8px;font-size:13px;height:30px}
 .hint{font-size:12px;color:var(--hint);margin-top:5px}
-.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:#eaf3de;color:#1a7a4a;margin-left:6px}
 #results,#errBox,#ldBox{display:none}
 </style>
 </head>
@@ -48,19 +47,15 @@ tr:hover td{background:var(--bg)}
 <div class="card">
 <div class="ct">Подключение</div>
 <div style="margin-bottom:12px">
-  <label>Токен статистики (Статистика + Аналитика + Финансы + Возвраты)</label>
+  <label>Токен статистики (Статистика + Аналитика + Финансы + Возвраты + Продвижение)</label>
   <input type="password" id="tok1" placeholder="eyJhbGciOiJFUzI1NiIs...">
-</div>
-<div style="margin-bottom:12px">
-  <label>Токен рекламы (Продвижение) <span class="badge">новый</span></label>
-  <input type="password" id="tok2" placeholder="eyJhbGciOiJFUzI1NiIs...">
 </div>
 <div class="g2">
   <div><label>Период с</label><input type="date" id="df"></div>
   <div><label>по</label><input type="date" id="dt"></div>
 </div>
 <button class="btn" id="btn" onclick="go()">Загрузить данные</button>
-<p class="hint">Токены не покидают ваш браузер — они передаются только напрямую в WB API</p>
+<p class="hint">Токен не покидает ваш браузер — он передаётся только напрямую в WB API</p>
 </div>
 
 <div id="errBox"></div>
@@ -79,8 +74,8 @@ tr:hover td{background:var(--bg)}
         <thead><tr>
           <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
           <th>Продажи</th><th>Возвраты</th><th>Выплата WB ₽</th>
-          <th>Логистика ₽</th><th>Хранение ₽</th><th>Штрафы ₽</th>
-          <th>Реклама ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
+          <th>Логистика ₽</th><th>Хранение ₽</th><th>Реклама ₽</th>
+          <th>Штрафы ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
         </tr></thead>
         <tbody id="tb"></tbody>
       </table>
@@ -90,7 +85,7 @@ tr:hover td{background:var(--bg)}
 </div>
 
 <script>
-var rows=[], anm={}, tadv=0;
+var rows=[];
 var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
 
 (function(){
@@ -100,20 +95,22 @@ var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
   document.getElementById('dt').value=t.toISOString().split('T')[0];
 })();
 
-function err(msg){
+function showErr(msg){
   var b=document.getElementById('errBox');
   b.className='err'; b.textContent=msg; b.style.display='block';
 }
 
-function setLd(txt){
-  document.getElementById('ldTxt').textContent=txt;
+function isAdv(bonus){
+  if(!bonus) return false;
+  var b=bonus.toLowerCase();
+  return b.indexOf('продвижение')>=0 || b.indexOf('реклам')>=0;
 }
 
 async function loadSales(tok, df, dt){
   var all=[], rid=0, pg=0;
   while(true){
     pg++;
-    setLd('Загружаем продажи... страница '+pg);
+    document.getElementById('ldTxt').textContent='Загружаем данные... страница '+pg;
     var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:{Authorization:tok}});
     if(!r.ok) throw new Error('WB API '+r.status+': '+await r.text());
     var d=await r.json();
@@ -127,34 +124,21 @@ async function loadSales(tok, df, dt){
   return all;
 }
 
-async function loadAdv(tok, df, dt){
-  setLd('Загружаем расходы на рекламу...');
-  try{
-    var r=await fetch('/api/wb-adv?from='+df+'&to='+dt,{headers:{Authorization:tok}});
-    if(r.ok) return await r.json();
-  }catch(e){}
-  return {totalSpend:0,byNm:{}};
-}
-
 async function go(){
-  var t1=document.getElementById('tok1').value.trim();
-  var t2=document.getElementById('tok2').value.trim();
+  var tok=document.getElementById('tok1').value.trim();
   var df=document.getElementById('df').value;
   var dt=document.getElementById('dt').value;
   document.getElementById('errBox').style.display='none';
   document.getElementById('results').style.display='none';
-  if(!t1){err('Введите токен статистики');return;}
-  if(!df||!dt){err('Выберите период');return;}
+  if(!tok){showErr('Введите токен');return;}
+  if(!df||!dt){showErr('Выберите период');return;}
   document.getElementById('btn').disabled=true;
   document.getElementById('ldBox').style.display='block';
   try{
-    var sales=await loadSales(t1,df,dt);
-    var adv=t2 ? await loadAdv(t2,df,dt) : {totalSpend:0,byNm:{}};
-    anm=adv.byNm||{};
-    tadv=adv.totalSpend||0;
-    process(sales);
+    var raw=await loadSales(tok,df,dt);
+    process(raw);
   }catch(e){
-    err('Ошибка: '+e.message);
+    showErr('Ошибка: '+e.message);
   }finally{
     document.getElementById('btn').disabled=false;
     document.getElementById('ldBox').style.display='none';
@@ -166,33 +150,39 @@ function process(raw){
   for(var i=0;i<raw.length;i++){
     var r=raw[i];
     var k=r.nm_id||r.sa_name||'x';
-    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,pen:0,ded:0,acc:0,cost:0};
-    var a=bk[k], doc=(r.doc_type_name||'').toLowerCase();
+    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:0};
+    var a=bk[k];
+    var doc=(r.doc_type_name||'').toLowerCase();
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
-    a.ppvz+=r.ppvz_for_pay||0; a.del+=r.delivery_rub||0;
-    a.stor+=r.storage_fee||0; a.pen+=r.penalty||0;
-    a.ded+=r.deduction||0; a.acc+=r.acceptance||0;
+    a.ppvz+=r.ppvz_for_pay||0;
+    a.del+=r.delivery_rub||0;
+    a.stor+=r.storage_fee||0;
+    a.pen+=r.penalty||0;
+    // Разделяем рекламу от штрафов
+    if(isAdv(r.bonus_type_name)){
+      a.adv+=Math.abs(r.deduction||0);
+    } else {
+      a.pen+=Math.abs(r.deduction||0);
+    }
+    a.pen+=r.acceptance||0;
   }
   rows=Object.values(bk);
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0;
   for(var j=0;j<rows.length;j++){
     var x=rows[j];
     tP+=x.ppvz; tD+=x.del; tS+=x.stor;
-    tPn+=x.pen+x.ded+x.acc;
-    tSl+=x.sales; tRt+=x.ret;
-    tAd+=anm[x.nm_id]||0;
+    tPn+=x.pen; tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
   }
-  if(tAd===0) tAd=tadv;
-  var tp=tP-tD-tS-tPn-tAd;
+  var tp=tP-tD-tS-tAd-tPn;
   document.getElementById('mg').innerHTML=
     '<div class="m"><div class="ml">Продажи (шт.)</div><div class="mv">'+fmt(tSl)+'</div></div>'+
     '<div class="m"><div class="ml">Возвраты (шт.)</div><div class="mv red">'+fmt(tRt)+'</div></div>'+
     '<div class="m"><div class="ml">Выплата WB</div><div class="mv">'+fmt(tP)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(tD)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(tS)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(tAd)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Штрафы / удержания</div><div class="mv red">−'+fmt(tPn)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Реклама</div><div class="mv red">−'+fmt(tAd)+' ₽</div></div>'+
     '<div class="m"><div class="ml">До вычета себест.</div><div class="mv '+(tp>=0?'green':'red')+'">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
   renderTable();
@@ -203,8 +193,8 @@ function renderTable(){
   var tb=document.getElementById('tb');
   tb.innerHTML='';
   for(var i=0;i<rows.length;i++){
-    var a=rows[i], ad=anm[a.nm_id]||0;
-    var costs=a.del+a.stor+a.pen+a.ded+a.acc+ad;
+    var a=rows[i];
+    var costs=a.del+a.stor+a.adv+a.pen;
     var prf=a.ppvz-costs-a.cost*Math.max(a.sales-a.ret,0);
     var pc=prf>=0?'green':'red';
     var ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
@@ -217,8 +207,8 @@ function renderTable(){
       '<td>'+fmt(a.ppvz)+' ₽</td>'+
       '<td class="red">−'+fmt(a.del)+' ₽</td>'+
       '<td class="red">−'+fmt(a.stor)+' ₽</td>'+
-      '<td class="red">−'+fmt(a.pen+a.ded+a.acc)+' ₽</td>'+
-      '<td class="red">−'+fmt(ad)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.adv)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.pen)+' ₽</td>'+
       '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+i+',this.value)"></td>'+
       '<td>'+ps+'</td>'+
     '</tr>';
@@ -227,8 +217,9 @@ function renderTable(){
 
 function upd(i,val){
   rows[i].cost=parseFloat(val)||0;
-  var a=rows[i], ad=anm[a.nm_id]||0;
-  var prf=a.ppvz-a.del-a.stor-a.pen-a.ded-a.acc-ad-a.cost*Math.max(a.sales-a.ret,0);
+  var a=rows[i];
+  var costs=a.del+a.stor+a.adv+a.pen;
+  var prf=a.ppvz-costs-a.cost*Math.max(a.sales-a.ret,0);
   var tr=document.getElementById('tb').rows[i];
   var pc=prf>=0?'green':'red';
   tr.cells[11].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
