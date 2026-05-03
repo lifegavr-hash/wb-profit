@@ -448,23 +448,29 @@ function process(raw){
   var costs=getCosts();var bk={};byMonthData={};
   for(var i=0;i<raw.length;i++){
     var r=raw[i];
+    var doc=(r.doc_type_name||'').toLowerCase();
+    // Графики и итоги — считаем ВСЕ строки включая без артикула
+    var mo=getMonth(r);
+    if(mo){
+      if(!byMonthData[mo]) byMonthData[mo]={ppvz:0,del:0,stor:0,adv:0,pen:0};
+      byMonthData[mo].ppvz+=r.ppvz_for_pay||0;
+      byMonthData[mo].del+=r.delivery_rub||0;
+      byMonthData[mo].stor+=r.storage_fee||0;
+      byMonthData[mo].pen+=r.penalty||0;
+      if(isAdv(r.bonus_type_name)){byMonthData[mo].adv+=Math.abs(r.deduction||0);}
+      else{byMonthData[mo].pen+=Math.abs(r.deduction||0);}
+      byMonthData[mo].pen+=r.acceptance||0;
+    }
+    // Таблица товаров — только строки с артикулом
     if(!r.nm_id&&!r.sa_name) continue;
     var k=String(r.nm_id||r.sa_name||'x');
     if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0};
-    var a=bk[k],doc=(r.doc_type_name||'').toLowerCase();
+    var a=bk[k];
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
     a.ppvz+=r.ppvz_for_pay||0;a.del+=r.delivery_rub||0;a.stor+=r.storage_fee||0;a.pen+=r.penalty||0;
     if(isAdv(r.bonus_type_name)){a.adv+=Math.abs(r.deduction||0);}else{a.pen+=Math.abs(r.deduction||0);}
     a.pen+=r.acceptance||0;
-    var mo=getMonth(r);
-    if(mo){
-      if(!byMonthData[mo]) byMonthData[mo]={ppvz:0,del:0,stor:0,adv:0,pen:0};
-      byMonthData[mo].ppvz+=r.ppvz_for_pay||0;byMonthData[mo].del+=r.delivery_rub||0;byMonthData[mo].stor+=r.storage_fee||0;
-      byMonthData[mo].pen+=r.penalty||0;
-      if(isAdv(r.bonus_type_name)){byMonthData[mo].adv+=Math.abs(r.deduction||0);}else{byMonthData[mo].pen+=Math.abs(r.deduction||0);}
-      byMonthData[mo].pen+=r.acceptance||0;
-    }
   }
   rows=Object.values(bk);
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0;
@@ -606,10 +612,16 @@ function renderDetail(){
           html+='<table class="pen-table"><thead><tr><th>Дата</th><th>Товар</th><th>Причина</th><th>Сумма</th></tr></thead><tbody>';
           penRows.forEach(function(pr){
             var dt=pr.rr_dt||(pr.sale_dt?pr.sale_dt.substring(0,10):'');
-            var art=pr.sa_name||(pr.nm_id?String(pr.nm_id):'—');
-            var reason=pr.bonus_type_name||pr.ts_name||pr.supplier_oper_name||'';
+            var art=pr.sa_name||(pr.nm_id&&pr.nm_id>0?String(pr.nm_id):'');
+            var reason=pr.bonus_type_name||pr.ts_name||'';
+            // Если нет артикула — показываем штрихкод и название операции
+            if(!art){
+              art=pr.barcode||'Общее по кабинету';
+              if(!reason) reason=pr.supplier_oper_name||'';
+            }
             var amt=Math.abs(pr.penalty||0)+Math.abs(pr.deduction||0);
-            html+='<tr><td>'+dt+'</td><td>'+art+'</td><td style="max-width:220px;white-space:normal;line-height:1.4">'+reason+'</td><td class="red">−'+fmt(amt)+' ₽</td></tr>';
+            if(amt===0) return; // Пропускаем нулевые
+            html+='<tr><td>'+dt+'</td><td style="font-size:12px">'+art+'</td><td style="max-width:220px;white-space:normal;line-height:1.4;font-size:12px">'+reason+'</td><td class="red">−'+fmt(amt)+' ₽</td></tr>';
           });
           html+='</tbody></table>';
           html+='</div>';
