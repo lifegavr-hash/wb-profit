@@ -18,7 +18,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .nav-item:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.05)}
 .nav-item.active{color:#fff;background:rgba(255,255,255,.08);border-left:2px solid #7F77DD}
 .sidebar-bottom{padding:1rem;border-top:1px solid rgba(255,255,255,.08)}
-.user-row{display:flex;align-items:center;gap:8px;cursor:pointer}
+.user-row{display:flex;align-items:center;gap:8px}
 .avatar{width:30px;height:30px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#fff;flex-shrink:0}
 .user-name{font-size:12px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
 .user-plan{font-size:10px;color:rgba(255,255,255,.35)}
@@ -42,15 +42,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ct{font-size:14px;font-weight:500;margin-bottom:1rem}
 .btn-primary{padding:9px 20px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer}
 .btn-primary:hover{opacity:.9}
-.btn-outline{padding:9px 20px;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:var(--rs);font-size:14px;cursor:pointer}
-.btn-outline:hover{background:var(--bg)}
-input[type=password],input[type=date],input[type=number],input[type=text],input[type=email]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;color:var(--text);background:var(--surface);outline:none}
+input[type=password],input[type=date],input[type=number],input[type=text]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;color:var(--text);background:var(--surface);outline:none}
 input:focus{border-color:var(--purple)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .err{background:var(--red-bg);border:1px solid #f5c6c2;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem;display:none}
 .ok-msg{background:#EAF3DE;border:1px solid #C0DD97;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--green);margin-bottom:1rem;display:none}
 .warn{background:#fff8e6;border:1px solid #f5c842;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:#7a5c00;margin-bottom:1rem;display:none}
-.ld{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:1rem 0;display:none}
+.ld{display:none;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:1rem 0}
 .sp{width:16px;height:16px;border:2px solid #ddd;border-top-color:#555;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 .tw{overflow-x:auto}
@@ -63,7 +61,7 @@ tr.loss td{background:#fff5f5}
 .tfoot-row td{font-weight:600;background:var(--bg);border-top:2px solid var(--border);border-bottom:none}
 .ci{width:90px;text-align:right;padding:4px 8px;font-size:13px;height:30px}
 .hint{font-size:12px;color:var(--hint);margin-top:5px}
-.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
 .chart-tabs{display:flex;gap:8px;flex-wrap:wrap}
 .tab{padding:5px 14px;border:1px solid var(--border);border-radius:99px;font-size:13px;cursor:pointer;background:transparent;color:var(--muted)}
 .tab.active{background:var(--text);color:#fff;border-color:var(--text)}
@@ -79,6 +77,22 @@ tr.loss td{background:#fff5f5}
 .upgrade-text h3{font-size:16px;font-weight:500;margin-bottom:4px}
 .upgrade-text p{font-size:13px;color:rgba(255,255,255,.6)}
 .upgrade-btn{padding:10px 20px;background:#fff;color:#1a0f3c;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap}
+
+/* Детализация */
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:1rem}
+.detail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.detail-card-header{padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg)}
+.detail-card-title{font-size:13px;font-weight:500;color:var(--text)}
+.detail-card-total{font-size:14px;font-weight:600;color:var(--red)}
+.detail-row{display:flex;align-items:center;justify-content:space-between;padding:8px 1rem;border-bottom:0.5px solid var(--border);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.detail-name{color:var(--text);flex:1;padding-right:12px}
+.detail-count{font-size:11px;color:var(--hint);margin-right:12px;white-space:nowrap}
+.detail-amount{color:var(--red);font-weight:500;white-space:nowrap}
+.detail-amount.pos{color:var(--green)}
+.no-data{text-align:center;padding:2rem;color:var(--hint);font-size:14px}
+.detail-bar{height:3px;background:#f0f0ee;margin:0 1rem 8px;border-radius:99px}
+.detail-bar-fill{height:100%;background:var(--red);border-radius:99px}
 </style>
 </head>
 <body>
@@ -90,11 +104,12 @@ tr.loss td{background:#fff5f5}
   </div>
   <div class="nav">
     <div class="nav-sec">Главное</div>
-    <button class="nav-item active" onclick="showSection('calc')">📊 Калькулятор</button>
-    <button class="nav-item" onclick="showSection('analytics')">📈 Аналитика</button>
+    <button class="nav-item active" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
+    <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов</button>
+    <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика</button>
     <div class="nav-sec">Аккаунт</div>
-    <button class="nav-item" onclick="showSection('promo')">🎁 Промокод</button>
-    <button class="nav-item" id="adminNav" style="display:none" onclick="showSection('admin')">⚙️ Админ-панель</button>
+    <button class="nav-item" id="nav-promo" onclick="showSection('promo',this)">🎁 Промокод</button>
+    <button class="nav-item" id="nav-admin" style="display:none" onclick="showSection('admin',this)">⚙️ Админ-панель</button>
   </div>
   <div class="sidebar-bottom">
     <div class="user-row">
@@ -123,7 +138,7 @@ tr.loss td{background:#fff5f5}
           <h3>Перейдите на PRO</h3>
           <p>AI советник, прогноз прибыли и безлимит товаров</p>
         </div>
-        <button class="upgrade-btn" onclick="showSection('promo')">Активировать промокод</button>
+        <button class="upgrade-btn" onclick="showSection('promo',document.getElementById('nav-promo'))">Активировать промокод</button>
       </div>
 
       <div class="card">
@@ -186,11 +201,22 @@ tr.loss td{background:#fff5f5}
       </div>
     </div>
 
+    <!-- Детализация расходов -->
+    <div class="section" id="sectionDetail">
+      <div id="detailEmpty" class="card">
+        <div class="no-data">Сначала загрузите данные в разделе "Калькулятор"</div>
+      </div>
+      <div id="detailContent" style="display:none">
+        <div class="metrics" id="detailMetrics"></div>
+        <div id="detailGrid" class="detail-grid"></div>
+      </div>
+    </div>
+
     <!-- Аналитика -->
     <div class="section" id="sectionAnalytics">
       <div class="card">
         <div class="ct">Аналитика</div>
-        <p style="color:var(--muted);font-size:14px">Сначала загрузите данные в разделе "Калькулятор" — здесь появится детальная аналитика по товарам и периодам.</p>
+        <p style="color:var(--muted);font-size:14px">Сначала загрузите данные в разделе "Калькулятор"</p>
       </div>
     </div>
 
@@ -198,7 +224,6 @@ tr.loss td{background:#fff5f5}
     <div class="section" id="sectionPromo">
       <div class="card">
         <div class="ct">Активировать промокод</div>
-        <p style="font-size:14px;color:var(--muted);margin-bottom:1rem">Введите промокод чтобы получить доступ к PRO тарифу</p>
         <div style="display:flex;gap:10px;margin-bottom:1rem">
           <input type="text" id="promoCode" placeholder="BETA2024" style="text-transform:uppercase;flex:1">
           <button class="btn-primary" onclick="applyPromo()">Активировать</button>
@@ -217,47 +242,28 @@ tr.loss td{background:#fff5f5}
       <div class="card">
         <div class="ct">Создать промокод</div>
         <div class="g2" style="margin-bottom:12px">
-          <div>
-            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Код</label>
-            <input type="text" id="newCode" placeholder="BETA2024" style="text-transform:uppercase">
-          </div>
-          <div>
-            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Тариф</label>
+          <div><label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Код</label><input type="text" id="newCode" placeholder="BETA2024" style="text-transform:uppercase"></div>
+          <div><label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Тариф</label>
             <select id="newPlan" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;background:var(--surface);color:var(--text)">
-              <option value="pro">PRO</option>
-              <option value="business">Бизнес</option>
+              <option value="pro">PRO</option><option value="business">Бизнес</option>
             </select>
           </div>
         </div>
         <div class="g2" style="margin-bottom:12px">
-          <div>
-            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Дней доступа</label>
-            <input type="number" id="newDays" value="30" min="1" max="365">
-          </div>
-          <div>
-            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Лимит использований</label>
-            <input type="number" id="newMaxUses" value="1" min="1">
-          </div>
+          <div><label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Дней доступа</label><input type="number" id="newDays" value="30" min="1" max="365"></div>
+          <div><label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Лимит использований</label><input type="number" id="newMaxUses" value="1" min="1"></div>
         </div>
         <button class="btn-primary" onclick="createPromo()">Создать промокод</button>
         <div class="err" id="adminErr"></div>
         <div class="ok-msg" id="adminOk"></div>
       </div>
-
       <div class="card">
         <div class="ct">Промокоды</div>
-        <div class="tw"><table class="promo-table" id="promoTable">
-          <thead><tr><th>Код</th><th>Тариф</th><th>Дней</th><th>Использовано</th><th>Лимит</th><th>Статус</th><th></th></tr></thead>
-          <tbody id="promoBody"></tbody>
-        </table></div>
+        <div class="tw"><table class="promo-table"><thead><tr><th>Код</th><th>Тариф</th><th>Дней</th><th>Использовано</th><th>Лимит</th><th>Статус</th><th></th></tr></thead><tbody id="promoBody"></tbody></table></div>
       </div>
-
       <div class="card">
         <div class="ct">Пользователи</div>
-        <div class="tw"><table class="promo-table" id="usersTable">
-          <thead><tr><th>Email</th><th>Тариф</th><th>Действует до</th><th>Зарегистрирован</th></tr></thead>
-          <tbody id="usersBody"></tbody>
-        </table></div>
+        <div class="tw"><table class="promo-table"><thead><tr><th>Email</th><th>Тариф</th><th>Действует до</th><th>Зарегистрирован</th></tr></thead><tbody id="usersBody"></tbody></table></div>
       </div>
     </div>
 
@@ -269,6 +275,7 @@ tr.loss td{background:#fff5f5}
 <script>
 var sb=null, currentUser=null, currentProfile=null;
 var rows=[], byMonthData={}, myChart=null, curTab='profit';
+var rawData=[];
 var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
 var moNames=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
@@ -282,7 +289,7 @@ async function init(){
   var {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   currentProfile=profile;
   updateUI(profile,currentUser.email,session.access_token);
-  if(profile.is_admin) document.getElementById('adminNav').style.display='block';
+  if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
   initCalc();
 }
 
@@ -292,7 +299,6 @@ function updateUI(profile,email,token){
   document.getElementById('userEmail').textContent=email;
   var plan=profile.plan||'free';
   var expires=profile.plan_expires_at?new Date(profile.plan_expires_at):null;
-  var isActive=expires?expires>new Date():plan==='free';
   var planLabel=plan==='free'?'Free':plan.toUpperCase();
   document.getElementById('userPlanLabel').textContent=planLabel;
   var badge=document.getElementById('planBadge');
@@ -306,9 +312,7 @@ function updateUI(profile,email,token){
     var exp=expires?expires.toLocaleDateString('ru-RU'):'бессрочно';
     planInfo.innerHTML='<p>Текущий тариф: <strong>'+planLabel+'</strong></p><p style="margin-top:8px;color:var(--hint)">Действует до: '+exp+'</p>';
   }
-  if(profile.is_admin){
-    loadAdminData(token);
-  }
+  if(profile.is_admin) loadAdminData(token);
 }
 
 async function logout(){
@@ -317,15 +321,17 @@ async function logout(){
   window.location.href='/login.html';
 }
 
-function showSection(name){
-  var sections=['calc','analytics','promo','admin'];
-  var titles={calc:'Калькулятор прибыли',analytics:'Аналитика',promo:'Промокод',admin:'Админ-панель'};
+function showSection(name,el){
+  var sections=['calc','detail','analytics','promo','admin'];
+  var titles={calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
-    document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1)).classList.toggle('active',s===name);
+    var sec=document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1));
+    if(sec) sec.classList.toggle('active',s===name);
   });
-  document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
-  event.currentTarget.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');});
+  if(el) el.classList.add('active');
   document.getElementById('topbarTitle').textContent=titles[name]||'';
+  if(name==='detail') renderDetail();
 }
 
 async function applyPromo(){
@@ -367,14 +373,12 @@ async function loadAdminData(token){
   var r=await fetch('/api/admin',{headers:{'Authorization':'Bearer '+token}});
   var d=await r.json();
   if(d.promos){
-    var pb=document.getElementById('promoBody');
-    pb.innerHTML=d.promos.map(function(p){
+    document.getElementById('promoBody').innerHTML=d.promos.map(function(p){
       return '<tr><td style="font-family:monospace">'+p.code+'</td><td><span class="badge badge-pro">'+p.plan+'</span></td><td>'+p.days+'</td><td>'+p.used_count+'</td><td>'+p.max_uses+'</td><td><span class="badge '+(p.is_active?'badge-active':'badge-inactive')+'">'+(p.is_active?'Активен':'Неактивен')+'</span></td><td>'+(p.is_active?'<button onclick="deactivatePromo(\''+p.id+'\')" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent">Деактивировать</button>':'')+'</td></tr>';
     }).join('');
   }
   if(d.users){
-    var ub=document.getElementById('usersBody');
-    ub.innerHTML=d.users.map(function(u){
+    document.getElementById('usersBody').innerHTML=d.users.map(function(u){
       var exp=u.plan_expires_at?new Date(u.plan_expires_at).toLocaleDateString('ru-RU'):'—';
       return '<tr><td>'+u.email+'</td><td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+u.plan+'</span></td><td>'+exp+'</td><td>'+new Date(u.created_at).toLocaleDateString('ru-RU')+'</td></tr>';
     }).join('');
@@ -410,8 +414,8 @@ async function go(){
   document.getElementById('loadBtn').disabled=true;
   var ldBox=document.getElementById('ldBox');ldBox.style.display='flex';
   try{
-    var raw=await loadSales(tok,df,dt);
-    process(raw);
+    rawData=await loadSales(tok,df,dt);
+    process(rawData);
   }catch(e){showErr('Ошибка: '+e.message);}
   finally{document.getElementById('loadBtn').disabled=false;ldBox.style.display='none';}
 }
@@ -473,6 +477,122 @@ function process(raw){
   renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp);
   renderChart(byMonthData,'profit');
   document.getElementById('results').style.display='block';
+}
+
+function renderDetail(){
+  if(!rawData.length){
+    document.getElementById('detailEmpty').style.display='block';
+    document.getElementById('detailContent').style.display='none';
+    return;
+  }
+  document.getElementById('detailEmpty').style.display='none';
+  document.getElementById('detailContent').style.display='block';
+
+  // Собираем статистику по типам операций
+  var byOper={};
+  var totLogistic=0, totStorage=0, totPenalty=0, totAdv=0, totOther=0;
+
+  for(var i=0;i<rawData.length;i++){
+    var r=rawData[i];
+    var oper=r.supplier_oper_name||'Без названия';
+    if(!byOper[oper]) byOper[oper]={count:0,logistic:0,storage:0,penalty:0,adv:0,deduction:0,rebill:0,other:0};
+    var o=byOper[oper];
+    o.count++;
+    o.logistic+=r.delivery_rub||0;
+    o.storage+=r.storage_fee||0;
+    o.penalty+=r.penalty||0;
+    o.rebill+=r.rebill_logistic_cost||0;
+    if(isAdv(r.bonus_type_name)){o.adv+=Math.abs(r.deduction||0);}
+    else{o.deduction+=Math.abs(r.deduction||0);}
+    o.other+=r.acceptance||0;
+    totLogistic+=r.delivery_rub||0;
+    totStorage+=r.storage_fee||0;
+    totPenalty+=r.penalty||0;
+    totAdv+=isAdv(r.bonus_type_name)?Math.abs(r.deduction||0):0;
+  }
+
+  // Метрики
+  var totalExpenses=totLogistic+totStorage+totPenalty+totAdv;
+  document.getElementById('detailMetrics').innerHTML=
+    '<div class="m"><div class="ml">Всего типов операций</div><div class="mv">'+Object.keys(byOper).length+'</div></div>'+
+    '<div class="m"><div class="ml">Всего строк</div><div class="mv">'+fmt(rawData.length)+'</div></div>'+
+    '<div class="m"><div class="ml">Суммарные расходы</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>';
+
+  // Группируем по категориям
+  var groups = {
+    'Логистика и доставка': {},
+    'Хранение': {},
+    'Реклама и продвижение': {},
+    'Штрафы и удержания': {},
+    'Возвраты': {},
+    'Прочие операции': {}
+  };
+
+  var keys=Object.keys(byOper);
+  for(var i=0;i<keys.length;i++){
+    var name=keys[i];
+    var o=byOper[name];
+    var total=o.logistic+o.storage+o.penalty+o.adv+o.deduction+o.rebill+o.other;
+    var item={name:name, count:o.count, total:total};
+
+    if(name.indexOf('перевозк')>=0||name.indexOf('логистик')>=0||name.indexOf('доставк')>=0||name.indexOf('Логистика')>=0){
+      groups['Логистика и доставка'][name]=item;
+    } else if(name.indexOf('ранение')>=0||name.indexOf('хранени')>=0){
+      groups['Хранение'][name]=item;
+    } else if(name.indexOf('родвижени')>=0||name.indexOf('реклам')>=0||name.indexOf('Продвижени')>=0){
+      groups['Реклама и продвижение'][name]=item;
+    } else if(name.indexOf('траф')>=0||name.indexOf('держани')>=0||name.indexOf('Штраф')>=0){
+      groups['Штрафы и удержания'][name]=item;
+    } else if(name.indexOf('озврат')>=0||name.indexOf('выдач')>=0||name.indexOf('ПВЗ')>=0){
+      groups['Возвраты'][name]=item;
+    } else {
+      groups['Прочие операции'][name]=item;
+    }
+  }
+
+  var icons={'Логистика и доставка':'🚚','Хранение':'📦','Реклама и продвижение':'📣','Штрафы и удержания':'⚠️','Возвраты':'↩️','Прочие операции':'📋'};
+  var html='';
+
+  var groupKeys=Object.keys(groups);
+  for(var g=0;g<groupKeys.length;g++){
+    var groupName=groupKeys[g];
+    var items=groups[groupName];
+    var itemKeys=Object.keys(items);
+    if(!itemKeys.length) continue;
+
+    var groupTotal=0;
+    for(var k=0;k<itemKeys.length;k++) groupTotal+=items[itemKeys[k]].total;
+
+    // Сортируем по сумме
+    itemKeys.sort(function(a,b){return Math.abs(items[b].total)-Math.abs(items[a].total);});
+
+    var maxAmt=Math.abs(items[itemKeys[0]].total)||1;
+
+    html+='<div class="detail-card">';
+    html+='<div class="detail-card-header">';
+    html+='<span class="detail-card-title">'+icons[groupName]+' '+groupName+'</span>';
+    html+='<span class="detail-card-total">−'+fmt(Math.abs(groupTotal))+' ₽</span>';
+    html+='</div>';
+
+    for(var k=0;k<itemKeys.length;k++){
+      var item=items[itemKeys[k]];
+      var pct=Math.round(Math.abs(item.total)/maxAmt*100);
+      var amtClass=item.total>=0?'pos':'';
+      html+='<div>';
+      html+='<div class="detail-row">';
+      html+='<span class="detail-name">'+item.name+'</span>';
+      html+='<span class="detail-count">'+fmt(item.count)+' оп.</span>';
+      html+='<span class="detail-amount '+amtClass+'">'+(item.total>=0?'':'−')+fmt(Math.abs(item.total))+' ₽</span>';
+      html+='</div>';
+      if(pct>0&&item.total<0){
+        html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
+      }
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+
+  document.getElementById('detailGrid').innerHTML=html;
 }
 
 function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
