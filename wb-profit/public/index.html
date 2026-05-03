@@ -44,26 +44,34 @@
   .cost-inp { width: 90px; text-align: right; padding: 4px 8px; font-size: 13px; height: 30px; }
   .hint { font-size: 12px; color: var(--hint); margin-top: 5px; }
   #results, #errorBox, #loadingBox { display: none; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #eaf3de; color: #1a7a4a; margin-left: 6px; }
 </style>
 </head>
 <body>
 <div class="container">
   <header><h1>WB Profit</h1><p>Калькулятор чистой прибыли для Wildberries</p></header>
+
   <div class="card">
     <div class="card-title">Подключение</div>
     <div style="margin-bottom:12px;">
-      <label>API токен (Персональный)</label>
+      <label>Токен статистики (Статистика + Аналитика + Финансы + Возвраты)</label>
       <input type="password" id="token" placeholder="eyJhbGciOiJFUzI1NiIs...">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label>Токен рекламы (Продвижение) <span class="tag">новый</span></label>
+      <input type="password" id="tokenAdv" placeholder="eyJhbGciOiJFUzI1NiIs...">
     </div>
     <div class="grid2">
       <div><label>Период с</label><input type="date" id="dateFrom"></div>
       <div><label>по</label><input type="date" id="dateTo"></div>
     </div>
     <button class="btn" id="loadBtn" onclick="loadData()">Загрузить данные</button>
-    <p class="hint">Токен не покидает ваш браузер — он передаётся только напрямую в WB API</p>
+    <p class="hint">Токены не покидают ваш браузер — они передаются только напрямую в WB API</p>
   </div>
+
   <div id="errorBox"></div>
   <div id="loadingBox"><div class="loading"><div class="spin"></div><span id="loadText">Загружаем...</span></div></div>
+
   <div id="results">
     <div class="metrics" id="metricsGrid"></div>
     <div class="card">
@@ -86,22 +94,26 @@
     </div>
   </div>
 </div>
+
 <script>
   const today = new Date(), ago = new Date();
   ago.setDate(today.getDate() - 30);
   document.getElementById('dateFrom').value = ago.toISOString().split('T')[0];
   document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+
   let tableData = [], advByNm = {}, totalAdv = 0;
   const fmt = n => Math.round(n).toLocaleString('ru-RU');
-  function showError(msg) { const b = document.getElementById('errorBox'); b.className='error'; b.textContent=msg; b.style.display='block'; }
+
+  function showError(msg) { const b=document.getElementById('errorBox'); b.className='error'; b.textContent=msg; b.style.display='block'; }
+
   async function fetchAll(token, dateFrom, dateTo) {
     let all=[], rrdid=0, page=0;
     while(true) {
       page++;
       document.getElementById('loadText').textContent=`Загружаем продажи... страница ${page}`;
-      const r = await fetch(`/api/wb?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}`, {headers:{Authorization:token}});
+      const r=await fetch(`/api/wb?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}`,{headers:{Authorization:token}});
       if(!r.ok) throw new Error(`WB API ${r.status}: ${await r.text()}`);
-      const data = await r.json();
+      const data=await r.json();
       if(!data||!data.length) break;
       all=all.concat(data);
       const lastId=data[data.length-1].rrd_id;
@@ -111,28 +123,38 @@
     }
     return all;
   }
-  async function fetchAdv(token, dateFrom, dateTo) {
+
+  async function fetchAdv(tokenAdv, dateFrom, dateTo) {
     document.getElementById('loadText').textContent='Загружаем расходы на рекламу...';
-    try { const r=await fetch(`/api/wb-adv?from=${dateFrom}&to=${dateTo}`,{headers:{Authorization:token}}); if(r.ok) return await r.json(); } catch(e){}
+    try {
+      const r=await fetch(`/api/wb-adv?from=${dateFrom}&to=${dateTo}`,{headers:{Authorization:tokenAdv}});
+      if(r.ok) return await r.json();
+    } catch(e){}
     return {totalSpend:0, byNm:{}};
   }
+
   async function loadData() {
     const token=document.getElementById('token').value.trim();
+    const tokenAdv=document.getElementById('tokenAdv').value.trim();
     const dateFrom=document.getElementById('dateFrom').value;
     const dateTo=document.getElementById('dateTo').value;
     document.getElementById('errorBox').style.display='none';
     document.getElementById('results').style.display='none';
-    if(!token){showError('Введите API токен');return;}
+    if(!token){showError('Введите токен статистики');return;}
     if(!dateFrom||!dateTo){showError('Выберите период');return;}
     document.getElementById('loadBtn').disabled=true;
     document.getElementById('loadingBox').style.display='block';
     try {
-      const [raw,adv]=await Promise.all([fetchAll(token,dateFrom,dateTo),fetchAdv(token,dateFrom,dateTo)]);
+      const promises=[fetchAll(token,dateFrom,dateTo)];
+      if(tokenAdv) promises.push(fetchAdv(tokenAdv,dateFrom,dateTo));
+      else promises.push(Promise.resolve({totalSpend:0,byNm:{}}));
+      const [raw,adv]=await Promise.all(promises);
       advByNm=adv.byNm||{}; totalAdv=adv.totalSpend||0;
       processData(raw);
     } catch(e){showError('Ошибка: '+e.message);}
     finally{document.getElementById('loadBtn').disabled=false;document.getElementById('loadingBox').style.display='none';}
   }
+
   function processData(raw) {
     const byKey={};
     for(const r of raw){
@@ -146,49 +168,4 @@
     }
     tableData=Object.values(byKey);
     let tP=0,tD=0,tS=0,tPen=0,tSales=0,tRet=0,tAdv=0;
-    for(const a of tableData){tP+=a.ppvz;tD+=a.delivery;tS+=a.storage;tPen+=a.penalty+a.deduction+a.acceptance;tSales+=a.sales;tRet+=a.returns;tAdv+=advByNm[a.nm_id]||0;}
-    if(tAdv===0) tAdv=totalAdv;
-    const tProfit=tP-tD-tS-tPen-tAdv;
-    document.getElementById('metricsGrid').innerHTML=`
-      <div class="metric"><div class="metric-label">Продажи (шт.)</div><div class="metric-val">${fmt(tSales)}</div></div>
-      <div class="metric"><div class="metric-label">Возвраты (шт.)</div><div class="metric-val red">${fmt(tRet)}</div></div>
-      <div class="metric"><div class="metric-label">Выплата WB</div><div class="metric-val">${fmt(tP)} ₽</div></div>
-      <div class="metric"><div class="metric-label">Логистика</div><div class="metric-val red">−${fmt(tD)} ₽</div></div>
-      <div class="metric"><div class="metric-label">Хранение</div><div class="metric-val red">−${fmt(tS)} ₽</div></div>
-      <div class="metric"><div class="metric-label">Штрафы / удержания</div><div class="metric-val red">−${fmt(tPen)} ₽</div></div>
-      <div class="metric"><div class="metric-label">Реклама</div><div class="metric-val red">−${fmt(tAdv)} ₽</div></div>
-      <div class="metric"><div class="metric-label">До вычета себест.</div><div class="metric-val ${tProfit>=0?'green':'red'}">${tProfit>=0?'':'−'}${fmt(Math.abs(tProfit))} ₽</div></div>`;
-    document.getElementById('cnt').textContent=`${tableData.length} товаров · ${raw.length} записей`;
-    renderTable();
-    document.getElementById('results').style.display='block';
-  }
-  function renderTable() {
-    const tbody=document.getElementById('tableBody');tbody.innerHTML='';
-    for(let i=0;i<tableData.length;i++){
-      const a=tableData[i],adv=advByNm[a.nm_id]||0;
-      const costs=a.delivery+a.storage+a.penalty+a.deduction+a.acceptance+adv;
-      const profit=a.ppvz-costs-a.cost*Math.max(a.sales-a.returns,0);
-      const pc=profit>=0?'green':'red';
-      const ps=a.cost>0?`<span class="${pc}">${profit>=0?'':'−'}${fmt(Math.abs(profit))} ₽</span>`:`<span style="color:var(--hint)">—</span>`;
-      tbody.innerHTML+=`<tr>
-        <td style="font-family:monospace;font-size:12px;">${a.nm_id||'—'}</td>
-        <td style="font-size:12px;">${a.sa_name||'—'}</td><td>${a.subject_name}</td>
-        <td>${fmt(a.sales)}</td><td class="red">${fmt(a.returns)}</td>
-        <td>${fmt(a.ppvz)} ₽</td><td class="red">−${fmt(a.delivery)} ₽</td>
-        <td class="red">−${fmt(a.storage)} ₽</td>
-        <td class="red">−${fmt(a.penalty+a.deduction+a.acceptance)} ₽</td>
-        <td class="red">−${fmt(adv)} ₽</td>
-        <td><input type="number" class="cost-inp" placeholder="0" value="${a.cost||''}" min="0" oninput="updateCost(${i},this.value)"></td>
-        <td>${ps}</td></tr>`;
-    }
-  }
-  function updateCost(i,val){
-    tableData[i].cost=parseFloat(val)||0;const a=tableData[i];
-    const adv=advByNm[a.nm_id]||0;
-    const profit=a.ppvz-a.delivery-a.storage-a.penalty-a.deduction-a.acceptance-adv-a.cost*Math.max(a.sales-a.returns,0);
-    const tr=document.getElementById('tableBody').rows[i];const pc=profit>=0?'green':'red';
-    tr.cells[11].innerHTML=`<span class="${pc}">${profit>=0?'':'−'}${fmt(Math.abs(profit))} ₽</span>`;
-  }
-</script>
-</body>
-</html>
+    for(const a
