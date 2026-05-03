@@ -1,5 +1,7 @@
 {
   "name": "wb-profit",
   "version": "1.0.0",
-  "description": "Калькулятор чистой прибыли для Wildberries"
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  }
 }
