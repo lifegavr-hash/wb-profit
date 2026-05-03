@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WB Profit — Калькулятор прибыли</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --border: rgba(0,0,0,0.1);
+    --text: #1a1a18; --muted: #6b6b68; --hint: #a0a09c;
+    --green: #1a7a4a; --red: #c0392b; --red-bg: #fdf0ef;
+    --radius: 10px; --radius-sm: 6px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
+  .container { max-width: 1300px; margin: 0 auto; padding: 2rem 1.5rem; }
+  header { margin-bottom: 2rem; }
+  header h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+  header p { color: var(--muted); font-size: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 1rem; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  input[type=password], input[type=date], input[type=number] { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--surface); color: var(--text); outline: none; }
+  input:focus { border-color: rgba(0,0,0,0.35); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn { display: block; width: 100%; padding: 10px; background: var(--text); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 12px; }
+  .btn:hover { opacity: 0.88; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .metric-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .metric-val { font-size: 20px; font-weight: 600; }
+  .green { color: var(--green); } .red { color: var(--red); }
+  .error { background: var(--red-bg); border: 1px solid #f5c6c2; border-radius: var(--radius-sm); padding: 0.75rem 1rem; font-size: 13px; color: var(--red); margin-bottom: 1rem; }
+  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; padding: 1rem 0; }
+  .spin { width: 16px; height: 16px; border: 2px solid #ddd; border-top-color: #555; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1050px; }
+  th { padding: 8px 10px; text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 12px; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+  .cost-inp { width: 90px; text-align: right; padding: 4px 8px; font-size: 13px; height: 30px; }
+  .hint { font-size: 12px; color: var(--hint); margin-top: 5px; }
+  #results, #errorBox, #loadingBox { display: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header><h1>WB Profit</h1><p>Калькулятор чистой прибыли для Wildberries</p></header>
+
+  <div class="card">
+    <div class="card-title">Подключение</div>
+    <div style="margin-bottom:12px;">
+      <label>API токен (Персональный)</label>
+      <input type="password" id="token" placeholder="eyJhbGciOiJFUzI1NiIs...">
+    </div>
+    <div class="grid2">
+      <div><label>Период с</label><input type="date" id="dateFrom"></div>
+      <div><label>по</label><input type="date" id="dateTo"></div>
+    </div>
+    <button class="btn" id="loadBtn" onclick="loadData()">Загрузить данные</button>
+    <p class="hint">Токен не покидает ваш браузер — он передаётся только напрямую в WB API</p>
+  </div>
+
+  <div id="errorBox"></div>
+  <div id="loadingBox"><div class="loading"><div class="spin"></div><span id="loadText">Загружаем...</span></div></div>
+
+  <div id="results">
+    <div class="metrics" id="metricsGrid"></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
+        <span class="card-title" style="margin:0;">Разбивка по товарам</span>
+        <span style="font-size:12px;color:var(--hint);" id="cnt"></span>
+      </div>
+      <p class="hint" style="margin-bottom:12px;">Введите себестоимость единицы товара для расчёта чистой прибыли</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
+            <th>Продажи</th><th>Возвраты</th><th>Выплата WB ₽</th>
+            <th>Логистика ₽</th><th>Хранение ₽</th><th>Штрафы ₽</th>
+            <th>Реклама ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
+          </tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const today = new Date(), ago = new Date();
+  ago.setDate(today.getDate() - 30);
+  document.getElementById('dateFrom').value = ago.toISOString().split('T')[0];
+  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+
+  let tableData = [], advByNm = {}, totalAdv = 0;
+  const fmt = n => Math.round(n).toLocaleString('ru-RU');
+
+  function showError(msg) {
+    const b = document.getElementById('errorBox');
+    b.className = 'error'; b.textContent = msg; b.style.display = 'block';
+  }
+
+  async function fetchAll(token, dateFrom, dateTo) {
+    let all = [], rrdid = 0, page = 0;
+    while (true) {
+      page++;
+      document.getElementById('loadText').textContent = `Загружаем продажи... страница ${page}`;
+      const r = await fetch(`/api/wb?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}`, { headers: { Authorization: token } });
+      if (!r.ok) throw new Error(`WB API ${r.status}: ${await r.text()}`);
+      const data = await r.json();
+      if (!data || !data.length) break;
+      all = all.concat(data);
+      const lastId = data[data.length-1].rrd_id;
+      if (lastId <= rrdid) break;
+      rrdid = lastId;
+      if (data.length < 100000) break;
+    }
+    return all;
+  }
+
+  async function fetchAdv(token, dateFrom, dateTo) {
+    document.getElementById('loadText').textContent = 'Загружаем расходы на рекламу...';
+    try {
+      const r = await fetch(`/api/wb-adv?from=${dateFrom}&to=${dateTo}`, { headers: { Authorization: token } });
+      if (r.ok) return await r.json();
+    } catch(e) {}
+    return { totalSpend: 0, byNm: {} };
+  }
+
+  async function loadData() {
+    const token = document.getElementById('token').value.trim();
+    const dateFrom = document.getElementById('dateFrom').value;
+    const dateTo = document.getElementById('dateTo').value;
+    document.getElementById('errorBox').style.display = 'none';
+    document.getElementById('results').style.display = 'none';
+    if (!token) { showError('Введите API токен'); return; }
+    if (!dateFrom || !dateTo) { showError('Выберите период'); return; }
+    document.getElementById('loadBtn').disabled = true;
+    document.getElementById('loadingBox').style.display = 'block';
+    try {
+      const [raw, adv] = await Promise.all([fetchAll(token, dateFrom, dateTo), fetchAdv(token, dateFrom, dateTo)]);
+      advByNm = adv.byNm || {};
+      totalAdv = adv.totalSpend || 0;
+      processData(raw);
+    } catch(e) {
+      showError('Ошибка: ' + e.message);
+    } finally {
+      document.getElementById('loadBtn').disabled = false;
+      document.getElementById('loadingBox').style.display = 'none';
+    }
+  }
+
+  function processData(raw) {
+    const byKey = {};
+    for (const r of raw) {
+      const key = r.nm_id || r.sa_name || 'x';
+      if (!byKey[key]) byKey[key] = { nm_id:r.nm_id, sa_name:r.sa_name||'', subject_name:r.subject_name||'', sales:0, returns:0, ppvz:0, delivery:0, storage:0, penalty:0, deduction:0, acceptance:0, cost:0 };
+      const a = byKey[key], doc = (r.doc_type_name||'').toLowerCase();
+      if (doc==='продажа') a.sales += r.quantity||0;
+      if (doc==='возврат') a.returns += r.quantity||0;
+      a.ppvz += r.ppvz_for_pay||0; a.delivery += r.delivery_rub||0;
+      a.storage += r.storage_fee||0; a.penalty += r.penalty||0;
+      a.deduction += r.deduction||0; a.acceptance += r.acceptance||0;
+    }
+    tableData = Object.values(byKey);
+    let tP=0,tD=0,tS=0,tPen=0,tSales=0,tRet=0,tAdv=0;
+    for (const a of tableData) {
+      tP+=a.ppvz; tD+=a.delivery; tS+=a.storage;
+      tPen+=a.penalty+a.deduction+a.acceptance;
+      tSales+=a.sales; tRet+=a.returns;
+      tAdv += advByNm[a.nm_id]||0;
+    }
+    if (tAdv===0) tAdv = totalAdv;
+    const tProfit = tP - tD - tS - tPen - tAdv;
+    document.getElementById('metricsGrid').innerHTML = `
+      <div class="metric"><div class="metric-label">Продажи (шт.)</div><div class="metric-val">${fmt(tSales)}</div></div>
+      <div class="metric"><div class="metric-label">Возвраты (шт.)</div><div class="metric-val red">${fmt(tRet)}</div></div>
+      <div class="metric"><div class="metric-label">Выплата WB</div><div class="metric-val">${fmt(tP)} ₽</div></div>
+      <div class="metric"><div class="metric-label">Логистика</div><div class="metric-val red">−${fmt(tD)} ₽</div></div>
+      <div class="metric"><div class="metric-label">Хранение</div><div class="metric-val red">−${fmt(tS)} ₽</div></div>
+      <div class="metric"><div class="metric-label">Штрафы / удержания</div><div class="metric-val red">−${fmt(tPen)} ₽</div></div>
+      <div class="metric"><div class="metric-label">Реклама</div><div class="metric-val red">−${fmt(tAdv)} ₽</div></div>
+      <div class="metric"><div class="metric-label">До вычета себест.</div><div class="metric-val ${tProfit>=0?'green':'red'}">${tProfit>=0?'':'−'}${fmt(Math.abs(tProfit))} ₽</div></div>
+    `;
+    document.getElementById('cnt').textContent = `${tableData.length} товаров · ${raw.length} записей`;
+    renderTable();
+    document.getElementById('results').style.display = 'block';
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+    for (let i=0; i<tableData.length; i++) {
+      const a = tableData[i];
+      const adv = advByNm[a.nm_id]||0;
+      const costs = a.delivery+a.storage+a.penalty+a.deduction+a.acceptance+adv;
+      const profit = a.ppvz - costs - a.cost*Math.max(a.sales-a.returns,0);
+      const pc = profit>=0?'green':'red';
+      const ps = a.cost>0 ? `<span class="${pc}">${profit>=0?'':'−'}${fmt(Math.abs(profit))} ₽</span>` : `<span style="color:var(--hint)">—</span>`;
+      tbody.innerHTML += `<tr>
+        <td style="font-family:monospace;font-size:12px;">${a.nm_id||'—'}</td>
+        <td style="font-size:12px;">${a.sa_name||'—'}</td>
+        <td>${a.subject_name}</td>
+        <td>${fmt(a.sales)}</td><td class="red">${fmt(a.returns)}</td>
+        <td>${fmt(a.ppvz)} ₽</td>
+        <td class="red">−${fmt(a.delivery)} ₽</td>
+        <td class="red">−${fmt(a.storage)} ₽</td>
+        <td class="red">−${fmt(a.penalty+a.deduction+a.acceptance)} ₽</td>
+        <td class="red">−${fmt(adv)} ₽</td>
+        <td><input type="number" class="cost-inp" placeholder="0" value="${a.cost||''}" min="0" oninput="updateCost(${i},this.value)"></td>
+        <td>${ps}</td>
+      </tr>`;
+    }
+  }
+
+  function updateCost(i, val) {
+    tableData[i].cost = parseFloat(val)||0;
+    const a = tableData[i];
+    const adv = advByNm[a.nm_id]||0;
+    const profit = a.ppvz - a.delivery-a.storage-a.penalty-a.deduction-a.acceptance-adv - a.cost*Math.max(a.sales-a.returns,0);
+    const tr = document.getElementById('tableBody').rows[i];
+    const pc = profit>=0?'green':'red';
+    tr.cells[11].innerHTML = `<span class="${pc}">${profit>=0?'':'−'}${fmt(Math.abs(profit))} ₽</span>`;
+  }
+</script>
+</body>
+</html>
