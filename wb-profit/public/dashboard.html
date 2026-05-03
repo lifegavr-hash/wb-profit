@@ -601,7 +601,7 @@ function renderDetail(){
       if(isPenGroup){
         var penRows=rawData.filter(function(rd){return rd.supplier_oper_name===item.name&&(rd.penalty>0||rd.deduction>0);});
         if(penRows.length>0){
-          html+='<button class="expand-btn" onclick="togglePen(\"'+secId+'\")">▶ Показать детали ('+penRows.length+' операций)</button>';
+          html+='<button class="expand-btn" onclick="togglePen(this)">' + '▶ Показать детали (' + penRows.length + ' операций)</button>';
           html+='<div class="pen-section" id="'+secId+'">';
           html+='<table class="pen-table"><thead><tr><th>Дата</th><th>Товар</th><th>Причина</th><th>Сумма</th></tr></thead><tbody>';
           penRows.forEach(function(pr){
@@ -678,10 +678,9 @@ function upd(i,val){
   document.getElementById('tfProfit').className=pc2;document.getElementById('tfProfit').textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';
 }
 
-function togglePen(id){
-  var sec=document.getElementById(id);
+function togglePen(btn){
+  var sec=btn.nextElementSibling;
   if(!sec) return;
-  var btn=sec.previousElementSibling;
   if(sec.style.display==='block'){
     sec.style.display='none';
     var cnt=sec.querySelectorAll('tbody tr').length;
