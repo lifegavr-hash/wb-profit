@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WB Profit — Вход</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--purple:#5433c6;--purple-light:#EEEDFE;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--red:#c0392b;--red-bg:#fdf0ef;--green:#1a7a4a;--r:12px;--rs:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem;width:100%;max-width:400px}
+.logo{text-align:center;margin-bottom:2rem}
+.logo-name{font-size:22px;font-weight:600;color:var(--purple)}
+.logo-sub{font-size:13px;color:var(--muted);margin-top:3px}
+.tabs{display:flex;gap:0;margin-bottom:1.5rem;border:1px solid var(--border);border-radius:var(--rs);overflow:hidden}
+.tab{flex:1;padding:9px;text-align:center;font-size:14px;cursor:pointer;background:transparent;border:none;color:var(--muted)}
+.tab.active{background:var(--purple);color:#fff;font-weight:500}
+.field{margin-bottom:1rem}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;color:var(--text);background:var(--surface);outline:none;transition:border .15s}
+input:focus{border-color:var(--purple)}
+.btn{display:block;width:100%;padding:11px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:15px;font-weight:500;cursor:pointer;margin-top:1.25rem}
+.btn:hover{opacity:.9}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{background:var(--red-bg);border:1px solid #f5c6c2;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--red);margin-top:1rem;display:none}
+.ok{background:#EAF3DE;border:1px solid #C0DD97;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--green);margin-top:1rem;display:none}
+.divider{text-align:center;font-size:12px;color:var(--hint);margin:1.25rem 0;position:relative}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border)}
+.divider::before{left:0}.divider::after{right:0}
+.promo-section{margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+.promo-label{font-size:13px;color:var(--muted);margin-bottom:8px}
+.promo-row{display:flex;gap:8px}
+.promo-row input{flex:1}
+.promo-btn{padding:10px 14px;background:transparent;border:1px solid var(--border);border-radius:var(--rs);font-size:13px;cursor:pointer;white-space:nowrap;color:var(--text)}
+.promo-btn:hover{background:var(--bg)}
+.hint-text{font-size:12px;color:var(--hint);margin-top:1rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="logo-name">WB Profit</div>
+    <div class="logo-sub">Калькулятор чистой прибыли</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabLogin" onclick="showTab('login')">Войти</button>
+    <button class="tab" id="tabReg" onclick="showTab('reg')">Регистрация</button>
+  </div>
+
+  <div id="formLogin">
+    <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>Пароль</label><input type="password" id="loginPass" placeholder="••••••••"></div>
+    <button class="btn" id="loginBtn" onclick="login()">Войти</button>
+    <div class="err" id="loginErr"></div>
+  </div>
+
+  <div id="formReg" style="display:none">
+    <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"></div>
+    <div class="field"><label>Пароль</label><input type="password" id="regPass" placeholder="Минимум 6 символов"></div>
+    <button class="btn" id="regBtn" onclick="register()">Создать аккаунт</button>
+    <div class="err" id="regErr"></div>
+    <div class="ok" id="regOk">Проверьте почту — отправили письмо для подтверждения!</div>
+
+    <div class="promo-section">
+      <div class="promo-label">Есть промокод?</div>
+      <div class="promo-row">
+        <input type="text" id="promoInput" placeholder="BETA2024" style="text-transform:uppercase">
+        <button class="promo-btn" onclick="applyPromo()">Активировать</button>
+      </div>
+      <div class="err" id="promoErr"></div>
+      <div class="ok" id="promoOk"></div>
+    </div>
+  </div>
+
+  <p class="hint-text">14 дней PRO бесплатно · Карта не нужна</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+var sb = null;
+var currentUser = null;
+
+async function initSupabase() {
+  var r = await fetch('/api/config');
+  var cfg = await r.json();
+  sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+  var { data: { session } } = await sb.auth.getSession();
+  if (session) window.location.href = '/dashboard.html';
+}
+initSupabase();
+
+function showTab(t) {
+  document.getElementById('formLogin').style.display = t==='login'?'block':'none';
+  document.getElementById('formReg').style.display = t==='reg'?'block':'none';
+  document.getElementById('tabLogin').className = 'tab'+(t==='login'?' active':'');
+  document.getElementById('tabReg').className = 'tab'+(t==='reg'?' active':'');
+}
+
+async function login() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var errBox = document.getElementById('loginErr');
+  var btn = document.getElementById('loginBtn');
+  errBox.style.display='none';
+  if (!email||!pass){errBox.textContent='Заполните все поля';errBox.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Входим...';
+  var { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) {
+    errBox.textContent = error.message.includes('Invalid') ? 'Неверный email или пароль' : error.message;
+    errBox.style.display='block';
+    btn.disabled=false; btn.textContent='Войти';
+  } else {
+    window.location.href = '/dashboard.html';
+  }
+}
+
+async function register() {
+  var email = document.getElementById('regEmail').value.trim();
+  var pass = document.getElementById('regPass').value;
+  var errBox = document.getElementById('regErr');
+  var okBox = document.getElementById('regOk');
+  var btn = document.getElementById('regBtn');
+  errBox.style.display='none'; okBox.style.display='none';
+  if (!email||!pass){errBox.textContent='Заполните все поля';errBox.style.display='block';return;}
+  if (pass.length<6){errBox.textContent='Пароль минимум 6 символов';errBox.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Создаём аккаунт...';
+  var { data, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) {
+    errBox.textContent = error.message;
+    errBox.style.display='block';
+    btn.disabled=false; btn.textContent='Создать аккаунт';
+  } else {
+    currentUser = data.user;
+    okBox.style.display='block';
+    btn.disabled=false; btn.textContent='Создать аккаунт';
+    if (data.session) window.location.href = '/dashboard.html';
+  }
+}
+
+async function applyPromo() {
+  var code = document.getElementById('promoInput').value.trim();
+  var errBox = document.getElementById('promoErr');
+  var okBox = document.getElementById('promoOk');
+  errBox.style.display='none'; okBox.style.display='none';
+  if (!code){errBox.textContent='Введите промокод';errBox.style.display='block';return;}
+  if (!currentUser){errBox.textContent='Сначала создайте аккаунт';errBox.style.display='block';return;}
+  var r = await fetch('/api/promo', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ code, userId: currentUser.id })
+  });
+  var d = await r.json();
+  if (d.error){errBox.textContent=d.error;errBox.style.display='block';}
+  else {okBox.textContent='Промокод активирован! '+d.plan.toUpperCase()+' на '+d.days+' дней';okBox.style.display='block';}
+}
+
+document.getElementById('loginPass').addEventListener('keydown', function(e){if(e.key==='Enter') login();});
+document.getElementById('loginEmail').addEventListener('keydown', function(e){if(e.key==='Enter') login();});
+</script>
+</body>
+</html>
