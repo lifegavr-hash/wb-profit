@@ -473,8 +473,27 @@ function process(raw){
     a.pen+=r.acceptance||0;
   }
   rows=Object.values(bk);
+  // Итоги из товаров с артикулом
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0;
-  for(var j=0;j<rows.length;j++){var x=rows[j];tP+=x.ppvz;tD+=x.del;tS+=x.stor;tPn+=x.pen;tSl+=x.sales;tRt+=x.ret;tAd+=x.adv;tCost+=x.cost*Math.max(x.sales-x.ret,0);}
+  for(var j=0;j<rows.length;j++){
+    var x=rows[j];
+    tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
+    tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
+    tCost+=x.cost*Math.max(x.sales-x.ret,0);
+  }
+  // Добавляем расходы из строк БЕЗ артикула (хранение, реклама, штрафы общие)
+  for(var ri=0;ri<raw.length;ri++){
+    var rd=raw[ri];
+    if(rd.nm_id||rd.sa_name) continue; // Пропускаем строки с артикулом — они уже посчитаны
+    tP+=rd.ppvz_for_pay||0;
+    tD+=rd.delivery_rub||0;
+    tD+=rd.rebill_logistic_cost||0;
+    tS+=rd.storage_fee||0;
+    tPn+=rd.penalty||0;
+    if(isAdv(rd.bonus_type_name)){tAd+=Math.abs(rd.deduction||0);}
+    else{tPn+=Math.abs(rd.deduction||0);}
+    tPn+=rd.acceptance||0;
+  }
   var tp=tP-tD-tS-tAd-tPn-tCost;
   var losers=rows.filter(function(x){return x.cost>0&&x.ppvz-x.del-x.stor-x.adv-x.pen-x.cost*Math.max(x.sales-x.ret,0)<0;});
   if(losers.length>0){var wb=document.getElementById('warnBox');wb.textContent='Внимание! Убыточных товаров: '+losers.length+' — '+losers.slice(0,3).map(function(x){return x.sa||x.nm_id;}).join(', ');wb.style.display='block';}
@@ -720,8 +739,27 @@ function upd(i,val){
   tr.cells[11].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
   tr.className=a.cost>0&&prf<0?'loss':'';
   var c=getCosts();var k=String(a.nm_id||a.sa||'x');if(a.cost>0) c[k]=a.cost;else delete c[k];saveCosts(c);
+  // Итоги из товаров с артикулом
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0;
-  for(var j=0;j<rows.length;j++){var x=rows[j];tP+=x.ppvz;tD+=x.del;tS+=x.stor;tPn+=x.pen;tSl+=x.sales;tRt+=x.ret;tAd+=x.adv;tCost+=x.cost*Math.max(x.sales-x.ret,0);}
+  for(var j=0;j<rows.length;j++){
+    var x=rows[j];
+    tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
+    tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
+    tCost+=x.cost*Math.max(x.sales-x.ret,0);
+  }
+  // Добавляем расходы из строк БЕЗ артикула (хранение, реклама, штрафы общие)
+  for(var ri=0;ri<raw.length;ri++){
+    var rd=raw[ri];
+    if(rd.nm_id||rd.sa_name) continue; // Пропускаем строки с артикулом — они уже посчитаны
+    tP+=rd.ppvz_for_pay||0;
+    tD+=rd.delivery_rub||0;
+    tD+=rd.rebill_logistic_cost||0;
+    tS+=rd.storage_fee||0;
+    tPn+=rd.penalty||0;
+    if(isAdv(rd.bonus_type_name)){tAd+=Math.abs(rd.deduction||0);}
+    else{tPn+=Math.abs(rd.deduction||0);}
+    tPn+=rd.acceptance||0;
+  }
   var tp=tP-tD-tS-tAd-tPn-tCost;var pc2=tp>=0?'green':'red';
   document.getElementById('profitCard').className='mv '+pc2;document.getElementById('profitCard').textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';
   document.getElementById('costCard').textContent='−'+fmt(tCost)+' ₽';
