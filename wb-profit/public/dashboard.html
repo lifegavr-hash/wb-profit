@@ -563,7 +563,7 @@ function renderDetail(){
 
 
   // Метрики
-  var totalExpenses=totLogistic+totStorage+totPenalty+totAdv;
+  var totalExpenses=(totLogistic||0)+(totStorage||0)+(totPenalty||0)+(totAdv||0);
   document.getElementById('detailMetrics').innerHTML=
     '<div class="m"><div class="ml">Всего типов операций</div><div class="mv">'+Object.keys(byOper).length+'</div></div>'+
     '<div class="m"><div class="ml">Всего строк</div><div class="mv">'+fmt(rawData.length)+'</div></div>'+
@@ -620,7 +620,7 @@ function renderDetail(){
   for(var i=0;i<keys.length;i++){
     var name=keys[i];
     var o=byOper[name];
-    var total=o.logistic+o.storage+o.penalty+o.adv+o.deduction+o.rebill+o.other;
+    var total=(o.logistic||0)+(o.storage||0)+(o.penalty||0)+(o.deduction||0)+(o.rebill||0)+(o.other||0);
     var item={name:name, count:o.count, total:total};
 
     if(name.indexOf('перевозк')>=0||name.indexOf('логистик')>=0||name.indexOf('доставк')>=0||name.indexOf('Логистика')>=0){
@@ -649,12 +649,12 @@ function renderDetail(){
     if(!itemKeys.length) continue;
 
     var groupTotal=0;
-    for(var k=0;k<itemKeys.length;k++) groupTotal+=items[itemKeys[k]].total;
+    for(var k=0;k<itemKeys.length;k++) groupTotal+=(items[itemKeys[k]].total||0);
 
     // Сортируем по сумме
     itemKeys.sort(function(a,b){return Math.abs(items[b].total)-Math.abs(items[a].total);});
 
-    var maxAmt=Math.abs(items[itemKeys[0]].total)||1;
+    var maxAmt=Math.abs(items[itemKeys[0]].total||0)||1;
 
     html+='<div class="detail-card">';
     html+='<div class="detail-card-header">';
