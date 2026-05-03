@@ -3,169 +3,236 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB Profit — Калькулятор прибыли</title>
+<title>WB Profit</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #f7f7f5; --surface: #ffffff; --border: rgba(0,0,0,0.1);
-    --text: #1a1a18; --muted: #6b6b68; --hint: #a0a09c;
-    --green: #1a7a4a; --red: #c0392b; --red-bg: #fdf0ef;
-    --radius: 10px; --radius-sm: 6px;
-  }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.5; }
-  .container { max-width: 1300px; margin: 0 auto; padding: 2rem 1.5rem; }
-  header { margin-bottom: 2rem; }
-  header h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
-  header p { color: var(--muted); font-size: 14px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
-  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 1rem; }
-  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
-  input[type=password], input[type=date], input[type=number] { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; background: var(--surface); color: var(--text); outline: none; }
-  input:focus { border-color: rgba(0,0,0,0.35); }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .btn { display: block; width: 100%; padding: 10px; background: var(--text); color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; cursor: pointer; margin-top: 12px; }
-  .btn:hover { opacity: 0.88; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1rem; }
-  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
-  .metric-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .metric-val { font-size: 20px; font-weight: 600; }
-  .green { color: var(--green); } .red { color: var(--red); }
-  .error { background: var(--red-bg); border: 1px solid #f5c6c2; border-radius: var(--radius-sm); padding: 0.75rem 1rem; font-size: 13px; color: var(--red); margin-bottom: 1rem; }
-  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; padding: 1rem 0; }
-  .spin { width: 16px; height: 16px; border: 2px solid #ddd; border-top-color: #555; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1050px; }
-  th { padding: 8px 10px; text-align: left; font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; font-size: 12px; }
-  td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--bg); }
-  .cost-inp { width: 90px; text-align: right; padding: 4px 8px; font-size: 13px; height: 30px; }
-  .hint { font-size: 12px; color: var(--hint); margin-top: 5px; }
-  #results, #errorBox, #loadingBox { display: none; }
-  .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #eaf3de; color: #1a7a4a; margin-left: 6px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5}
+.wrap{max-width:1300px;margin:0 auto;padding:2rem 1.5rem}
+h1{font-size:22px;font-weight:600;margin-bottom:4px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:2rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1rem}
+.ct{font-size:14px;font-weight:600;margin-bottom:1rem}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:5px}
+input[type=password],input[type=date],input[type=number]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;background:var(--surface);color:var(--text);outline:none}
+input:focus{border-color:rgba(0,0,0,.35)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{display:block;width:100%;padding:10px;background:var(--text);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer;margin-top:12px}
+.btn:hover{opacity:.88}.btn:disabled{opacity:.4;cursor:not-allowed}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem}
+.m{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.25rem}
+.ml{font-size:12px;color:var(--muted);margin-bottom:4px}
+.mv{font-size:20px;font-weight:600}
+.green{color:var(--green)}.red{color:var(--red)}
+.err{background:var(--red-bg);border:1px solid #f5c6c2;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem}
+.ld{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:1rem 0}
+.sp{width:16px;height:16px;border:2px solid #ddd;border-top-color:#555;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:1050px}
+th{padding:8px 10px;text-align:left;font-weight:500;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;font-size:12px}
+td{padding:8px 10px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+.ci{width:90px;text-align:right;padding:4px 8px;font-size:13px;height:30px}
+.hint{font-size:12px;color:var(--hint);margin-top:5px}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:#eaf3de;color:#1a7a4a;margin-left:6px}
+#results,#errBox,#ldBox{display:none}
 </style>
 </head>
 <body>
-<div class="container">
-  <header><h1>WB Profit</h1><p>Калькулятор чистой прибыли для Wildberries</p></header>
+<div class="wrap">
+<h1>WB Profit</h1>
+<p class="sub">Калькулятор чистой прибыли для Wildberries</p>
 
+<div class="card">
+<div class="ct">Подключение</div>
+<div style="margin-bottom:12px">
+  <label>Токен статистики (Статистика + Аналитика + Финансы + Возвраты)</label>
+  <input type="password" id="tok1" placeholder="eyJhbGciOiJFUzI1NiIs...">
+</div>
+<div style="margin-bottom:12px">
+  <label>Токен рекламы (Продвижение) <span class="badge">новый</span></label>
+  <input type="password" id="tok2" placeholder="eyJhbGciOiJFUzI1NiIs...">
+</div>
+<div class="g2">
+  <div><label>Период с</label><input type="date" id="df"></div>
+  <div><label>по</label><input type="date" id="dt"></div>
+</div>
+<button class="btn" id="btn" onclick="go()">Загрузить данные</button>
+<p class="hint">Токены не покидают ваш браузер — они передаются только напрямую в WB API</p>
+</div>
+
+<div id="errBox"></div>
+<div id="ldBox"><div class="ld"><div class="sp"></div><span id="ldTxt">Загружаем...</span></div></div>
+
+<div id="results">
+  <div class="metrics" id="mg"></div>
   <div class="card">
-    <div class="card-title">Подключение</div>
-    <div style="margin-bottom:12px;">
-      <label>Токен статистики (Статистика + Аналитика + Финансы + Возвраты)</label>
-      <input type="password" id="token" placeholder="eyJhbGciOiJFUzI1NiIs...">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+      <span class="ct" style="margin:0">Разбивка по товарам</span>
+      <span style="font-size:12px;color:var(--hint)" id="cnt"></span>
     </div>
-    <div style="margin-bottom:12px;">
-      <label>Токен рекламы (Продвижение) <span class="tag">новый</span></label>
-      <input type="password" id="tokenAdv" placeholder="eyJhbGciOiJFUzI1NiIs...">
-    </div>
-    <div class="grid2">
-      <div><label>Период с</label><input type="date" id="dateFrom"></div>
-      <div><label>по</label><input type="date" id="dateTo"></div>
-    </div>
-    <button class="btn" id="loadBtn" onclick="loadData()">Загрузить данные</button>
-    <p class="hint">Токены не покидают ваш браузер — они передаются только напрямую в WB API</p>
-  </div>
-
-  <div id="errorBox"></div>
-  <div id="loadingBox"><div class="loading"><div class="spin"></div><span id="loadText">Загружаем...</span></div></div>
-
-  <div id="results">
-    <div class="metrics" id="metricsGrid"></div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;">
-        <span class="card-title" style="margin:0;">Разбивка по товарам</span>
-        <span style="font-size:12px;color:var(--hint);" id="cnt"></span>
-      </div>
-      <p class="hint" style="margin-bottom:12px;">Введите себестоимость единицы товара для расчёта чистой прибыли</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
-            <th>Продажи</th><th>Возвраты</th><th>Выплата WB ₽</th>
-            <th>Логистика ₽</th><th>Хранение ₽</th><th>Штрафы ₽</th>
-            <th>Реклама ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
-          </tr></thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
+    <p class="hint" style="margin-bottom:12px">Введите себестоимость единицы товара для расчёта чистой прибыли</p>
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
+          <th>Продажи</th><th>Возвраты</th><th>Выплата WB ₽</th>
+          <th>Логистика ₽</th><th>Хранение ₽</th><th>Штрафы ₽</th>
+          <th>Реклама ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
+        </tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
     </div>
   </div>
 </div>
+</div>
 
 <script>
-  const today = new Date(), ago = new Date();
-  ago.setDate(today.getDate() - 30);
-  document.getElementById('dateFrom').value = ago.toISOString().split('T')[0];
-  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+var rows=[], anm={}, tadv=0;
+var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
 
-  let tableData = [], advByNm = {}, totalAdv = 0;
-  const fmt = n => Math.round(n).toLocaleString('ru-RU');
+(function(){
+  var t=new Date(), a=new Date();
+  a.setDate(t.getDate()-30);
+  document.getElementById('df').value=a.toISOString().split('T')[0];
+  document.getElementById('dt').value=t.toISOString().split('T')[0];
+})();
 
-  function showError(msg) { const b=document.getElementById('errorBox'); b.className='error'; b.textContent=msg; b.style.display='block'; }
+function err(msg){
+  var b=document.getElementById('errBox');
+  b.className='err'; b.textContent=msg; b.style.display='block';
+}
 
-  async function fetchAll(token, dateFrom, dateTo) {
-    let all=[], rrdid=0, page=0;
-    while(true) {
-      page++;
-      document.getElementById('loadText').textContent=`Загружаем продажи... страница ${page}`;
-      const r=await fetch(`/api/wb?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}`,{headers:{Authorization:token}});
-      if(!r.ok) throw new Error(`WB API ${r.status}: ${await r.text()}`);
-      const data=await r.json();
-      if(!data||!data.length) break;
-      all=all.concat(data);
-      const lastId=data[data.length-1].rrd_id;
-      if(lastId<=rrdid) break;
-      rrdid=lastId;
-      if(data.length<100000) break;
-    }
-    return all;
+function setLd(txt){
+  document.getElementById('ldTxt').textContent=txt;
+}
+
+async function loadSales(tok, df, dt){
+  var all=[], rid=0, pg=0;
+  while(true){
+    pg++;
+    setLd('Загружаем продажи... страница '+pg);
+    var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:{Authorization:tok}});
+    if(!r.ok) throw new Error('WB API '+r.status+': '+await r.text());
+    var d=await r.json();
+    if(!d||!d.length) break;
+    all=all.concat(d);
+    var lid=d[d.length-1].rrd_id;
+    if(lid<=rid) break;
+    rid=lid;
+    if(d.length<100000) break;
   }
+  return all;
+}
 
-  async function fetchAdv(tokenAdv, dateFrom, dateTo) {
-    document.getElementById('loadText').textContent='Загружаем расходы на рекламу...';
-    try {
-      const r=await fetch(`/api/wb-adv?from=${dateFrom}&to=${dateTo}`,{headers:{Authorization:tokenAdv}});
-      if(r.ok) return await r.json();
-    } catch(e){}
-    return {totalSpend:0, byNm:{}};
+async function loadAdv(tok, df, dt){
+  setLd('Загружаем расходы на рекламу...');
+  try{
+    var r=await fetch('/api/wb-adv?from='+df+'&to='+dt,{headers:{Authorization:tok}});
+    if(r.ok) return await r.json();
+  }catch(e){}
+  return {totalSpend:0,byNm:{}};
+}
+
+async function go(){
+  var t1=document.getElementById('tok1').value.trim();
+  var t2=document.getElementById('tok2').value.trim();
+  var df=document.getElementById('df').value;
+  var dt=document.getElementById('dt').value;
+  document.getElementById('errBox').style.display='none';
+  document.getElementById('results').style.display='none';
+  if(!t1){err('Введите токен статистики');return;}
+  if(!df||!dt){err('Выберите период');return;}
+  document.getElementById('btn').disabled=true;
+  document.getElementById('ldBox').style.display='block';
+  try{
+    var sales=await loadSales(t1,df,dt);
+    var adv=t2 ? await loadAdv(t2,df,dt) : {totalSpend:0,byNm:{}};
+    anm=adv.byNm||{};
+    tadv=adv.totalSpend||0;
+    process(sales);
+  }catch(e){
+    err('Ошибка: '+e.message);
+  }finally{
+    document.getElementById('btn').disabled=false;
+    document.getElementById('ldBox').style.display='none';
   }
+}
 
-  async function loadData() {
-    const token=document.getElementById('token').value.trim();
-    const tokenAdv=document.getElementById('tokenAdv').value.trim();
-    const dateFrom=document.getElementById('dateFrom').value;
-    const dateTo=document.getElementById('dateTo').value;
-    document.getElementById('errorBox').style.display='none';
-    document.getElementById('results').style.display='none';
-    if(!token){showError('Введите токен статистики');return;}
-    if(!dateFrom||!dateTo){showError('Выберите период');return;}
-    document.getElementById('loadBtn').disabled=true;
-    document.getElementById('loadingBox').style.display='block';
-    try {
-      const promises=[fetchAll(token,dateFrom,dateTo)];
-      if(tokenAdv) promises.push(fetchAdv(tokenAdv,dateFrom,dateTo));
-      else promises.push(Promise.resolve({totalSpend:0,byNm:{}}));
-      const [raw,adv]=await Promise.all(promises);
-      advByNm=adv.byNm||{}; totalAdv=adv.totalSpend||0;
-      processData(raw);
-    } catch(e){showError('Ошибка: '+e.message);}
-    finally{document.getElementById('loadBtn').disabled=false;document.getElementById('loadingBox').style.display='none';}
+function process(raw){
+  var bk={};
+  for(var i=0;i<raw.length;i++){
+    var r=raw[i];
+    var k=r.nm_id||r.sa_name||'x';
+    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,pen:0,ded:0,acc:0,cost:0};
+    var a=bk[k], doc=(r.doc_type_name||'').toLowerCase();
+    if(doc==='продажа') a.sales+=r.quantity||0;
+    if(doc==='возврат') a.ret+=r.quantity||0;
+    a.ppvz+=r.ppvz_for_pay||0; a.del+=r.delivery_rub||0;
+    a.stor+=r.storage_fee||0; a.pen+=r.penalty||0;
+    a.ded+=r.deduction||0; a.acc+=r.acceptance||0;
   }
+  rows=Object.values(bk);
+  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0;
+  for(var j=0;j<rows.length;j++){
+    var x=rows[j];
+    tP+=x.ppvz; tD+=x.del; tS+=x.stor;
+    tPn+=x.pen+x.ded+x.acc;
+    tSl+=x.sales; tRt+=x.ret;
+    tAd+=anm[x.nm_id]||0;
+  }
+  if(tAd===0) tAd=tadv;
+  var tp=tP-tD-tS-tPn-tAd;
+  document.getElementById('mg').innerHTML=
+    '<div class="m"><div class="ml">Продажи (шт.)</div><div class="mv">'+fmt(tSl)+'</div></div>'+
+    '<div class="m"><div class="ml">Возвраты (шт.)</div><div class="mv red">'+fmt(tRt)+'</div></div>'+
+    '<div class="m"><div class="ml">Выплата WB</div><div class="mv">'+fmt(tP)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(tD)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(tS)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Штрафы / удержания</div><div class="mv red">−'+fmt(tPn)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Реклама</div><div class="mv red">−'+fmt(tAd)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">До вычета себест.</div><div class="mv '+(tp>=0?'green':'red')+'">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</div></div>';
+  document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
+  renderTable();
+  document.getElementById('results').style.display='block';
+}
 
-  function processData(raw) {
-    const byKey={};
-    for(const r of raw){
-      const key=r.nm_id||r.sa_name||'x';
-      if(!byKey[key]) byKey[key]={nm_id:r.nm_id,sa_name:r.sa_name||'',subject_name:r.subject_name||'',sales:0,returns:0,ppvz:0,delivery:0,storage:0,penalty:0,deduction:0,acceptance:0,cost:0};
-      const a=byKey[key],doc=(r.doc_type_name||'').toLowerCase();
-      if(doc==='продажа') a.sales+=r.quantity||0;
-      if(doc==='возврат') a.returns+=r.quantity||0;
-      a.ppvz+=r.ppvz_for_pay||0;a.delivery+=r.delivery_rub||0;a.storage+=r.storage_fee||0;
-      a.penalty+=r.penalty||0;a.deduction+=r.deduction||0;a.acceptance+=r.acceptance||0;
-    }
-    tableData=Object.values(byKey);
-    let tP=0,tD=0,tS=0,tPen=0,tSales=0,tRet=0,tAdv=0;
-    for(const a
+function renderTable(){
+  var tb=document.getElementById('tb');
+  tb.innerHTML='';
+  for(var i=0;i<rows.length;i++){
+    var a=rows[i], ad=anm[a.nm_id]||0;
+    var costs=a.del+a.stor+a.pen+a.ded+a.acc+ad;
+    var prf=a.ppvz-costs-a.cost*Math.max(a.sales-a.ret,0);
+    var pc=prf>=0?'green':'red';
+    var ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
+    tb.innerHTML+='<tr>'+
+      '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
+      '<td style="font-size:12px">'+(a.sa||'—')+'</td>'+
+      '<td>'+a.cat+'</td>'+
+      '<td>'+fmt(a.sales)+'</td>'+
+      '<td class="red">'+fmt(a.ret)+'</td>'+
+      '<td>'+fmt(a.ppvz)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.del)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.stor)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.pen+a.ded+a.acc)+' ₽</td>'+
+      '<td class="red">−'+fmt(ad)+' ₽</td>'+
+      '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+i+',this.value)"></td>'+
+      '<td>'+ps+'</td>'+
+    '</tr>';
+  }
+}
+
+function upd(i,val){
+  rows[i].cost=parseFloat(val)||0;
+  var a=rows[i], ad=anm[a.nm_id]||0;
+  var prf=a.ppvz-a.del-a.stor-a.pen-a.ded-a.acc-ad-a.cost*Math.max(a.sales-a.ret,0);
+  var tr=document.getElementById('tb').rows[i];
+  var pc=prf>=0?'green':'red';
+  tr.cells[11].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
+}
+</script>
+</body>
+</html>
