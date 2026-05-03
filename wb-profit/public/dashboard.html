@@ -678,13 +678,14 @@ function upd(i,val){
   document.getElementById('tfProfit').className=pc2;document.getElementById('tfProfit').textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';
 }
 
-function togglePen(id, name){
+function togglePen(id){
   var sec=document.getElementById(id);
   if(!sec) return;
   var btn=sec.previousElementSibling;
   if(sec.style.display==='block'){
     sec.style.display='none';
-    btn.textContent='▶ Показать детали ('+sec.querySelectorAll('tr').length+' операций)';
+    var cnt=sec.querySelectorAll('tbody tr').length;
+    btn.textContent='▶ Показать детали ('+cnt+' операций)';
   } else {
     sec.style.display='block';
     btn.textContent='▼ Скрыть детали';
