@@ -93,6 +93,13 @@ tr.loss td{background:#fff5f5}
 .no-data{text-align:center;padding:2rem;color:var(--hint);font-size:14px}
 .detail-bar{height:3px;background:#f0f0ee;margin:0 1rem 8px;border-radius:99px}
 .detail-bar-fill{height:100%;background:var(--red);border-radius:99px}
+.expand-btn{font-size:11px;color:var(--purple);cursor:pointer;padding:4px 1rem 8px;display:block;background:none;border:none;text-align:left}
+.expand-btn:hover{text-decoration:underline}
+.pen-table{width:100%;border-collapse:collapse;font-size:12px;margin:0}
+.pen-table th{padding:6px 1rem;text-align:left;color:var(--muted);font-weight:400;border-bottom:0.5px solid var(--border);background:var(--bg)}
+.pen-table td{padding:6px 1rem;border-bottom:0.5px solid var(--border);color:var(--text)}
+.pen-table tr:last-child td{border-bottom:none}
+.pen-section{display:none;border-top:0.5px solid var(--border)}
 </style>
 </head>
 <body>
@@ -652,6 +659,18 @@ function upd(i,val){
   document.getElementById('tfProfit').className=pc2;document.getElementById('tfProfit').textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';
 }
 
+function togglePen(id, name){
+  var sec=document.getElementById(id);
+  if(!sec) return;
+  var btn=sec.previousElementSibling;
+  if(sec.style.display==='block'){
+    sec.style.display='none';
+    btn.textContent='▶ Показать детали ('+sec.querySelectorAll('tr').length+' операций)';
+  } else {
+    sec.style.display='block';
+    btn.textContent='▼ Скрыть детали';
+  }
+}
 init();
 </script>
 </body>
