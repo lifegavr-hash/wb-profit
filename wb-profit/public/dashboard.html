@@ -440,7 +440,9 @@ async function loadSales(tok,df,dt){
 function process(raw){
   var costs=getCosts();var bk={};byMonthData={};
   for(var i=0;i<raw.length;i++){
-    var r=raw[i],k=String(r.nm_id||r.sa_name||'x');
+    var r=raw[i];
+    if(!r.nm_id&&!r.sa_name) continue;
+    var k=String(r.nm_id||r.sa_name||'x');
     if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0};
     var a=bk[k],doc=(r.doc_type_name||'').toLowerCase();
     if(doc==='продажа') a.sales+=r.quantity||0;
