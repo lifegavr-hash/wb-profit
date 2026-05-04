@@ -124,7 +124,108 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .cta a.main-btn{display:inline-block;background:#fff;color:#1a0f3c;padding:16px 40px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none}
 footer{background:#1a0f3c;padding:24px 5%;text-align:center}
 footer p{font-size:13px;color:rgba(255,255,255,.3)}
-@media(max-width:600px){.nav-links a:not(.nav-cta){display:none}.case-numbers{grid-template-columns:1fr 1fr}.stats-grid{gap:40px}}
+
+/* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
+
+/* iPhone SE, старые Android — 375px */
+@media(max-width:480px){
+  /* NAV */
+  nav{padding:0 4%}
+  .nav-links a:not(.nav-cta){display:none}
+  .nav-cta{padding:7px 14px;font-size:13px}
+
+  /* HERO */
+  .hero{padding:80px 4% 50px}
+  .hero-badge{font-size:11px;padding:4px 12px}
+  .hero h1{font-size:28px;letter-spacing:-.02em}
+  .hero-sub{font-size:14px;margin:12px auto 24px}
+  .hero-btns{flex-direction:column;align-items:center;gap:10px;margin-bottom:12px}
+  .btn-white,.btn-ghost{width:100%;max-width:300px;text-align:center;padding:14px 20px}
+  .hero-social{font-size:12px}
+
+  /* КАЛЬКУЛЯТОР */
+  .hero-calc{padding:18px 16px;margin-top:24px}
+  .calc-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .calc-label{min-width:unset;font-size:12px}
+  .calc-input{width:100%;font-size:14px}
+  .calc-result-row{font-size:12px}
+  .calc-result-row.green{font-size:14px}
+
+  /* PAIN */
+  .pain{padding:48px 4%}
+  .pain h2{font-size:22px}
+  .pain-grid{grid-template-columns:1fr}
+  .pain-card{padding:18px}
+
+  /* CASE */
+  .case{padding:48px 4%}
+  .case-inner{padding:24px 18px;border-radius:14px}
+  .case-numbers{grid-template-columns:1fr;gap:10px}
+  .case-num{padding:14px 10px}
+  .case-num-val{font-size:20px}
+  .case h3{font-size:18px}
+
+  /* STATS */
+  .stats{padding:44px 4%}
+  .stats-grid{flex-direction:column;gap:28px}
+  .stat-num{font-size:40px}
+
+  /* FEATURES */
+  .features{padding:48px 4%}
+  .features-grid{grid-template-columns:1fr}
+  .section-h2{font-size:22px;margin-bottom:32px}
+
+  /* AI */
+  .ai-section{padding:48px 4%}
+  .ai-section h2{font-size:22px}
+  .ai-example{padding:18px 16px;font-size:13px}
+
+  /* STEPS */
+  .steps{padding:48px 4%}
+  .steps-grid{flex-direction:column;align-items:center;gap:32px}
+  .step{max-width:100%}
+
+  /* PRICING */
+  .pricing{padding:48px 4%}
+  .pricing-grid{grid-template-columns:1fr}
+  .plan{padding:22px 18px}
+  .plan-price-main{font-size:32px}
+
+  /* FAQ */
+  .faq{padding:48px 4%}
+  .faq-q{font-size:14px}
+
+  /* CTA */
+  .cta{padding:56px 4%}
+  .cta h2{font-size:24px}
+  .cta a.main-btn{padding:14px 28px;font-size:15px}
+}
+
+/* Средние Android — 390-480px */
+@media(min-width:481px) and (max-width:768px){
+  .nav-links a:not(.nav-cta){display:none}
+  .hero{padding:90px 5% 60px}
+  .hero h1{font-size:32px}
+  .hero-btns{gap:10px}
+  .btn-white,.btn-ghost{padding:13px 22px;font-size:14px}
+  .calc-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .calc-label{min-width:unset}
+  .calc-input{width:100%}
+  .case-numbers{grid-template-columns:1fr 1fr}
+  .pain-grid{grid-template-columns:1fr}
+  .features-grid{grid-template-columns:1fr 1fr}
+  .pricing-grid{grid-template-columns:1fr}
+  .steps-grid{gap:28px}
+  .stats-grid{gap:40px}
+  .pain{padding:56px 5%}
+  .case{padding:56px 5%}
+  .features{padding:56px 5%}
+  .ai-section{padding:56px 5%}
+  .steps{padding:56px 5%}
+  .pricing{padding:56px 5%}
+  .faq{padding:56px 5%}
+  .cta{padding:64px 5%}
+}
 </style>
 </head>
 <body>
