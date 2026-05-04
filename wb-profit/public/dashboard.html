@@ -404,7 +404,7 @@ function initCalc(){
 function getCosts(){try{return JSON.parse(localStorage.getItem('wb_costs')||'{}');}catch(e){return {};}}
 function saveCosts(c){try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}}
 function showErr(msg){var b=document.getElementById('errBox');b.className='err';b.textContent=msg;b.style.display='block';}
-function isAdv(bonus){if(!bonus) return false;var b=bonus.toLowerCase();return b.indexOf('продвижение')>=0||b.indexOf('реклам')>=0;}
+function isAdv(bonus){if(!bonus) return false;var b=bonus.toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0;}
 function getMonth(r){var d=r.rr_dt||r.sale_dt||r.order_dt||r.date||'';if(!d) return null;return d.substring(0,7);}
 
 async function go(){
