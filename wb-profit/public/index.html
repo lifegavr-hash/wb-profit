@@ -163,8 +163,22 @@ footer p{font-size:13px;color:rgba(255,255,255,.35)}
 <footer><p>© 2025 WB Profit. Все права защищены.</p></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-async function checkSession(){try{var r=await fetch('/api/config');var cfg=await r.json();var sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);var {data:{session}}=await sb.auth.getSession();if(session)window.location.href='/dashboard.html';}catch(e){}}
-checkSession();
+// Если залогинен — меняем кнопку "Войти" на "Дашборд"
+async function updateNav(){
+  try{
+    var r=await fetch('/api/config');
+    var cfg=await r.json();
+    var sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
+    var {data:{session}}=await sb.auth.getSession();
+    if(session){
+      var btn=document.querySelector('.nav-cta');
+      if(btn){btn.textContent='Мой дашборд';btn.href='/dashboard.html';}
+      var hero=document.querySelector('.btn-white');
+      if(hero){hero.textContent='Перейти в дашборд';hero.href='/dashboard.html';}
+    }
+  }catch(e){}
+}
+updateNav();
 </script>
 </body>
 </html>
