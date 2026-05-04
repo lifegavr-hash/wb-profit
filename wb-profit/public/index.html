@@ -3,80 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB Profit — Знайте точную прибыль с каждого товара</title>
+<title>WB Profit — Узнайте реальную прибыль с каждого товара</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--purple:#5433c6;--purple-dark:#1a0f3c;--purple-mid:#2d1a7a;--green:#1a7a4a;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5}
+:root{--purple:#5433c6;--purple-dark:#1a0f3c;--green:#1a7a4a;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5}
 html{scroll-behavior:smooth}
 body{font-family:'Manrope',sans-serif;background:var(--surface);color:var(--text);line-height:1.6;font-size:16px}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:60px;background:rgba(26,15,60,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:60px;background:rgba(26,15,60,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
 .nav-logo{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px}
 .nav-logo span{color:#a78bfa}
 .nav-links{display:flex;align-items:center;gap:28px}
-.nav-links a{color:rgba(255,255,255,.65);font-size:14px;text-decoration:none;font-weight:500;transition:color .2s}
-.nav-links a:hover{color:#fff}
-.nav-cta{background:#fff;color:var(--purple-dark);padding:8px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none}
-.hero{min-height:100vh;background:linear-gradient(155deg,#1a0f3c 0%,#2d1a7a 45%,#3d24a0 75%,#5433c6 100%);display:flex;align-items:center;justify-content:center;text-align:center;padding:100px 5% 80px;position:relative;overflow:hidden}
-.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(to bottom,transparent,var(--surface));pointer-events:none}
-.hero-badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:12px;font-weight:600;padding:5px 14px;border-radius:99px;letter-spacing:.05em;margin-bottom:28px}
-.hero h1{font-size:clamp(32px,5vw,58px);font-weight:800;color:#fff;line-height:1.15;letter-spacing:-.03em;max-width:720px;margin:0 auto 20px}
-.hero p{font-size:clamp(15px,2vw,18px);color:rgba(255,255,255,.7);max-width:520px;margin:0 auto 40px;font-weight:500}
-.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.btn-white{background:#fff;color:var(--purple-dark);padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.2)}
-.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none}
-.stats{background:var(--surface);padding:80px 5%;text-align:center}
-.stats-grid{display:flex;justify-content:center;gap:80px;flex-wrap:wrap;max-width:800px;margin:0 auto}
-.stat-num{font-size:clamp(36px,5vw,52px);font-weight:800;color:var(--purple);letter-spacing:-.03em}
-.stat-label{font-size:14px;color:var(--muted);font-weight:500;margin-top:4px}
-.section{padding:80px 5%}
-.section-label{text-align:center;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
-.section h2{text-align:center;font-size:clamp(24px,4vw,40px);font-weight:800;letter-spacing:-.02em;margin-bottom:56px}
-.features{background:var(--bg)}
-.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;max-width:1000px;margin:0 auto}
-.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px}
-.feat-icon{font-size:28px;margin-bottom:16px;display:block}
-.feat-card h3{font-size:16px;font-weight:700;margin-bottom:8px}
-.feat-card p{font-size:14px;color:var(--muted);line-height:1.6}
-.ai-section{background:var(--purple-dark);padding:80px 5%}
-.ai-badge{display:inline-block;background:linear-gradient(90deg,#7c3aed,#5433c6);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:.08em;margin-bottom:24px}
-.ai-section h2{color:#fff;font-size:clamp(24px,4vw,38px);font-weight:800;letter-spacing:-.02em;max-width:600px;margin-bottom:16px}
-.ai-section>.ai-inner>p{color:rgba(255,255,255,.65);font-size:16px;font-weight:500;max-width:560px;margin-bottom:36px}
-.ai-inner{max-width:900px;margin:0 auto}
-.ai-example{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:24px 28px;color:rgba(255,255,255,.85);font-size:14px;line-height:1.7;position:relative}
-.ai-example::before{content:'AI';position:absolute;top:-10px;left:20px;background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:2px 10px;border-radius:99px}
-.steps-grid{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;max-width:900px;margin:0 auto}
-.step{flex:1;min-width:220px;max-width:280px;text-align:center}
-.step-num{width:44px;height:44px;border-radius:50%;background:var(--purple);color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
-.step h3{font-size:15px;font-weight:700;margin-bottom:8px}
+.nav-links a{color:rgba(255,255,255,.65);font-size:14px;text-decoration:none;font-weight:500}
+.nav-cta{background:#fff;color:#1a0f3c!important;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none}
+.hero{min-height:100vh;background:linear-gradient(155deg,#1a0f3c 0%,#2d1a7a 45%,#3d24a0 75%,#5433c6 100%);display:flex;align-items:center;justify-content:center;padding:100px 5% 60px;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,var(--surface));pointer-events:none}
+.hero-inner{max-width:780px;width:100%;text-align:center}
+.hero-badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:12px;font-weight:600;padding:5px 14px;border-radius:99px;letter-spacing:.05em;margin-bottom:24px}
+.hero h1{font-size:clamp(28px,5vw,56px);font-weight:800;color:#fff;line-height:1.12;letter-spacing:-.03em;margin-bottom:8px}
+.hero h1 em{font-style:normal;color:#c4b5fd}
+.hero-sub{font-size:clamp(14px,2vw,17px);color:rgba(255,255,255,.65);max-width:480px;margin:16px auto 32px}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.btn-white{background:#fff;color:#1a0f3c;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none}
+.hero-social{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:40px}
+.hero-social span{color:rgba(255,255,255,.75);font-weight:600}
+.hero-calc{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:24px 28px;max-width:480px;margin:0 auto;text-align:left}
+.hero-calc-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:16px;text-align:center;letter-spacing:.02em}
+.calc-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.calc-label{font-size:13px;color:rgba(255,255,255,.6);white-space:nowrap;min-width:120px}
+.calc-input{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:10px 14px;font-size:15px;font-weight:600;color:#fff;outline:none;font-family:inherit;width:100%}
+.calc-input::placeholder{color:rgba(255,255,255,.3)}
+.calc-input:focus{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.15)}
+.calc-result{background:rgba(255,255,255,.06);border-radius:10px;padding:16px;margin-top:8px;display:none}
+.calc-result.show{display:block}
+.calc-result-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:rgba(255,255,255,.65)}
+.calc-result-row.red{color:#f87171}
+.calc-result-row.green{color:#4ade80;font-weight:700;font-size:15px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;margin-top:4px}
+.calc-btn{width:100%;margin-top:14px;background:#fff;color:#1a0f3c;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+.pain{background:var(--surface);padding:72px 5%}
+.pain-inner{max-width:900px;margin:0 auto}
+.pain h2{font-size:clamp(22px,3.5vw,36px);font-weight:800;letter-spacing:-.02em;text-align:center;margin-bottom:12px}
+.pain-sub{text-align:center;color:var(--muted);font-size:15px;max-width:520px;margin:0 auto 48px}
+.pain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.pain-card{border-radius:14px;padding:24px;border:1px solid var(--border)}
+.pain-card.bad{background:#fff5f5;border-color:#fecaca}
+.pain-card.good{background:#f0fdf4;border-color:#bbf7d0}
+.pain-card-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:12px}
+.pain-card.bad .pain-card-label{color:#dc2626}
+.pain-card.good .pain-card-label{color:#16a34a}
+.pain-card p{font-size:14px;line-height:1.7;color:var(--text)}
+.case{background:var(--bg);padding:72px 5%}
+.case-inner{max-width:800px;margin:0 auto;background:var(--surface);border-radius:20px;padding:40px;border:1px solid var(--border)}
+.case-badge{display:inline-block;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:.05em;margin-bottom:20px}
+.case h3{font-size:clamp(18px,2.5vw,26px);font-weight:800;letter-spacing:-.02em;margin-bottom:24px}
+.case-numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.case-num{text-align:center;padding:20px 12px;border-radius:12px;background:var(--bg)}
+.case-num-val{font-size:clamp(18px,3vw,26px);font-weight:800;letter-spacing:-.02em}
+.case-num-val.red{color:#dc2626}
+.case-num-val.green{color:#16a34a}
+.case-num-label{font-size:12px;color:var(--muted);margin-top:4px}
+.case-quote{font-size:14px;color:var(--muted);font-style:italic;border-left:3px solid #5433c6;padding-left:16px;line-height:1.7}
+.stats{background:var(--surface);padding:64px 5%;text-align:center}
+.stats-grid{display:flex;justify-content:center;gap:72px;flex-wrap:wrap;max-width:800px;margin:0 auto}
+.stat-num{font-size:clamp(36px,5vw,52px);font-weight:800;color:#5433c6;letter-spacing:-.03em}
+.stat-label{font-size:14px;color:var(--muted);margin-top:4px}
+.features{background:var(--bg);padding:72px 5%}
+.section-label{text-align:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.section-h2{text-align:center;font-size:clamp(22px,3.5vw,38px);font-weight:800;letter-spacing:-.02em;margin-bottom:48px}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-width:960px;margin:0 auto}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px}
+.feat-icon{font-size:26px;margin-bottom:14px;display:block}
+.feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.feat-card p{font-size:13px;color:var(--muted);line-height:1.65}
+.ai-section{background:#1a0f3c;padding:72px 5%}
+.ai-inner{max-width:860px;margin:0 auto}
+.ai-badge{display:inline-block;background:linear-gradient(90deg,#7c3aed,#5433c6);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:.08em;margin-bottom:20px}
+.ai-section h2{color:#fff;font-size:clamp(22px,3.5vw,36px);font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
+.ai-section>div>p{color:rgba(255,255,255,.6);font-size:15px;max-width:520px;margin-bottom:28px}
+.ai-example{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:22px 26px;color:rgba(255,255,255,.8);font-size:14px;line-height:1.75;position:relative}
+.ai-example::before{content:'AI советник';position:absolute;top:-11px;left:18px;background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:2px 12px;border-radius:99px}
+.steps{padding:72px 5%;background:var(--surface)}
+.steps-grid{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;max-width:860px;margin:0 auto}
+.step{flex:1;min-width:200px;max-width:260px;text-align:center}
+.step-num{width:44px;height:44px;border-radius:50%;background:#5433c6;color:#fff;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.step h3{font-size:15px;font-weight:700;margin-bottom:6px}
 .step p{font-size:13px;color:var(--muted)}
-.pricing{background:var(--bg)}
-.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:720px;margin:0 auto}
-.plan{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:32px}
-.plan.popular{border-color:var(--purple);box-shadow:0 0 0 4px rgba(84,51,198,.08)}
-.plan-badge{display:inline-block;background:var(--purple);color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:99px;letter-spacing:.05em;margin-bottom:16px}
+.pricing{background:var(--bg);padding:72px 5%}
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:760px;margin:0 auto}
+.plan{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:28px 24px}
+.plan.popular{border-color:#5433c6;box-shadow:0 0 0 4px rgba(84,51,198,.08)}
+.plan-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.05em;margin-bottom:14px}
 .plan-badge.starter{background:#f0ede4;color:#5f5e5a}
-.plan-name{font-size:20px;font-weight:800;margin-bottom:4px}
-.plan-price{font-size:40px;font-weight:800;letter-spacing:-.03em;color:var(--purple-dark);margin-bottom:4px}
-.plan-price span{font-size:16px;font-weight:500;color:var(--muted)}
-.plan-desc{font-size:13px;color:var(--muted);margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
-.plan-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
-.plan-features li{font-size:14px;display:flex;align-items:flex-start;gap:10px}
-.plan-features li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
-.plan-btn{display:block;width:100%;text-align:center;padding:13px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none}
+.plan-badge.biz{background:#5433c6;color:#fff}
+.plan-badge.pro{background:#1a0f3c;color:#a78bfa}
+.plan-name{font-size:18px;font-weight:800;margin-bottom:4px}
+.plan-price-main{font-size:38px;font-weight:800;letter-spacing:-.03em;color:#1a0f3c}
+.plan-price-main span{font-size:15px;font-weight:500;color:var(--muted)}
+.plan-price-sub{font-size:12px;color:var(--muted);margin-bottom:6px}
+.plan-desc{font-size:13px;color:var(--muted);padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+.plan-features li{font-size:13px;display:flex;align-items:flex-start;gap:8px}
+.plan-features li::before{content:'✓';color:#1a7a4a;font-weight:700;flex-shrink:0}
+.plan-btn{display:block;width:100%;text-align:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none}
 .plan-btn.outline{border:1.5px solid var(--border);color:var(--text)}
-.plan-btn.filled{background:var(--purple);color:#fff}
+.plan-btn.filled{background:#5433c6;color:#fff}
+.faq{background:var(--surface);padding:72px 5%}
+.faq-list{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:2px}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-q{width:100%;background:none;border:none;text-align:left;padding:18px 0;font-size:15px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--text);font-family:inherit}
+.faq-q::after{content:'+';font-size:20px;color:#5433c6;font-weight:400;flex-shrink:0;transition:transform .2s}
+.faq-item.open .faq-q::after{transform:rotate(45deg)}
+.faq-a{font-size:14px;color:var(--muted);line-height:1.7;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s}
+.faq-item.open .faq-a{max-height:200px;padding-bottom:16px}
 .cta{background:linear-gradient(135deg,#1a0f3c,#3d24a0);text-align:center;padding:80px 5%}
-.cta h2{font-size:clamp(26px,4vw,42px);font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:12px}
-.cta p{font-size:16px;color:rgba(255,255,255,.65);margin-bottom:36px}
-.cta a{display:inline-block;background:#fff;color:var(--purple-dark);padding:16px 40px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none}
-footer{background:var(--purple-dark);padding:24px 5%;text-align:center}
-footer p{font-size:13px;color:rgba(255,255,255,.35)}
-@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
-.hero-badge,.hero h1,.hero p,.hero-btns{animation:fadeUp .7s ease both}
-.hero h1{animation-delay:.1s}.hero p{animation-delay:.2s}.hero-btns{animation-delay:.3s}
-@media(max-width:600px){.stats-grid{gap:40px}.nav-links{display:none}}
+.cta h2{font-size:clamp(24px,4vw,40px);font-weight:800;color:#fff;letter-spacing:-.03em;margin-bottom:10px}
+.cta p{font-size:15px;color:rgba(255,255,255,.6);margin-bottom:32px}
+.cta-urgency{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);font-size:12px;padding:4px 14px;border-radius:99px;margin-bottom:20px}
+.cta a.main-btn{display:inline-block;background:#fff;color:#1a0f3c;padding:16px 40px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none}
+footer{background:#1a0f3c;padding:24px 5%;text-align:center}
+footer p{font-size:13px;color:rgba(255,255,255,.3)}
+@media(max-width:600px){.nav-links a:not(.nav-cta){display:none}.case-numbers{grid-template-columns:1fr 1fr}.stats-grid{gap:40px}}
 </style>
 </head>
 <body>
@@ -89,96 +137,170 @@ footer p{font-size:13px;color:rgba(255,255,255,.35)}
   </div>
 </nav>
 <section class="hero">
-  <div>
+  <div class="hero-inner">
     <div class="hero-badge">Для селлеров Wildberries</div>
-    <h1>Знайте точную прибыль с каждого товара</h1>
-    <p>WB Profit автоматически считает чистую прибыль с учётом всех скрытых расходов. AI советник подскажет что делать дальше.</p>
+    <h1>WB показывает выплату.<br><em>Мы покажем что от неё осталось.</em></h1>
+    <p class="hero-sub">Логистика, хранение, реклама, штрафы, кредиты ВБ — всё учтено автоматически. Узнайте реальную прибыль за 2 минуты.</p>
     <div class="hero-btns">
-      <a href="/login.html" class="btn-white">Попробовать бесплатно</a>
-      <a href="#features" class="btn-ghost">Смотреть демо</a>
+      <a href="/login.html" class="btn-white">Попробовать бесплатно →</a>
+      <a href="#case" class="btn-ghost">Смотреть пример</a>
     </div>
+    <p class="hero-social"><span>230+</span> селлеров уже считают реальную прибыль · 14 дней бесплатно</p>
+    <div class="hero-calc">
+      <div class="hero-calc-title">⚡ Быстрый расчёт — введи свои цифры</div>
+      <div class="calc-row"><span class="calc-label">Выплата от WB</span><input class="calc-input" id="cRevenue" type="number" placeholder="300 000"></div>
+      <div class="calc-result" id="calcResult">
+        <div class="calc-result-row red"><span>Логистика (~18%)</span><span id="rLog">—</span></div>
+        <div class="calc-result-row red"><span>Хранение (~3%)</span><span id="rStor">—</span></div>
+        <div class="calc-result-row red"><span>Реклама (~8%)</span><span id="rAdv">—</span></div>
+        <div class="calc-result-row red"><span>Штрафы/прочее (~2%)</span><span id="rFine">—</span></div>
+        <div class="calc-result-row green"><span>Примерная прибыль</span><span id="rProfit">—</span></div>
+      </div>
+      <button class="calc-btn" onclick="calcProfit()">Посчитать мою прибыль</button>
+    </div>
+  </div>
+</section>
+<section class="pain">
+  <div class="pain-inner">
+    <h2>Вы теряете деньги прямо сейчас</h2>
+    <p class="pain-sub">Большинство продавцов путают выручку с прибылью и не замечают как деньги уходят</p>
+    <div class="pain-grid">
+      <div class="pain-card bad"><div class="pain-card-label">❌ Без WB Profit</div><p>Видите выплату <strong>380 000 ₽</strong> и думаете что заработали. На самом деле логистика съела 68 000 ₽, хранение 11 000 ₽, реклама 30 000 ₽, штрафы 8 000 ₽. Реальная прибыль — <strong>23 000 ₽</strong>.</p></div>
+      <div class="pain-card good"><div class="pain-card-label">✅ С WB Profit</div><p>Видите <strong>каждую статью расходов</strong> в разбивке. Замечаете что реклама даёт ДРР 35% и отключаете неэффективные кампании. Штрафы выросли — узнаёте за что и устраняете причину. Прибыль растёт.</p></div>
+    </div>
+  </div>
+</section>
+<section class="case" id="case">
+  <div class="case-inner">
+    <div class="case-badge">Реальный кейс</div>
+    <h3>Думал что зарабатывает 80 000 ₽. WB Profit показал правду.</h3>
+    <div class="case-numbers">
+      <div class="case-num"><div class="case-num-val">380 000 ₽</div><div class="case-num-label">Выплата от WB</div></div>
+      <div class="case-num"><div class="case-num-val red">−357 000 ₽</div><div class="case-num-label">Скрытые расходы</div></div>
+      <div class="case-num"><div class="case-num-val green">23 000 ₽</div><div class="case-num-label">Реальная прибыль</div></div>
+    </div>
+    <p class="case-quote">«Я думал что зарабатываю нормально. WB Profit показал что реклама съедает треть выплаты. Отключил 4 неэффективных кампании — прибыль выросла вдвое за месяц.»<br><br>— Алексей, продавец косметики, Москва</p>
   </div>
 </section>
 <section class="stats">
   <div class="stats-grid">
-    <div><div class="stat-num">100%</div><div class="stat-label">Автоматически из WB</div></div>
+    <div><div class="stat-num">100%</div><div class="stat-label">Автоматически из WB API</div></div>
     <div><div class="stat-num">41+</div><div class="stat-label">Статей расходов</div></div>
     <div><div class="stat-num">2 мин</div><div class="stat-label">До первого отчёта</div></div>
   </div>
 </section>
-<section class="section features" id="features">
+<section class="features" id="features">
   <div class="section-label">Всё что влияет на прибыль — в одном месте</div>
-  <h2>Возможности</h2>
+  <div class="section-h2">Возможности</div>
   <div class="features-grid">
     <div class="feat-card"><span class="feat-icon">📊</span><h3>Реальная прибыль</h3><p>Выплата WB минус логистика, хранение, реклама, штрафы и себестоимость</p></div>
-    <div class="feat-card"><span class="feat-icon">📈</span><h3>График по месяцам</h3><p>Видите динамику прибыли, выручки, рекламы и возвратов в разрезе</p></div>
-    <div class="feat-card"><span class="feat-icon">⚡</span><h3>Живые данные</h3><p>Подключается к вашему кабинету WB через API. Данные всегда актуальны</p></div>
-    <div class="feat-card"><span class="feat-icon">🔔</span><h3>Уведомления</h3><p>Автоматически находит убыточные товары и предупреждает вас</p></div>
+    <div class="feat-card"><span class="feat-icon">📈</span><h3>График по месяцам</h3><p>Динамика прибыли, выручки, рекламы и возвратов в разрезе</p></div>
+    <div class="feat-card"><span class="feat-icon">⚡</span><h3>Живые данные</h3><p>Подключается к кабинету WB через API. Данные всегда актуальны</p></div>
+    <div class="feat-card"><span class="feat-icon">📉</span><h3>ДРР по товарам</h3><p>Доля рекламных расходов по каждому артикулу — видите что работает</p></div>
+    <div class="feat-card"><span class="feat-icon">🔔</span><h3>Умные алерты</h3><p>Уведомляет об убыточных товарах, росте штрафов и аномалиях</p></div>
+    <div class="feat-card"><span class="feat-icon">🤖</span><h3>AI советник</h3><p>Анализирует данные и даёт конкретные советы что изменить</p></div>
   </div>
 </section>
 <section class="ai-section">
   <div class="ai-inner">
-    <div class="ai-badge">PRO — AI</div>
+    <div class="ai-badge">PRO — AI советник</div>
     <h2>Не просто цифры — конкретные советы</h2>
     <p>AI анализирует ваши данные и говорит что нужно изменить. Как личный финансовый директор за 890 ₽ в месяц.</p>
-    <div class="ai-example">AI советник: Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Рекомендую перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит 2 800 ₽/мес.</div>
+    <div class="ai-example">Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Рекомендую перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит около 2 800 ₽/мес.</div>
   </div>
 </section>
-<section class="section">
+<section class="steps">
   <div class="section-label">Как начать</div>
-  <h2>Три простых шага</h2>
+  <div class="section-h2">Три шага до реальной прибыли</div>
   <div class="steps-grid">
     <div class="step"><div class="step-num">1</div><h3>Регистрация</h3><p>Создайте аккаунт за 30 секунд. Нужен только email.</p></div>
-    <div class="step"><div class="step-num">2</div><h3>Подключите WB</h3><p>Создайте API токен в кабинете WB и вставьте в сервис.</p></div>
-    <div class="step"><div class="step-num">3</div><h3>Считайте прибыль</h3><p>Все данные загружаются автоматически. Готово за 2 минуты.</p></div>
+    <div class="step"><div class="step-num">2</div><h3>Подключите WB</h3><p>Вставьте API токен из кабинета продавца. Это 1 минута.</p></div>
+    <div class="step"><div class="step-num">3</div><h3>Смотрите прибыль</h3><p>Данные загружаются автоматически. Первый отчёт через 2 минуты.</p></div>
   </div>
 </section>
-<section class="section pricing" id="pricing">
+<section class="pricing" id="pricing">
   <div class="section-label">Выберите тариф</div>
-  <h2>Простые цены</h2>
+  <div class="section-h2">Простые цены</div>
   <div class="pricing-grid">
     <div class="plan">
       <div class="plan-badge starter">Старт</div>
       <div class="plan-name">Базовый</div>
-      <div class="plan-price">490 <span>₽/мес</span></div>
-      <div class="plan-desc">Для малого и среднего бизнеса</div>
-      <ul class="plan-features"><li>Калькулятор прибыли</li><li>Учёт рекламы и штрафов</li><li>График по месяцам</li><li>Уведомления об убытках</li><li>До 500 товаров</li></ul>
+      <div class="plan-price-main">490 <span>₽/мес</span></div>
+      <div class="plan-price-sub">690 ₽/мес без годовой подписки</div>
+      <div class="plan-desc">Для малого бизнеса</div>
+      <ul class="plan-features"><li>Калькулятор прибыли</li><li>Учёт рекламы и штрафов</li><li>График по месяцам</li><li>Уведомления об убытках</li><li>До 50 товаров</li></ul>
       <a href="/login.html" class="plan-btn outline">Начать бесплатно</a>
     </div>
     <div class="plan popular">
-      <div class="plan-badge">Популярный</div>
-      <div class="plan-name">PRO</div>
-      <div class="plan-price">890 <span>₽/мес</span></div>
-      <div class="plan-desc">Для среднего бизнеса с аналитикой</div>
-      <ul class="plan-features"><li>Всё из Базового</li><li>AI советник</li><li>Анализ по категориям</li><li>Экспорт в Excel</li><li>Безлимит товаров</li></ul>
-      <a href="/login.html" class="plan-btn filled">Выбрать PRO</a>
+      <div class="plan-badge biz">Популярный</div>
+      <div class="plan-name">Бизнес</div>
+      <div class="plan-price-main">690 <span>₽/мес</span></div>
+      <div class="plan-price-sub">890 ₽/мес без годовой подписки</div>
+      <div class="plan-desc">Для среднего бизнеса</div>
+      <ul class="plan-features"><li>Всё из Базового</li><li>Умные алерты</li><li>ДРР по товарам</li><li>Экспорт в Excel</li><li>До 150 товаров</li></ul>
+      <a href="/login.html" class="plan-btn filled">Выбрать Бизнес</a>
     </div>
+    <div class="plan">
+      <div class="plan-badge pro">PRO</div>
+      <div class="plan-name">PRO</div>
+      <div class="plan-price-main">890 <span>₽/мес</span></div>
+      <div class="plan-price-sub">1 090 ₽/мес без годовой подписки</div>
+      <div class="plan-desc">Для серьёзного бизнеса + AI</div>
+      <ul class="plan-features"><li>Всё из Бизнеса</li><li>AI советник</li><li>Прогноз прибыли</li><li>Сравнение периодов</li><li>Безлимит товаров</li></ul>
+      <a href="/login.html" class="plan-btn outline">Выбрать PRO</a>
+    </div>
+  </div>
+  <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px;">14 дней бесплатно на любом тарифе · Карта не нужна · Отмена в любой момент</p>
+</section>
+<section class="faq">
+  <div class="section-label">Вопросы и ответы</div>
+  <div class="section-h2">Часто спрашивают</div>
+  <div class="faq-list">
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Это безопасно — давать API токен?</button><div class="faq-a">API токен WB даёт право только на чтение данных — мы не можем совершать действия в вашем кабинете. Данные хранятся в зашифрованном виде.</div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Чем отличается от отчётов самого WB?</button><div class="faq-a">WB показывает выплаты и продажи отдельно. Мы сводим всё в одну картину: выплата минус все расходы = реальная прибыль по каждому товару. Плюс ДРР, алерты и AI советы.</div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Нужно ли что-то устанавливать?</button><div class="faq-a">Нет. Работает в браузере — открыли сайт, вставили токен, смотрите данные.</div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Как отменить подписку?</button><div class="faq-a">В любой момент в личном кабинете. Никаких штрафов и скрытых условий.</div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">За какой период загружаются данные?</button><div class="faq-a">За последние 12 месяцев. Данные обновляются автоматически каждый день.</div></div>
   </div>
 </section>
 <section class="cta">
-  <h2>14 дней бесплатно</h2>
-  <p>Попробуйте все функции PRO без оплаты. Карта не нужна.</p>
-  <a href="/login.html">Начать бесплатный период</a>
+  <div class="cta-urgency">⏱ Пока вы читаете это — WB уже списал комиссии</div>
+  <h2>Узнайте реальную прибыль сегодня</h2>
+  <p>14 дней бесплатно. Карта не нужна. Первый отчёт через 2 минуты.</p>
+  <a href="/login.html" class="main-btn">Начать бесплатно →</a>
 </section>
-<footer><p>© 2025 WB Profit. Все права защищены.</p></footer>
+<footer><p>© 2025 WB Profit · Для селлеров Wildberries</p></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
-// Если залогинен — меняем кнопку "Войти" на "Дашборд"
+function fmt(n){return Math.round(n).toLocaleString('ru-RU')+'₽';}
+function calcProfit(){
+  var rev=parseFloat(document.getElementById('cRevenue').value)||0;
+  if(!rev){alert('Введите выплату от WB');return;}
+  var log=rev*.18,stor=rev*.03,adv=rev*.08,fine=rev*.02;
+  var profit=rev-log-stor-adv-fine;
+  document.getElementById('rLog').textContent='-'+fmt(log);
+  document.getElementById('rStor').textContent='-'+fmt(stor);
+  document.getElementById('rAdv').textContent='-'+fmt(adv);
+  document.getElementById('rFine').textContent='-'+fmt(fine);
+  document.getElementById('rProfit').textContent='≈'+fmt(profit);
+  document.getElementById('calcResult').classList.add('show');
+}
+function toggleFaq(btn){btn.parentElement.classList.toggle('open');}
 async function updateNav(){
   try{
-    var r=await fetch('/api/config');
-    var cfg=await r.json();
+    var r=await fetch('/api/config');var cfg=await r.json();
     var sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
     var {data:{session}}=await sb.auth.getSession();
     if(session){
       var btn=document.querySelector('.nav-cta');
       if(btn){btn.textContent='Мой дашборд';btn.href='/dashboard.html';}
       var hero=document.querySelector('.btn-white');
-      if(hero){hero.textContent='Перейти в дашборд';hero.href='/dashboard.html';}
+      if(hero){hero.textContent='Перейти в дашборд →';hero.href='/dashboard.html';}
     }
   }catch(e){}
 }
 updateNav();
+document.getElementById('cRevenue').addEventListener('keyup',function(e){if(e.key==='Enter')calcProfit();});
 </script>
 </body>
 </html>
