@@ -404,7 +404,8 @@ function initCalc(){
 function getCosts(){try{return JSON.parse(localStorage.getItem('wb_costs')||'{}');}catch(e){return {};}}
 function saveCosts(c){try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}}
 function showErr(msg){var b=document.getElementById('errBox');b.className='err';b.textContent=msg;b.style.display='block';}
-function isAdv(bonus){if(!bonus) return false;var b=bonus.toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0;}
+function isAdv(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0||o.indexOf('продвижени')>=0;}
+function isWbFin(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('финанс')>=0||o.indexOf('баланс')>=0||o.indexOf('заёмщика')>=0||o.indexOf('заемщика')>=0||o.indexOf('кредит')>=0||o.indexOf('займ')>=0;}
 function getMonth(r){var d=r.rr_dt||r.sale_dt||r.order_dt||r.date||'';if(!d) return null;return d.substring(0,7);}
 
 async function go(){
@@ -457,7 +458,7 @@ function process(raw){
       byMonthData[mo].del+=r.delivery_rub||0;
       byMonthData[mo].stor+=r.storage_fee||0;
       byMonthData[mo].pen+=r.penalty||0;
-      if(isAdv(r.bonus_type_name)){byMonthData[mo].adv+=Math.abs(r.deduction||0);}
+      if(isAdv(r.bonus_type_name,r.supplier_oper_name)){byMonthData[mo].adv+=Math.abs(r.deduction||0);}
       else{byMonthData[mo].pen+=Math.abs(r.deduction||0);}
       byMonthData[mo].pen+=r.acceptance||0;
     }
@@ -469,7 +470,7 @@ function process(raw){
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
     a.ppvz+=r.ppvz_for_pay||0;a.del+=r.delivery_rub||0;a.stor+=r.storage_fee||0;a.pen+=r.penalty||0;
-    if(isAdv(r.bonus_type_name)){a.adv+=Math.abs(r.deduction||0);}else{a.pen+=Math.abs(r.deduction||0);}
+    if(isAdv(r.bonus_type_name,r.supplier_oper_name)){a.adv+=Math.abs(r.deduction||0);}else{a.pen+=Math.abs(r.deduction||0);}
     a.pen+=r.acceptance||0;
   }
   rows=Object.values(bk);
@@ -491,9 +492,9 @@ function process(raw){
     tS+=rd.storage_fee||0;
     tPn+=rd.penalty||0;
     var ded=Math.abs(rd.deduction||0);
-    if((rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0)||(rd.supplier_oper_name&&rd.supplier_oper_name.indexOf('баланс')>=0)){
+    if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)){
       tWbFin+=ded; // ВБ Финанс отдельно
-    } else if(isAdv(rd.bonus_type_name)){
+    } else if(isAdv(rd.bonus_type_name,rd.supplier_oper_name)){
       tAd+=ded; // Реклама отдельно
     } else {
       tPn+=ded; // Реальные штрафы и удержания
@@ -536,10 +537,7 @@ function renderDetail(){
 
   for(var i=0;i<rawData.length;i++){
     var r=rawData[i];
-    var isWbFin=(r.bonus_type_name&&r.bonus_type_name.indexOf('ФИНАНС')>=0)||(r.supplier_oper_name&&r.supplier_oper_name.indexOf('баланс')>=0);
-    var isAdvRow=isAdv(r.bonus_type_name);
-    // ВБ Финанс и реклама идут в свои отдельные группы — пропускаем здесь
-    if(isWbFin||isAdvRow) continue;
+    if(isWbFin(r.bonus_type_name,r.supplier_oper_name)||isAdv(r.bonus_type_name,r.supplier_oper_name)) continue;
     var oper=r.supplier_oper_name||'Без названия';
     if(!byOper[oper]) byOper[oper]={count:0,logistic:0,storage:0,penalty:0,deduction:0,rebill:0,other:0};
     var o=byOper[oper];
@@ -550,9 +548,7 @@ function renderDetail(){
     o.rebill+=r.rebill_logistic_cost||0;
     // Из удержаний тоже убираем ВБ Финанс и рекламу (дополнительная защита)
     var ded=r.deduction||0;
-    var bonusLow=(r.bonus_type_name||'').toLowerCase();
-    var operLow=(r.supplier_oper_name||'').toLowerCase();
-    if(bonusLow.indexOf('финанс')<0&&bonusLow.indexOf('продвижен')<0&&bonusLow.indexOf('реклам')<0&&operLow.indexOf('баланс')<0){
+    if(!isWbFin(r.bonus_type_name,r.supplier_oper_name)&&!isAdv(r.bonus_type_name,r.supplier_oper_name)){
       o.deduction+=Math.abs(ded);
     }
     o.other+=r.acceptance||0;
@@ -584,8 +580,7 @@ function renderDetail(){
   var wbFinanceTotal=0, wbFinanceCount=0, wbFinanceRows=[];
   for(var fi=0;fi<rawData.length;fi++){
     var fr=rawData[fi];
-    var isWbFinRow=(fr.bonus_type_name&&fr.bonus_type_name.indexOf('ФИНАНС')>=0)||(fr.supplier_oper_name&&fr.supplier_oper_name.indexOf('баланс')>=0);
-    if(isWbFinRow){
+    if(isWbFin(fr.bonus_type_name,fr.supplier_oper_name)){
       var famt=Math.abs(fr.deduction||0);
       wbFinanceTotal+=famt;
       wbFinanceCount++;
@@ -602,7 +597,7 @@ function renderDetail(){
   }
 
   // Собираем рекламу
-  var advRows=rawData.filter(function(r){return isAdv(r.bonus_type_name);});
+  var advRows=rawData.filter(function(r){return isAdv(r.bonus_type_name,r.supplier_oper_name);});
   var advByOper={};
   advRows.forEach(function(r){
     var oper='Реклама WB (Продвижение)';
@@ -678,7 +673,7 @@ function renderDetail(){
         html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
       }
       if(isPenGroup){
-        var penRows=item.rows||rawData.filter(function(rd){if(rd.supplier_oper_name!==item.name) return false;var isWF=rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0;var isAd=isAdv(rd.bonus_type_name);if(isWF||isAd) return false;return rd.penalty>0||Math.abs(rd.deduction||0)>0;});
+        var penRows=item.rows||rawData.filter(function(rd){if(rd.supplier_oper_name!==item.name) return false;var isWF=rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0;var isAd=isAdv(rd.bonus_type_name,rd.supplier_oper_name);if(isWF||isAd) return false;return rd.penalty>0||Math.abs(rd.deduction||0)>0;});
         if(penRows.length>0){
           html+='<button class="expand-btn" onclick="togglePen(this)">' + '▶ Показать детали (' + penRows.length + ' операций)</button>';
           html+='<div class="pen-section" id="'+secId+'">';
@@ -772,9 +767,9 @@ function upd(i,val){
     tS+=rd.storage_fee||0;
     tPn+=rd.penalty||0;
     var ded=Math.abs(rd.deduction||0);
-    if((rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0)||(rd.supplier_oper_name&&rd.supplier_oper_name.indexOf('баланс')>=0)){
+    if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)){
       tWbFin+=ded; // ВБ Финанс отдельно
-    } else if(isAdv(rd.bonus_type_name)){
+    } else if(isAdv(rd.bonus_type_name,rd.supplier_oper_name)){
       tAd+=ded; // Реклама отдельно
     } else {
       tPn+=ded; // Реальные штрафы и удержания
