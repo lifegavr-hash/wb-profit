@@ -405,7 +405,7 @@ function getCosts(){try{return JSON.parse(localStorage.getItem('wb_costs')||'{}'
 function saveCosts(c){try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}}
 function showErr(msg){var b=document.getElementById('errBox');b.className='err';b.textContent=msg;b.style.display='block';}
 function isAdv(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0||o.indexOf('продвижени')>=0||o.indexOf('реклам')>=0;}
-function isWbFin(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('финанс')>=0||o.indexOf('баланс')>=0||o.indexOf('заёмщика')>=0||o.indexOf('заемщика')>=0||o.indexOf('кредит')>=0||o.indexOf('займ')>=0;}
+function isWbFin(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('финанс')>=0||b.indexOf('заёмщика')>=0||b.indexOf('заемщика')>=0||b.indexOf('баланс')>=0||b.indexOf('займ')>=0||o.indexOf('баланс')>=0||o.indexOf('заёмщика')>=0||o.indexOf('заемщика')>=0||o.indexOf('кредит')>=0||o.indexOf('займ')>=0;}
 function getMonth(r){var d=r.rr_dt||r.sale_dt||r.order_dt||r.date||'';if(!d) return null;return d.substring(0,7);}
 
 async function go(){
