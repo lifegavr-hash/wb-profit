@@ -404,7 +404,7 @@ function initCalc(){
 function getCosts(){try{return JSON.parse(localStorage.getItem('wb_costs')||'{}');}catch(e){return {};}}
 function saveCosts(c){try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}}
 function showErr(msg){var b=document.getElementById('errBox');b.className='err';b.textContent=msg;b.style.display='block';}
-function isAdv(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0||o.indexOf('продвижени')>=0;}
+function isAdv(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0||o.indexOf('продвижени')>=0||o.indexOf('реклам')>=0;}
 function isWbFin(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('финанс')>=0||o.indexOf('баланс')>=0||o.indexOf('заёмщика')>=0||o.indexOf('заемщика')>=0||o.indexOf('кредит')>=0||o.indexOf('займ')>=0;}
 function getMonth(r){var d=r.rr_dt||r.sale_dt||r.order_dt||r.date||'';if(!d) return null;return d.substring(0,7);}
 
@@ -673,7 +673,7 @@ function renderDetail(){
         html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
       }
       if(isPenGroup){
-        var penRows=item.rows||rawData.filter(function(rd){if(rd.supplier_oper_name!==item.name) return false;var isWF=rd.bonus_type_name&&rd.bonus_type_name.indexOf('ФИНАНС')>=0;var isAd=isAdv(rd.bonus_type_name,rd.supplier_oper_name);if(isWF||isAd) return false;return rd.penalty>0||Math.abs(rd.deduction||0)>0;});
+        var penRows=item.rows||rawData.filter(function(rd){if(rd.supplier_oper_name!==item.name) return false;if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)||isAdv(rd.bonus_type_name,rd.supplier_oper_name)) return false;return rd.penalty>0||Math.abs(rd.deduction||0)>0;});
         if(penRows.length>0){
           html+='<button class="expand-btn" onclick="togglePen(this)">' + '▶ Показать детали (' + penRows.length + ' операций)</button>';
           html+='<div class="pen-section" id="'+secId+'">';
