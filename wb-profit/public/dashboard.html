@@ -100,6 +100,34 @@ tr.loss td{background:#fff5f5}
 .pen-table td{padding:6px 8px;border-bottom:0.5px solid var(--border);color:var(--text)}
 .pen-table tr:last-child td{border-bottom:none}
 .pen-section{display:none;border-top:0.5px solid var(--border);max-height:400px;overflow-y:auto}
+
+.live-header{background:linear-gradient(135deg,#1a0f3c,#2d1a7a);border-radius:14px;padding:20px 22px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.live-date{font-size:12px;color:rgba(255,255,255,.45);margin-bottom:4px}
+.live-profit{font-size:38px;font-weight:700;color:#4ade80;letter-spacing:-.02em}
+.live-profit-sub{font-size:12px;color:rgba(255,255,255,.5);margin-top:3px}
+.live-badge{background:rgba(74,222,128,.15);border:1px solid rgba(74,222,128,.3);color:#4ade80;font-size:12px;font-weight:600;padding:5px 12px;border-radius:99px;display:inline-flex;align-items:center;gap:5px}
+.live-badge.neg{background:rgba(248,113,113,.15);border-color:rgba(248,113,113,.3);color:#f87171}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;animation:lpulse 2s infinite}
+@keyframes lpulse{0%,100%{opacity:1}50%{opacity:.3}}
+.live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:16px}
+.live-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.live-card-label{font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.live-card-val{font-size:20px;font-weight:700;color:var(--text)}
+.live-card-val.red{color:#f87171}
+.live-card-val.green{color:#4ade80}
+.live-sec-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;margin-top:4px}
+.top-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.top-item:last-child{margin-bottom:0}
+.top-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.top-meta{font-size:11px;color:var(--muted)}
+.top-profit{text-align:right;flex-shrink:0;margin-left:12px}
+.top-profit-val{font-size:15px;font-weight:700}
+.top-profit-val.g{color:#4ade80}
+.top-profit-val.r{color:#f87171}
+.top-profit-label{font-size:10px;color:var(--muted);margin-top:1px}
+.home-alert-box{background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.25);border-radius:12px;padding:12px 16px;margin-bottom:10px;font-size:12px;color:#fb923c;line-height:1.5}
+.home-empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:13px}
+.home-spinner{text-align:center;padding:48px;color:var(--muted);font-size:13px}
 </style>
 </head>
 <body>
@@ -111,7 +139,8 @@ tr.loss td{background:#fff5f5}
   </div>
   <div class="nav">
     <div class="nav-sec">Главное</div>
-    <button class="nav-item active" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
+    <button class="nav-item active" id="nav-home" onclick="showSection('home',this)">🏠 Главная</button>
+    <button class="nav-item" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
     <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов</button>
     <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика</button>
     <div class="nav-sec">Аккаунт</div>
@@ -138,8 +167,13 @@ tr.loss td{background:#fff5f5}
 
   <div class="content">
 
+    <!-- Дашборд -->
+    <div class="section active" id="sectionHome">
+      <div id="homeContent"><div class="home-spinner">Загружаем данные за сегодня...</div></div>
+    </div>
+
     <!-- Калькулятор -->
-    <div class="section active" id="sectionCalc">
+    <div class="section" id="sectionCalc">
       <div id="upgradeBanner" class="upgrade-banner" style="display:none">
         <div class="upgrade-text">
           <h3>Перейдите на PRO</h3>
@@ -329,8 +363,8 @@ async function logout(){
 }
 
 function showSection(name,el){
-  var sections=['calc','detail','analytics','promo','admin'];
-  var titles={calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',promo:'Промокод',admin:'Админ-панель'};
+  var sections=['home','calc','detail','analytics','promo','admin'];
+  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
     var sec=document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1));
     if(sec) sec.classList.toggle('active',s===name);
@@ -796,6 +830,105 @@ function togglePen(btn){
   }
 }
 init();
+
+function getTodayMoscow(){
+  var now=new Date();
+  var msk=new Date(now.getTime()+(3*60+now.getTimezoneOffset())*60000);
+  var y=msk.getFullYear(),m=String(msk.getMonth()+1).padStart(2,'0'),d=String(msk.getDate()).padStart(2,'0');
+  var py=msk.getFullYear(),pm,pd;
+  var prev=new Date(msk);prev.setDate(prev.getDate()-1);
+  pm=String(prev.getMonth()+1).padStart(2,'0');pd=String(prev.getDate()).padStart(2,'0');
+  return{today:y+'-'+m+'-'+d,yesterday:prev.getFullYear()+'-'+pm+'-'+pd,display:d+'.'+m+'.'+y};
+}
+function fmtR(n){return Math.round(Math.abs(n)).toLocaleString('ru-RU')+'₽';}
+async function loadHomeData(){
+  var el=document.getElementById('homeContent');
+  if(!el)return;
+  var token=localStorage.getItem('wb_token');
+  if(!token){el.innerHTML='<div class="home-empty">Добавьте API токен в разделе «Калькулятор»</div>';return;}
+  var dates=getTodayMoscow();
+  el.innerHTML='<div class="home-spinner">Загружаем данные за '+dates.display+'...</div>';
+  try{
+    var [r1,r2]=await Promise.all([
+      fetch('/api/wb?token='+encodeURIComponent(token)+'&dateFrom='+dates.today+'&dateTo='+dates.today+'&page=1').then(r=>r.json()),
+      fetch('/api/wb?token='+encodeURIComponent(token)+'&dateFrom='+dates.yesterday+'&dateTo='+dates.yesterday+'&page=1').then(r=>r.json())
+    ]);
+    var tRows=r1.data||[],yRows=r2.data||[];
+    renderHomeData(tRows,yRows,dates);
+  }catch(e){el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.</div>';}
+}
+function renderHomeData(rows,yRows,dates){
+  var el=document.getElementById('homeContent');
+  var tSales=0,tRet=0,tPay=0,tLog=0,tStor=0,tAd=0,tPen=0,tFin=0;
+  var items={};
+  rows.forEach(function(r){
+    var doc=(r.doc_type_name||'').toLowerCase();
+    if(doc==='продажа')tSales++;
+    if(doc==='возврат')tRet++;
+    tPay+=r.ppvz_for_pay||0;
+    tLog+=(r.delivery_rub||0)+(r.rebill_logistic_cost||0);
+    tStor+=r.storage_fee||0;
+    if(isAdv(r.bonus_type_name,r.supplier_oper_name))tAd+=Math.abs(r.deduction||0);
+    else if(isWbFin(r.bonus_type_name,r.supplier_oper_name))tFin+=Math.abs(r.deduction||0);
+    else tPen+=Math.abs(r.deduction||0);
+    if(!r.nm_id&&!r.sa_name)return;
+    var k=r.nm_id||(r.sa_name||'x');
+    if(!items[k])items[k]={name:r.sa_name||('Арт. '+r.nm_id),sales:0,pay:0,log:0,ad:0,stor:0};
+    var a=items[k];
+    if(doc==='продажа')a.sales++;
+    a.pay+=r.ppvz_for_pay||0;
+    a.log+=(r.delivery_rub||0)+(r.rebill_logistic_cost||0);
+    a.stor+=r.storage_fee||0;
+    if(isAdv(r.bonus_type_name,r.supplier_oper_name))a.ad+=Math.abs(r.deduction||0);
+  });
+  var profit=tPay-tLog-tStor-tAd-tPen-tFin;
+  var yProfit=0;
+  yRows.forEach(function(r){
+    var yL=(r.delivery_rub||0)+(r.rebill_logistic_cost||0)+(r.storage_fee||0);
+    var yA=isAdv(r.bonus_type_name,r.supplier_oper_name)?Math.abs(r.deduction||0):0;
+    var yP=(!isAdv(r.bonus_type_name,r.supplier_oper_name)&&!isWbFin(r.bonus_type_name,r.supplier_oper_name))?Math.abs(r.deduction||0):0;
+    var yF=isWbFin(r.bonus_type_name,r.supplier_oper_name)?Math.abs(r.deduction||0):0;
+    yProfit+=(r.ppvz_for_pay||0)-yL-yA-yP-yF;
+  });
+  var diff=yProfit?profit-yProfit:0;
+  var pct=yProfit?Math.round(diff/Math.abs(yProfit)*100):0;
+  var up=diff>=0;
+  var months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  var dp=dates.display.split('.');
+  var dispDate=parseInt(dp[0])+' '+months[parseInt(dp[1])-1]+' '+dp[2];
+  var topItems=Object.values(items).map(function(a){var p=a.pay-a.log-a.stor-a.ad;var drr=a.pay>0?Math.round(a.ad/a.pay*100):0;return Object.assign(a,{profit:p,drr:drr});}).sort(function(a,b){return b.profit-a.profit;});
+  var losers=topItems.filter(function(x){return x.profit<0;});
+  var h='';
+  h+='<div class="live-header"><div>';
+  h+='<div class="live-date">'+dispDate+' · Москва</div>';
+  h+='<div class="live-profit">'+(profit>=0?'+':'−')+fmtR(profit)+'</div>';
+  h+='<div class="live-profit-sub">чистая прибыль за сегодня</div>';
+  h+='</div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">';
+  if(yProfit){h+='<div class="live-badge'+(up?'':' neg')+'">'+(up?'↑':'↓')+' '+Math.abs(pct)+'% vs вчера</div>';}
+  h+='<div style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:5px"><span class="live-dot"></span>Обновлено сейчас</div>';
+  h+='</div></div>';
+  if(losers.length){losers.slice(0,2).forEach(function(l){h+='<div class="home-alert-box">⚠️ Убыток: <strong>'+l.name+'</strong>';if(l.drr>0)h+=' — реклама '+l.drr+'% от выручки';h+='</div>';});}
+  h+='<div class="live-grid">';
+  h+='<div class="live-card"><div class="live-card-label">Продажи</div><div class="live-card-val">'+tSales+' шт.</div></div>';
+  h+='<div class="live-card"><div class="live-card-label">Возвраты</div><div class="live-card-val red">'+tRet+' шт.</div></div>';
+  h+='<div class="live-card"><div class="live-card-label">Выплата WB</div><div class="live-card-val green">+'+fmtR(tPay)+'</div></div>';
+  h+='<div class="live-card"><div class="live-card-label">Логистика</div><div class="live-card-val red">−'+fmtR(tLog+tStor)+'</div></div>';
+  h+='<div class="live-card"><div class="live-card-label">Реклама</div><div class="live-card-val red">−'+fmtR(tAd)+'</div></div>';
+  h+='<div class="live-card"><div class="live-card-label">Штрафы</div><div class="live-card-val'+(tPen>0?' red':'')+'">'+( tPen>0?'−'+fmtR(tPen):'0 ₽')+'</div></div>';
+  h+='</div>';
+  if(topItems.length){
+    h+='<div class="live-sec-title">Топ товаров сегодня</div>';
+    topItems.slice(0,5).forEach(function(it){
+      var loss=it.profit<0;
+      h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+it.name+'</div><div class="top-meta">'+it.sales+' прод. · ДРР '+it.drr+'%</div></div>';
+      h+='<div class="top-profit"><div class="top-profit-val '+(loss?'r':'g')+'">'+(loss?'−':'+')+fmtR(it.profit)+'</div><div class="top-profit-label">'+(loss?'убыток':'прибыль')+'</div></div></div>';
+    });
+  } else {
+    h+='<div class="home-empty">Продаж за сегодня ещё нет</div>';
+  }
+  el.innerHTML=h;
+}
+
 </script>
 </body>
 </html>
