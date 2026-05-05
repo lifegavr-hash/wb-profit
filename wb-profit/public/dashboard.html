@@ -849,9 +849,10 @@ async function loadHomeData(){
   var dates=getTodayMoscow();
   el.innerHTML='<div class="home-spinner">Загружаем данные за '+dates.display+'...</div>';
   try{
+    var opts={headers:{Authorization:token}};
     var [r1,r2]=await Promise.all([
-      fetch('/api/wb?token='+encodeURIComponent(token)+'&dateFrom='+dates.today+'&dateTo='+dates.today+'&page=1').then(r=>r.json()),
-      fetch('/api/wb?token='+encodeURIComponent(token)+'&dateFrom='+dates.yesterday+'&dateTo='+dates.yesterday+'&page=1').then(r=>r.json())
+      fetch('/api/wb?dateFrom='+dates.today+'&dateTo='+dates.today+'&page=1',opts).then(r=>r.json()),
+      fetch('/api/wb?dateFrom='+dates.yesterday+'&dateTo='+dates.yesterday+'&page=1',opts).then(r=>r.json())
     ]);
     var tRows=r1.data||[],yRows=r2.data||[];
     renderHomeData(tRows,yRows,dates);
