@@ -850,12 +850,29 @@ async function loadHomeData(){
   el.innerHTML='<div class="home-spinner">Загружаем данные за '+dates.display+'...</div>';
   try{
     var opts={headers:{Authorization:token}};
-    var [r1,r2]=await Promise.all([
-      fetch('/api/wb?dateFrom='+dates.today+'&dateTo='+dates.today+'&page=1',opts).then(r=>r.json()),
-      fetch('/api/wb?dateFrom='+dates.yesterday+'&dateTo='+dates.yesterday+'&page=1',opts).then(r=>r.json())
-    ]);
-    var tRows=r1.data||[],yRows=r2.data||[];
-    renderHomeData(tRows,yRows,dates);
+    var msk=getTodayMoscow();
+    var r1=await fetch('/api/wb?dateFrom='+msk.today+'&dateTo='+msk.today+'&page=1',opts);
+    var d1=r1.status===204?null:await r1.json();
+    var tRows=(d1&&d1.data&&d1.data.length)?d1.data:null;
+    var activeDate,prevDate;
+    if(tRows){
+      activeDate=msk.today;prevDate=msk.yesterday;
+    }else{
+      activeDate=msk.yesterday;
+      var dp=new Date(msk.yesterday+'T00:00:00');dp.setDate(dp.getDate()-1);
+      prevDate=dp.toISOString().slice(0,10);
+      var r1b=await fetch('/api/wb?dateFrom='+activeDate+'&dateTo='+activeDate+'&page=1',opts);
+      var d1b=r1b.status===204?{data:[]}:await r1b.json();
+      tRows=d1b.data||[];
+    }
+    var r2=await fetch('/api/wb?dateFrom='+prevDate+'&dateTo='+prevDate+'&page=1',opts);
+    var d2=r2.status===204?{data:[]}:await r2.json();
+    var yRows=d2.data||[];
+    var ad=activeDate.split('-');
+    var mons=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+    dates.display=parseInt(ad[2])+' '+mons[parseInt(ad[1])-1]+' '+ad[0];
+    if(!tRows||!tRows.length)dates.display+=(' (вчера)');
+    renderHomeData(tRows||[],yRows,dates);
   }catch(e){el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.</div>';}
 }
 function renderHomeData(rows,yRows,dates){
