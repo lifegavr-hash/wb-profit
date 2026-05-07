@@ -928,45 +928,33 @@ async function loadHomeWeek(){
   var weekFrom=shiftDate(msk.today,-6);
   var days=listDaysBetween(weekFrom,msk.today);
   var weekRows=[];
-  // Состояние прогресса хранится в одном HTML-блоке, обновляется setInterval'ом
-  var phase={day:0,total:days.length,waitLeft:0,phase:'load'};
-  function paint(){
-    var pct=Math.round((phase.day/phase.total)*100);
-    var msg=phase.phase==='wait'
-      ? 'Ждём WB API: '+phase.waitLeft+' сек (лимит 1 запрос/мин)'
-      : 'Загружаем день '+phase.day+' из '+phase.total+' ('+fmtRusDate(days[Math.max(0,phase.day-1)])+')';
-    el.innerHTML='<div class="home-empty">'+
+  // Один раз создаём DOM, дальше обновляем точечно textContent — никаких innerHTML в цикле.
+  el.innerHTML=
+    '<div class="home-empty">'+
       '<div style="font-size:14px;margin-bottom:14px">📅 Загрузка за неделю</div>'+
-      '<div style="background:#eee;border-radius:8px;height:8px;overflow:hidden;max-width:360px;margin:0 auto"><div style="height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);width:'+pct+'%;transition:width .3s"></div></div>'+
-      '<div style="margin-top:12px;font-size:13px">'+msg+'</div>'+
+      '<div style="background:#eee;border-radius:8px;height:8px;overflow:hidden;max-width:360px;margin:0 auto"><div id="weekBar" style="height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);width:0%;transition:width .3s"></div></div>'+
+      '<div id="weekMsg" style="margin-top:12px;font-size:13px">Готовим запрос...</div>'+
       '<div style="font-size:11px;opacity:.5;margin-top:8px">Можно открыть в фоновой вкладке</div>'+
-      '</div>';
-  }
-  paint();
-  // Тикалка обратного отсчёта (раз в секунду)
-  var tick=setInterval(function(){
-    if(phase.phase==='wait'&&phase.waitLeft>0){phase.waitLeft--;paint();}
-  },1000);
-  try{
-    for(var i=0;i<days.length;i++){
-      phase.day=i+1;
-      phase.phase='load';paint();
-      var dayRows=await fetchWbDay(days[i],opts);
-      weekRows=weekRows.concat(dayRows);
-      // Перед СЛЕДУЮЩИМ запросом ждём 65 сек (последний день — без ожидания)
-      if(i<days.length-1){
-        phase.phase='wait';phase.waitLeft=65;paint();
-        await new Promise(function(res){setTimeout(res,65000);});
-      }
+    '</div>';
+  var bar=document.getElementById('weekBar');
+  var msg=document.getElementById('weekMsg');
+  function setMsg(t,p){if(msg)msg.textContent=t;if(bar)bar.style.width=p+'%';}
+  for(var i=0;i<days.length;i++){
+    var pct=Math.round(((i)/days.length)*100);
+    setMsg('Загружаем день '+(i+1)+' из '+days.length+' ('+fmtRusDate(days[i])+')...',pct);
+    var dayRows=await fetchWbDay(days[i],opts);
+    weekRows=weekRows.concat(dayRows);
+    pct=Math.round(((i+1)/days.length)*100);
+    setMsg('Загружено: '+(i+1)+' из '+days.length+'. День '+fmtRusDate(days[i])+' — '+(dayRows.length?dayRows.length+' записей':'нет данных'),pct);
+    // Перед следующим запросом ждём 65 секунд (WB лимит). Простой await, без тиков.
+    if(i<days.length-1){
+      await new Promise(function(res){setTimeout(res,65000);});
     }
-  } finally {
-    clearInterval(tick);
   }
   if(!weekRows.length){
     el.innerHTML='<div class="home-empty">За последние 7 дней WB не передал данных.<br><span style="font-size:11px;opacity:.6">Возможно, не было продаж или WB ещё не сформировал отчёт.</span></div>';
     return;
   }
-  // Сравнение: можно подгрузить предыдущую неделю по кнопке. Для простоты сейчас не сравниваем.
   renderHomeData(weekRows,[],{periodLabel:'с '+fmtRusDate(weekFrom)+' по '+fmtRusDate(msk.today),isWeek:true});
 }
 async function loadHomeData(){
