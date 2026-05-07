@@ -335,8 +335,9 @@ async function init(){
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
-  // Сразу подгружаем данные для активной по умолчанию главной
-  loadHomeData();
+  // Главная теперь рендерит начальное состояние без авто-fetch.
+  // Пользователь нажимает кнопку обновить, чтобы избежать «страница не отвечает».
+  renderHomeIdle();
 }
 
 function updateUI(profile,email,token){
@@ -378,7 +379,11 @@ function showSection(name,el){
   if(el) el.classList.add('active');
   document.getElementById('topbarTitle').textContent=titles[name]||'';
   if(name==='detail') renderDetail();
-  if(name==='home') loadHomeData();
+  if(name==='home'){
+    var hc=document.getElementById('homeContent');
+    // Если на главной ничего ещё не отрисовано — показываем idle-состояние
+    if(hc&&!hc.dataset.rendered)renderHomeIdle();
+  }
 }
 
 async function applyPromo(){
@@ -957,6 +962,26 @@ async function loadHomeWeek(){
   }
   renderHomeData(weekRows,[],{periodLabel:'с '+fmtRusDate(weekFrom)+' по '+fmtRusDate(msk.today),isWeek:true});
 }
+function renderHomeIdle(){
+  var el=document.getElementById('homeContent');
+  if(!el)return;
+  el.dataset.rendered='1';
+  var token=localStorage.getItem('wb_token');
+  if(!token){
+    el.innerHTML='<div class="home-empty">Добавьте API токен в разделе «Калькулятор», затем вернитесь сюда.</div>';
+    return;
+  }
+  el.innerHTML=
+    '<div class="home-empty">'+
+      '<div style="font-size:14px;margin-bottom:6px">📊 Главная</div>'+
+      '<div style="font-size:12px;opacity:.7;margin-bottom:18px">Сводка по продажам за день или неделю</div>'+
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'+
+        '<button class="btn-week" onclick="loadHomeData()">Обновить за вчера</button>'+
+        '<button class="btn-week" onclick="loadHomeWeek()" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)">Загрузить за 7 дней</button>'+
+      '</div>'+
+      '<div style="font-size:11px;opacity:.5;margin-top:12px">Неделя — ~7 минут (WB: 1 запрос/мин)</div>'+
+    '</div>';
+}
 async function loadHomeData(){
   var el=document.getElementById('homeContent');
   if(!el)return;
@@ -980,14 +1005,17 @@ async function loadHomeData(){
       periodLabel=fmtRusDate(msk.yesterday)+' (вчера)';
       prevFrom=shiftDate(msk.yesterday,-1);prevTo=prevFrom;
       if(!tRows.length){
-        // Не запускаем 7-минутный авто-фолбэк (вешает UI).
-        // Показываем кнопку — пользователь решает сам.
-        var weekFrom=shiftDate(msk.today,-6);
-        el.innerHTML='<div class="home-empty">'+
-          'За '+fmtRusDate(msk.today)+' и '+fmtRusDate(msk.yesterday)+' WB не передал данных.<br>'+
-          '<span style="font-size:12px;opacity:.7">Это нормально: WB обновляет отчёт раз в сутки.</span>'+
-          '<div style="margin-top:14px"><button class="btn-week" onclick="loadHomeWeek()" id="btnWeek">📅 Загрузить за последние 7 дней</button></div>'+
-          '<div style="font-size:11px;opacity:.5;margin-top:8px">Займёт ~7 минут (WB лимит: 1 запрос в минуту)</div>'+
+        // Не делаем авто-фолбэк на 7 дней — он медленный и грузит UI.
+        // Возвращаемся к idle с двумя кнопками + поясняем.
+        el.innerHTML=
+          '<div class="home-empty">'+
+            'За '+fmtRusDate(msk.today)+' и '+fmtRusDate(msk.yesterday)+' WB не передал данных.<br>'+
+            '<span style="font-size:12px;opacity:.7">Это нормально: WB обновляет отчёт раз в сутки.</span>'+
+            '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px">'+
+              '<button class="btn-week" onclick="loadHomeData()">Попробовать ещё раз</button>'+
+              '<button class="btn-week" onclick="loadHomeWeek()" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)">Загрузить за 7 дней</button>'+
+            '</div>'+
+            '<div style="font-size:11px;opacity:.5;margin-top:8px">Неделя — ~7 минут</div>'+
           '</div>';
         return;
       }
