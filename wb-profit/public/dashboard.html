@@ -835,45 +835,76 @@ function getTodayMoscow(){
   var now=new Date();
   var msk=new Date(now.getTime()+(3*60+now.getTimezoneOffset())*60000);
   var y=msk.getFullYear(),m=String(msk.getMonth()+1).padStart(2,'0'),d=String(msk.getDate()).padStart(2,'0');
-  var py=msk.getFullYear(),pm,pd;
   var prev=new Date(msk);prev.setDate(prev.getDate()-1);
-  pm=String(prev.getMonth()+1).padStart(2,'0');pd=String(prev.getDate()).padStart(2,'0');
-  return{today:y+'-'+m+'-'+d,yesterday:prev.getFullYear()+'-'+pm+'-'+pd,display:d+'.'+m+'.'+y};
+  var pm=String(prev.getMonth()+1).padStart(2,'0'),pd=String(prev.getDate()).padStart(2,'0');
+  return{today:y+'-'+m+'-'+d,yesterday:prev.getFullYear()+'-'+pm+'-'+pd};
 }
 function fmtR(n){return Math.round(Math.abs(n)).toLocaleString('ru-RU')+'₽';}
+function fmtRusDate(iso){
+  // iso = '2026-05-07' → '7 мая 2026'
+  var months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  var p=iso.split('-');
+  return parseInt(p[2])+' '+months[parseInt(p[1])-1]+' '+p[0];
+}
+function shiftDate(iso,days){
+  var dt=new Date(iso+'T00:00:00');
+  dt.setDate(dt.getDate()+days);
+  return dt.toISOString().slice(0,10);
+}
+async function fetchWbRange(dateFrom,dateTo,opts){
+  // Возвращает массив строк из всех страниц или [] при 204/ошибке
+  var all=[],page=1,guard=0;
+  while(guard++<20){
+    var r=await fetch('/api/wb?dateFrom='+dateFrom+'&dateTo='+dateTo+'&page='+page,opts);
+    if(r.status===204)break;
+    if(!r.ok)break;
+    var d=await r.json();
+    var rows=(d&&d.data)||[];
+    if(!rows.length)break;
+    all=all.concat(rows);
+    if(rows.length<1000)break;
+    page++;
+  }
+  return all;
+}
 async function loadHomeData(){
   var el=document.getElementById('homeContent');
   if(!el)return;
   var token=localStorage.getItem('wb_token');
   if(!token){el.innerHTML='<div class="home-empty">Добавьте API токен в разделе «Калькулятор»</div>';return;}
-  var dates=getTodayMoscow();
-  el.innerHTML='<div class="home-spinner">Загружаем данные за '+dates.display+'...</div>';
+  var msk=getTodayMoscow();
+  el.innerHTML='<div class="home-spinner">Загружаем данные за '+fmtRusDate(msk.today)+'...</div>';
   try{
     var opts={headers:{Authorization:token}};
-    var msk=getTodayMoscow();
-    var r1=await fetch('/api/wb?dateFrom='+msk.today+'&dateTo='+msk.today+'&page=1',opts);
-    var d1=r1.status===204?null:await r1.json();
-    var tRows=(d1&&d1.data&&d1.data.length)?d1.data:null;
-    var activeDate,prevDate;
-    if(tRows){
-      activeDate=msk.today;prevDate=msk.yesterday;
+    // 1) Пробуем сегодня
+    var tRows=await fetchWbRange(msk.today,msk.today,opts);
+    var activeFrom=msk.today,activeTo=msk.today,periodLabel=fmtRusDate(msk.today),prevFrom,prevTo;
+    if(tRows.length){
+      prevFrom=msk.yesterday;prevTo=msk.yesterday;
     }else{
-      activeDate=msk.yesterday;
-      var dp=new Date(msk.yesterday+'T00:00:00');dp.setDate(dp.getDate()-1);
-      prevDate=dp.toISOString().slice(0,10);
-      var r1b=await fetch('/api/wb?dateFrom='+activeDate+'&dateTo='+activeDate+'&page=1',opts);
-      var d1b=r1b.status===204?{data:[]}:await r1b.json();
-      tRows=d1b.data||[];
+      // 2) Пробуем вчера
+      tRows=await fetchWbRange(msk.yesterday,msk.yesterday,opts);
+      if(tRows.length){
+        activeFrom=msk.yesterday;activeTo=msk.yesterday;
+        periodLabel=fmtRusDate(msk.yesterday)+' (вчера)';
+        prevFrom=shiftDate(msk.yesterday,-1);prevTo=prevFrom;
+      }else{
+        // 3) Фолбэк: последние 7 дней (WB API часто не отдаёт за один день)
+        var weekFrom=shiftDate(msk.today,-6);
+        tRows=await fetchWbRange(weekFrom,msk.today,opts);
+        activeFrom=weekFrom;activeTo=msk.today;
+        periodLabel='с '+fmtRusDate(weekFrom)+' по '+fmtRusDate(msk.today);
+        // период сравнения — предыдущая неделя
+        prevTo=shiftDate(weekFrom,-1);
+        prevFrom=shiftDate(prevTo,-6);
+      }
     }
-    var r2=await fetch('/api/wb?dateFrom='+prevDate+'&dateTo='+prevDate+'&page=1',opts);
-    var d2=r2.status===204?{data:[]}:await r2.json();
-    var yRows=d2.data||[];
-    var ad=activeDate.split('-');
-    var mons=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
-    dates.display=parseInt(ad[2])+' '+mons[parseInt(ad[1])-1]+' '+ad[0];
-    if(!tRows||!tRows.length)dates.display+=(' (вчера)');
-    renderHomeData(tRows||[],yRows,dates);
-  }catch(e){el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.</div>';}
+    var yRows=await fetchWbRange(prevFrom,prevTo,opts);
+    renderHomeData(tRows,yRows,{periodLabel:periodLabel,isWeek:activeFrom!==activeTo});
+  }catch(e){
+    console.error('loadHomeData error:',e);
+    el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.<br><span style="font-size:11px;opacity:.6">'+(e&&e.message||'')+'</span></div>';
+  }
 }
 function renderHomeData(rows,yRows,dates){
   var el=document.getElementById('homeContent');
@@ -911,18 +942,18 @@ function renderHomeData(rows,yRows,dates){
   var diff=yProfit?profit-yProfit:0;
   var pct=yProfit?Math.round(diff/Math.abs(yProfit)*100):0;
   var up=diff>=0;
-  var months=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  var dp=dates.display.split('.');
-  var dispDate=parseInt(dp[0])+' '+months[parseInt(dp[1])-1]+' '+dp[2];
+  var dispDate=dates.periodLabel;
+  var profitSubLabel=dates.isWeek?'чистая прибыль за период':'чистая прибыль за день';
+  var compareLabel=dates.isWeek?'vs прошлая неделя':'vs предыдущий день';
   var topItems=Object.values(items).map(function(a){var p=a.pay-a.log-a.stor-a.ad;var drr=a.pay>0?Math.round(a.ad/a.pay*100):0;return Object.assign(a,{profit:p,drr:drr});}).sort(function(a,b){return b.profit-a.profit;});
   var losers=topItems.filter(function(x){return x.profit<0;});
   var h='';
   h+='<div class="live-header"><div>';
   h+='<div class="live-date">'+dispDate+' · Москва</div>';
   h+='<div class="live-profit">'+(profit>=0?'+':'−')+fmtR(profit)+'</div>';
-  h+='<div class="live-profit-sub">чистая прибыль за сегодня</div>';
+  h+='<div class="live-profit-sub">'+profitSubLabel+'</div>';
   h+='</div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">';
-  if(yProfit){h+='<div class="live-badge'+(up?'':' neg')+'">'+(up?'↑':'↓')+' '+Math.abs(pct)+'% vs вчера</div>';}
+  if(yProfit){h+='<div class="live-badge'+(up?'':' neg')+'">'+(up?'↑':'↓')+' '+Math.abs(pct)+'% '+compareLabel+'</div>';}
   h+='<div style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:5px"><span class="live-dot"></span>Обновлено сейчас</div>';
   h+='</div></div>';
   if(losers.length){losers.slice(0,2).forEach(function(l){h+='<div class="home-alert-box">⚠️ Убыток: <strong>'+l.name+'</strong>';if(l.drr>0)h+=' — реклама '+l.drr+'% от выручки';h+='</div>';});}
@@ -935,14 +966,14 @@ function renderHomeData(rows,yRows,dates){
   h+='<div class="live-card"><div class="live-card-label">Штрафы</div><div class="live-card-val'+(tPen>0?' red':'')+'">'+( tPen>0?'−'+fmtR(tPen):'0 ₽')+'</div></div>';
   h+='</div>';
   if(topItems.length){
-    h+='<div class="live-sec-title">Топ товаров сегодня</div>';
+    h+='<div class="live-sec-title">Топ товаров за период</div>';
     topItems.slice(0,5).forEach(function(it){
       var loss=it.profit<0;
       h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+it.name+'</div><div class="top-meta">'+it.sales+' прод. · ДРР '+it.drr+'%</div></div>';
       h+='<div class="top-profit"><div class="top-profit-val '+(loss?'r':'g')+'">'+(loss?'−':'+')+fmtR(it.profit)+'</div><div class="top-profit-label">'+(loss?'убыток':'прибыль')+'</div></div></div>';
     });
   } else {
-    h+='<div class="home-empty">Продаж за сегодня ещё нет</div>';
+    h+='<div class="home-empty">За выбранный период WB не передал данных. Откройте «Калькулятор» и выберите период вручную.</div>';
   }
   el.innerHTML=h;
 }
