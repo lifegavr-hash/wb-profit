@@ -330,8 +330,10 @@ async function init(){
   var {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   currentProfile=profile;
   updateUI(profile,currentUser.email,session.access_token);
-  if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
   initCalc();
+  if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
+  // Сразу подгружаем данные для активной по умолчанию главной
+  loadHomeData();
 }
 
 function updateUI(profile,email,token){
@@ -373,6 +375,7 @@ function showSection(name,el){
   if(el) el.classList.add('active');
   document.getElementById('topbarTitle').textContent=titles[name]||'';
   if(name==='detail') renderDetail();
+  if(name==='home') loadHomeData();
 }
 
 async function applyPromo(){
