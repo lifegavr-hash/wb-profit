@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { code, userId } = req.body;
   if (!code || !userId) return res.status(400).json({ error: 'Укажите code и userId' });
 
-  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SECRET_KEY);
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   const { data: promo, error: promoError } = await supabase
     .from('promo_codes').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single();
