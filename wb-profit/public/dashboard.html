@@ -546,12 +546,25 @@ function process(raw){
     tPn+=rd.acceptance||0;
   }
   var tp=tP-tD-tS-tAd-tPn-tWbFin-tCost;
+  // Выручка и комиссия WB — считаем по строкам продаж/возвратов
+  var tRev=0,tComm=0;
+  for(var ri2=0;ri2<raw.length;ri2++){
+    var rr=raw[ri2];
+    var dt=(rr.doc_type_name||'').toLowerCase();
+    if(dt==='продажа'||dt==='возврат'){
+      var rev=rr.retail_amount||rr.retail_price_withdisc_rub||0;
+      tRev+=rev;
+      tComm+=rev-(rr.ppvz_for_pay||0);
+    }
+  }
   var losers=rows.filter(function(x){return x.cost>0&&x.ppvz-x.del-x.stor-x.adv-x.pen-x.cost*Math.max(x.sales-x.ret,0)<0;});
   if(losers.length>0){var wb=document.getElementById('warnBox');wb.textContent='Внимание! Убыточных товаров: '+losers.length+' — '+losers.slice(0,3).map(function(x){return x.sa||x.nm_id;}).join(', ');wb.style.display='block';}
   var wbFinHtml=tWbFin>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(tWbFin)+' ₽</div></div>':'';
   document.getElementById('mg').innerHTML=
     '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(tSl)+' шт.</div></div>'+
     '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(tRt)+' шт.</div></div>'+
+    '<div class="m"><div class="ml">Выручка</div><div class="mv">'+fmt(tRev)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(tComm)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Выплата WB</div><div class="mv">'+fmt(tP)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(tD)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(tS)+' ₽</div></div>'+
@@ -861,6 +874,11 @@ function shiftDate(iso,days){
   dt.setDate(dt.getDate()+days);
   return dt.toISOString().slice(0,10);
 }
+function listDaysBetween(fromIso,toIso){
+  var arr=[],cur=fromIso;
+  while(cur<=toIso){arr.push(cur);cur=shiftDate(cur,1);}
+  return arr;
+}
 async function fetchWbDay(dateIso,opts){
   // Один день. WB возвращает плоский массив или 204.
   // Пагинация через rrdid (ID последней записи).
@@ -920,20 +938,56 @@ async function loadHomeData(){
       periodLabel=fmtRusDate(msk.yesterday)+' (вчера)';
       prevFrom=shiftDate(msk.yesterday,-1);prevTo=prevFrom;
       if(!tRows.length){
-        // Не ломимся за 7 дней — это сразу убивает rate limit.
-        // Просто показываем пустое состояние.
-        el.innerHTML='<div class="home-empty">'+
-          'За '+fmtRusDate(msk.today)+' и '+fmtRusDate(msk.yesterday)+' WB не передал данных.<br>'+
-          'Это нормально, если вы только подключили API или не было продаж.<br>'+
-          '<span style="font-size:11px;opacity:.6">Откройте «Калькулятор» и выберите период вручную.</span>'+
-          '</div>';
-        return;
+        // Фолбэк на 7 дней. ВАЖНО: грузим последовательно с задержкой 65с,
+        // потому что WB лимит = 1 запрос/мин на токен.
+        var weekFrom=shiftDate(msk.today,-6);
+        var days=listDaysBetween(weekFrom,msk.today);
+        var weekRows=[];
+        for(var di=0;di<days.length;di++){
+          var pct=Math.round((di/days.length)*100);
+          setStatus('Грузим неделю: день '+(di+1)+' из '+days.length+' ('+fmtRusDate(days[di])+')...');
+          // Перед НЕ-первым запросом ждём 65 сек (WB лимит)
+          if(di>0){
+            for(var sec=65;sec>0;sec--){
+              setStatus('Грузим неделю: день '+(di+1)+' из '+days.length+'. Ждём WB '+sec+' сек...');
+              await new Promise(function(res){setTimeout(res,1000);});
+            }
+          }
+          var dayRows=await fetchWbDay(days[di],opts);
+          weekRows=weekRows.concat(dayRows);
+        }
+        if(weekRows.length){
+          tRows=weekRows;
+          activeFrom=weekFrom;activeTo=msk.today;
+          periodLabel='с '+fmtRusDate(weekFrom)+' по '+fmtRusDate(msk.today);
+          // Сравнение — предыдущая неделя
+          prevTo=shiftDate(weekFrom,-1);
+          prevFrom=shiftDate(prevTo,-6);
+        } else {
+          el.innerHTML='<div class="home-empty">'+
+            'За последние 7 дней WB не передал данных.<br>'+
+            'Это нормально, если вы только подключили API или не было продаж.<br>'+
+            '<span style="font-size:11px;opacity:.6">Откройте «Калькулятор» и выберите период вручную.</span>'+
+            '</div>';
+          return;
+        }
       }
     }
-    setStatus('Загружаем предыдущий день для сравнения...');
-    var yRows=await fetchWbDay(prevFrom,opts);
+    setStatus('Загружаем период для сравнения...');
+    var prevDays=listDaysBetween(prevFrom,prevTo);
+    var yRows=[];
+    for(var pi=0;pi<prevDays.length;pi++){
+      if(pi>0){
+        for(var psec=65;psec>0;psec--){
+          setStatus('Сравнение: день '+(pi+1)+' из '+prevDays.length+'. Ждём WB '+psec+' сек...');
+          await new Promise(function(res){setTimeout(res,1000);});
+        }
+      }
+      var pdayRows=await fetchWbDay(prevDays[pi],opts);
+      yRows=yRows.concat(pdayRows);
+    }
     console.log('Home loaded:',{tRows:tRows.length,yRows:yRows.length,periodLabel:periodLabel});
-    renderHomeData(tRows,yRows,{periodLabel:periodLabel,isWeek:false});
+    renderHomeData(tRows,yRows,{periodLabel:periodLabel,isWeek:activeFrom!==activeTo});
   }catch(e){
     console.error('loadHomeData error:',e);
     el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.<br><span style="font-size:11px;opacity:.6">'+(e&&e.message||'')+'</span></div>';
