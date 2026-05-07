@@ -467,6 +467,13 @@ async function loadSales(tok,df,dt){
   while(true){
     pg++;document.getElementById('ldTxt').textContent='Загружаем данные... страница '+pg;
     var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:{Authorization:tok}});
+    if(r.status===429){
+      var ra=parseInt(r.headers.get('Retry-After')||'60',10);
+      document.getElementById('ldTxt').textContent='Лимит WB достигнут. Ждём '+ra+' сек (страница '+pg+')...';
+      await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
+      pg--;continue;
+    }
+    if(r.status===204)break;
     if(!r.ok) throw new Error('WB API '+r.status+': '+await r.text());
     var d=await r.json();
     if(!d||!d.length) break;
@@ -851,19 +858,39 @@ function shiftDate(iso,days){
   dt.setDate(dt.getDate()+days);
   return dt.toISOString().slice(0,10);
 }
-async function fetchWbRange(dateFrom,dateTo,opts){
-  // Возвращает массив строк из всех страниц или [] при 204/ошибке
-  var all=[],page=1,guard=0;
-  while(guard++<20){
-    var r=await fetch('/api/wb?dateFrom='+dateFrom+'&dateTo='+dateTo+'&page='+page,opts);
-    if(r.status===204)break;
-    if(!r.ok)break;
-    var d=await r.json();
-    var rows=(d&&d.data)||[];
-    if(!rows.length)break;
-    all=all.concat(rows);
-    if(rows.length<1000)break;
-    page++;
+async function fetchWbDay(dateIso,opts){
+  // Один день. WB возвращает плоский массив или 204.
+  // Пагинация через rrdid (ID последней записи).
+  // На 429 от нашего API ждём Retry-After и повторяем (1 раз).
+  var all=[],rid=0,guard=0,retried=false;
+  while(guard++<10){
+    var ctrl=new AbortController();
+    var t=setTimeout(function(){ctrl.abort();},25000);
+    try{
+      var r=await fetch('/api/wb?dateFrom='+dateIso+'&dateTo='+dateIso+'&rrdid='+rid,
+        {headers:opts.headers,signal:ctrl.signal});
+      clearTimeout(t);
+      if(r.status===204)break;
+      if(r.status===429){
+        var ra=parseInt(r.headers.get('Retry-After')||'30',10);
+        if(retried||ra>90){console.warn('Rate limit, giving up. retryAfter=',ra);break;}
+        if(opts.onProgress)opts.onProgress('Лимит WB. Ждём '+ra+' сек...');
+        await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
+        retried=true;guard--;continue;
+      }
+      if(!r.ok){console.warn('WB API',r.status,'for',dateIso);break;}
+      var d=await r.json();
+      if(!Array.isArray(d)||!d.length)break;
+      all=all.concat(d);
+      var lid=d[d.length-1].rrd_id;
+      if(!lid||lid<=rid)break;
+      rid=lid;
+      if(d.length<100000)break;
+    }catch(e){
+      clearTimeout(t);
+      console.warn('Fetch error for',dateIso,e.message);
+      break;
+    }
   }
   return all;
 }
@@ -873,34 +900,37 @@ async function loadHomeData(){
   var token=localStorage.getItem('wb_token');
   if(!token){el.innerHTML='<div class="home-empty">Добавьте API токен в разделе «Калькулятор»</div>';return;}
   var msk=getTodayMoscow();
-  el.innerHTML='<div class="home-spinner">Загружаем данные за '+fmtRusDate(msk.today)+'...</div>';
+  var setStatus=function(txt){el.innerHTML='<div class="home-spinner">'+txt+'</div>';};
+  setStatus('Загружаем данные за '+fmtRusDate(msk.today)+'...');
   try{
-    var opts={headers:{Authorization:token}};
-    // 1) Пробуем сегодня
-    var tRows=await fetchWbRange(msk.today,msk.today,opts);
+    var opts={headers:{Authorization:token},onProgress:setStatus};
+    // 1) Сегодня
+    var tRows=await fetchWbDay(msk.today,opts);
     var activeFrom=msk.today,activeTo=msk.today,periodLabel=fmtRusDate(msk.today),prevFrom,prevTo;
     if(tRows.length){
       prevFrom=msk.yesterday;prevTo=msk.yesterday;
     }else{
-      // 2) Пробуем вчера
-      tRows=await fetchWbRange(msk.yesterday,msk.yesterday,opts);
-      if(tRows.length){
-        activeFrom=msk.yesterday;activeTo=msk.yesterday;
-        periodLabel=fmtRusDate(msk.yesterday)+' (вчера)';
-        prevFrom=shiftDate(msk.yesterday,-1);prevTo=prevFrom;
-      }else{
-        // 3) Фолбэк: последние 7 дней (WB API часто не отдаёт за один день)
-        var weekFrom=shiftDate(msk.today,-6);
-        tRows=await fetchWbRange(weekFrom,msk.today,opts);
-        activeFrom=weekFrom;activeTo=msk.today;
-        periodLabel='с '+fmtRusDate(weekFrom)+' по '+fmtRusDate(msk.today);
-        // период сравнения — предыдущая неделя
-        prevTo=shiftDate(weekFrom,-1);
-        prevFrom=shiftDate(prevTo,-6);
+      // 2) Вчера (за сегодня WB чаще всего ещё ничего не отдал)
+      setStatus('За сегодня данных пока нет. Загружаем вчерашний день...');
+      tRows=await fetchWbDay(msk.yesterday,opts);
+      activeFrom=msk.yesterday;activeTo=msk.yesterday;
+      periodLabel=fmtRusDate(msk.yesterday)+' (вчера)';
+      prevFrom=shiftDate(msk.yesterday,-1);prevTo=prevFrom;
+      if(!tRows.length){
+        // Не ломимся за 7 дней — это сразу убивает rate limit.
+        // Просто показываем пустое состояние.
+        el.innerHTML='<div class="home-empty">'+
+          'За '+fmtRusDate(msk.today)+' и '+fmtRusDate(msk.yesterday)+' WB не передал данных.<br>'+
+          'Это нормально, если вы только подключили API или не было продаж.<br>'+
+          '<span style="font-size:11px;opacity:.6">Откройте «Калькулятор» и выберите период вручную.</span>'+
+          '</div>';
+        return;
       }
     }
-    var yRows=await fetchWbRange(prevFrom,prevTo,opts);
-    renderHomeData(tRows,yRows,{periodLabel:periodLabel,isWeek:activeFrom!==activeTo});
+    setStatus('Загружаем предыдущий день для сравнения...');
+    var yRows=await fetchWbDay(prevFrom,opts);
+    console.log('Home loaded:',{tRows:tRows.length,yRows:yRows.length,periodLabel:periodLabel});
+    renderHomeData(tRows,yRows,{periodLabel:periodLabel,isWeek:false});
   }catch(e){
     console.error('loadHomeData error:',e);
     el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.<br><span style="font-size:11px;opacity:.6">'+(e&&e.message||'')+'</span></div>';
