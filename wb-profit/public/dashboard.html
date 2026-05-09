@@ -279,7 +279,7 @@ tr.loss td{background:#fff5f5}
             <table>
               <thead><tr>
                 <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
-                <th>Продажи</th><th>Возвраты</th><th>Выплата WB ₽</th>
+                <th>Продажи</th><th>Возвраты</th><th>Остаток</th><th>Выплата WB ₽</th>
                 <th>Логистика ₽</th><th>Хранение ₽</th><th>Реклама ₽</th>
                 <th>Штрафы ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
               </tr></thead>
@@ -508,10 +508,36 @@ async function go(){
   document.getElementById('loadBtn').disabled=true;
   var ldBox=document.getElementById('ldBox');ldBox.style.display='flex';
   try{
+    // Параллельно: основные данные продаж + остатки.
+    var stocksPromise=loadStocks(tok).catch(function(e){console.warn('stocks failed',e);return null;});
     rawData=await loadSales(tok,df,dt);
+    var stocks=await stocksPromise;
+    window._stocksMap=buildStocksMap(stocks);
     process(rawData);
   }catch(e){showErr('Ошибка: '+e.message);}
   finally{document.getElementById('loadBtn').disabled=false;ldBox.style.display='none';}
+}
+async function loadStocks(tok){
+  var r=await fetch('/api/wb-stocks',{headers:{Authorization:tok}});
+  if(r.status===429){
+    // Если лимит — игнорируем без падения, остатков просто не будет
+    return null;
+  }
+  if(!r.ok)return null;
+  return r.json();
+}
+function buildStocksMap(stocks){
+  // По nmId суммируем quantityFull (всего, включая в пути) и inWayToClient (в пути)
+  var m={};
+  if(!Array.isArray(stocks))return m;
+  for(var i=0;i<stocks.length;i++){
+    var s=stocks[i];
+    var nm=s.nmId;if(!nm)continue;
+    if(!m[nm])m[nm]={total:0,inWay:0};
+    m[nm].total+=Number(s.quantityFull||s.quantity||0);
+    m[nm].inWay+=Number(s.inWayToClient||0);
+  }
+  return m;
 }
 
 async function loadSales(tok,df,dt){
@@ -819,13 +845,23 @@ function renderDetail(){
 
 function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
   var tb=document.getElementById('tb');tb.innerHTML='';
+  var stocksMap=window._stocksMap||{};
+  var totalStock=0;
   for(var i=0;i<rows.length;i++){
     var a=rows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
     var pc=prf>=0?'green':'red',ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
+    // Остаток
+    var st=stocksMap[a.nm_id]||{total:0,inWay:0};
+    totalStock+=st.total;
+    var stockCellCls=st.total<5?'red':'';
+    var stockHtml='<span class="'+stockCellCls+'" style="font-weight:600">'+fmt(st.total)+'</span>';
+    if(st.inWay>0)stockHtml+='<div style="font-size:10px;color:var(--hint)">в пути '+fmt(st.inWay)+'</div>';
+    if(!stocksMap[a.nm_id])stockHtml='<span style="color:var(--hint)">—</span>';
     tb.innerHTML+='<tr'+(a.cost>0&&prf<0?' class="loss"':'')+'>'+
       '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
       '<td>'+fmt(a.sales)+'</td><td class="red">'+fmt(a.ret)+'</td>'+
+      '<td>'+stockHtml+'</td>'+
       '<td>'+fmt(a.ppvz)+' ₽</td><td class="red">−'+fmt(a.del)+' ₽</td>'+
       '<td class="red">−'+fmt(a.stor)+' ₽</td><td class="red">−'+fmt(a.adv)+' ₽</td>'+
       '<td class="red">−'+fmt(a.pen)+' ₽</td>'+
@@ -833,7 +869,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
       '<td>'+ps+'</td></tr>';
   }
   var tf=document.getElementById('tfoot');
-  tf.innerHTML='<td colspan="3">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
+  tf.innerHTML='<td colspan="3">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(totalStock)+'</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
 }
 
 function switchTab(tab,e){
