@@ -130,6 +130,52 @@ tr.loss td{background:#fff5f5}
 .btn-week{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border:0;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .btn-week:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
 .btn-week:active{transform:translateY(0)}
+/* === HOME DASHBOARD v2 === */
+.home-greet{font-size:14px;color:var(--muted);margin-bottom:14px}
+.home-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:768px){.home-grid-2{grid-template-columns:1fr}}
+.home-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.home-card-title{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);margin-bottom:12px;text-transform:uppercase}
+.home-big{font-size:32px;font-weight:700;line-height:1.1;margin-bottom:4px}
+.home-big.green{color:#22c55e}.home-big.red{color:#ef4444}
+.home-sub{font-size:12px;color:var(--muted);margin-bottom:8px}
+.home-delta{display:inline-block;font-size:12px;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.home-delta.green{background:rgba(34,197,94,.12);color:#22c55e}
+.home-delta.red{background:rgba(239,68,68,.12);color:#ef4444}
+.home-meta{font-size:11px;color:var(--muted);margin-top:8px}
+.home-empty-mini{font-size:12px;color:var(--muted);text-align:center;padding:12px}
+.home-spinner-icon{font-size:32px;margin-bottom:8px;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.mini-chart{display:flex;align-items:flex-end;justify-content:space-between;height:80px;gap:4px;padding:0 4px}
+.mc-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%}
+.mc-bar-wrap{flex:1;display:flex;align-items:flex-end;width:100%;justify-content:center;padding-bottom:2px}
+.mc-bar{width:60%;border-radius:4px 4px 0 0;min-height:3px;transition:height .3s}
+.mc-bar.green{background:linear-gradient(180deg,#4ade80,#22c55e)}
+.mc-bar.red{background:linear-gradient(180deg,#f87171,#ef4444)}
+.mc-lbl{font-size:9px;color:var(--muted);margin-top:4px}
+.flow{display:flex;flex-direction:column;gap:8px}
+.flow-row{display:grid;grid-template-columns:140px 1fr 100px;align-items:center;gap:10px;font-size:13px}
+.flow-lbl{color:var(--text)}
+.flow-bar-wrap{background:#f1f5f9;height:18px;border-radius:6px;overflow:hidden}
+.flow-bar{height:100%;border-radius:6px;transition:width .4s}
+.flow-bar.green{background:linear-gradient(90deg,#86efac,#22c55e)}
+.flow-bar.red{background:linear-gradient(90deg,#fca5a5,#ef4444)}
+.flow-val{text-align:right;font-weight:600;font-size:13px}
+.flow-val.green{color:#22c55e}.flow-val.red{color:#ef4444}
+.flow-total{display:grid;grid-template-columns:140px 1fr 100px;align-items:center;gap:10px;border-top:2px dashed var(--border);padding-top:10px;margin-top:4px;font-size:14px;font-weight:700}
+.home-alert{background:rgba(251,146,60,.08);border:1px solid rgba(251,146,60,.25);border-radius:10px;padding:10px 12px;margin-bottom:8px}
+.home-alert:last-child{margin-bottom:0}
+.alert-name{font-size:12px;font-weight:600;color:#ea580c;margin-bottom:2px}
+.alert-msg{font-size:11px;color:var(--muted)}
+.home-action{font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);line-height:1.5}
+.home-action:last-of-type{border-bottom:0}
+.home-link{color:#7c3aed;text-decoration:none;font-size:12px;font-weight:600}
+.home-link:hover{text-decoration:underline}
+@media(max-width:768px){
+  .flow-row,.flow-total{grid-template-columns:110px 1fr 80px;font-size:11px;gap:6px}
+  .home-big{font-size:26px}
+  .home-card{padding:14px}
+}
 .home-spinner{text-align:center;padding:48px;color:var(--muted);font-size:13px}
 </style>
 </head>
@@ -335,9 +381,8 @@ async function init(){
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
-  // Главная теперь рендерит начальное состояние без авто-fetch.
-  // Пользователь нажимает кнопку обновить, чтобы избежать «страница не отвечает».
-  renderHomeIdle();
+  // Показываем сводку из Supabase. Если нет — отрендерится idle с подсказкой.
+  loadHomeData();
 }
 
 function updateUI(profile,email,token){
@@ -379,11 +424,7 @@ function showSection(name,el){
   if(el) el.classList.add('active');
   document.getElementById('topbarTitle').textContent=titles[name]||'';
   if(name==='detail') renderDetail();
-  if(name==='home'){
-    var hc=document.getElementById('homeContent');
-    // Если на главной ничего ещё не отрисовано — показываем idle-состояние
-    if(hc&&!hc.dataset.rendered)renderHomeIdle();
-  }
+  if(name==='home') loadHomeData();
 }
 
 async function applyPromo(){
@@ -585,6 +626,14 @@ function process(raw){
   renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp);
   renderChart(byMonthData,'profit');
   document.getElementById('results').style.display='block';
+  // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
+  try{
+    var costMap={};
+    rows.forEach(function(x){if(x.nm&&x.cost>0)costMap[x.nm]=x.cost;});
+    localStorage.setItem('wb_costs',JSON.stringify(costMap));
+    var snaps=aggregateRowsByDay(raw,costMap);
+    if(snaps.length)saveSnapshots(snaps);
+  }catch(e){console.warn('snapshots aggregation failed',e);}
 }
 
 function renderDetail(){
@@ -888,9 +937,6 @@ function listDaysBetween(fromIso,toIso){
   return arr;
 }
 async function fetchWbDay(dateIso,opts){
-  // Один день. WB возвращает плоский массив или 204.
-  // Пагинация через rrdid (ID последней записи).
-  // На 429 от нашего API ждём Retry-After и повторяем (1 раз).
   var all=[],rid=0,guard=0,retried=false;
   while(guard++<10){
     var ctrl=new AbortController();
@@ -902,12 +948,11 @@ async function fetchWbDay(dateIso,opts){
       if(r.status===204)break;
       if(r.status===429){
         var ra=parseInt(r.headers.get('Retry-After')||'30',10);
-        if(retried||ra>90){console.warn('Rate limit, giving up. retryAfter=',ra);break;}
-        if(opts.onProgress)opts.onProgress('Лимит WB. Ждём '+ra+' сек...');
+        if(retried||ra>90)break;
         await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
         retried=true;guard--;continue;
       }
-      if(!r.ok){console.warn('WB API',r.status,'for',dateIso);break;}
+      if(!r.ok)break;
       var d=await r.json();
       if(!Array.isArray(d)||!d.length)break;
       all=all.concat(d);
@@ -915,192 +960,304 @@ async function fetchWbDay(dateIso,opts){
       if(!lid||lid<=rid)break;
       rid=lid;
       if(d.length<100000)break;
-    }catch(e){
-      clearTimeout(t);
-      console.warn('Fetch error for',dateIso,e.message);
-      break;
-    }
+    }catch(e){clearTimeout(t);break;}
   }
   return all;
 }
-async function loadHomeWeek(){
-  var el=document.getElementById('homeContent');
-  if(!el)return;
-  var token=localStorage.getItem('wb_token');
-  if(!token)return;
-  var msk=getTodayMoscow();
-  var opts={headers:{Authorization:token}};
-  var weekFrom=shiftDate(msk.today,-6);
-  var days=listDaysBetween(weekFrom,msk.today);
-  var weekRows=[];
-  // Один раз создаём DOM, дальше обновляем точечно textContent — никаких innerHTML в цикле.
-  el.innerHTML=
-    '<div class="home-empty">'+
-      '<div style="font-size:14px;margin-bottom:14px">📅 Загрузка за неделю</div>'+
-      '<div style="background:#eee;border-radius:8px;height:8px;overflow:hidden;max-width:360px;margin:0 auto"><div id="weekBar" style="height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);width:0%;transition:width .3s"></div></div>'+
-      '<div id="weekMsg" style="margin-top:12px;font-size:13px">Готовим запрос...</div>'+
-      '<div style="font-size:11px;opacity:.5;margin-top:8px">Можно открыть в фоновой вкладке</div>'+
-    '</div>';
-  var bar=document.getElementById('weekBar');
-  var msg=document.getElementById('weekMsg');
-  function setMsg(t,p){if(msg)msg.textContent=t;if(bar)bar.style.width=p+'%';}
-  for(var i=0;i<days.length;i++){
-    var pct=Math.round(((i)/days.length)*100);
-    setMsg('Загружаем день '+(i+1)+' из '+days.length+' ('+fmtRusDate(days[i])+')...',pct);
-    var dayRows=await fetchWbDay(days[i],opts);
-    weekRows=weekRows.concat(dayRows);
-    pct=Math.round(((i+1)/days.length)*100);
-    setMsg('Загружено: '+(i+1)+' из '+days.length+'. День '+fmtRusDate(days[i])+' — '+(dayRows.length?dayRows.length+' записей':'нет данных'),pct);
-    // Перед следующим запросом ждём 65 секунд (WB лимит). Простой await, без тиков.
-    if(i<days.length-1){
-      await new Promise(function(res){setTimeout(res,65000);});
+
+// === АГРЕГАТОР ===
+// Превращает плоский список WB-строк в массив снапшотов по дням.
+function aggregateRowsByDay(rows,costMap){
+  costMap=costMap||{};
+  var byDay={};
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    var day=(r.date||r.create_dt||r.order_dt||'').slice(0,10);
+    if(!day)continue;
+    if(!byDay[day]){
+      byDay[day]={day:day,sales_count:0,returns_count:0,
+        revenue:0,commission:0,payout:0,
+        logistics:0,storage:0,ads:0,penalties:0,wb_finance:0,
+        cost:0,profit:0,_items:{}};
+    }
+    var s=byDay[day];
+    var doc=(r.doc_type_name||'').toLowerCase();
+    if(doc==='продажа')s.sales_count++;
+    if(doc==='возврат')s.returns_count++;
+    var rev=r.retail_amount||r.retail_price_withdisc_rub||0;
+    s.revenue+=rev;
+    s.payout+=r.ppvz_for_pay||0;
+    s.commission+=rev-(r.ppvz_for_pay||0);
+    s.logistics+=(r.delivery_rub||0)+(r.rebill_logistic_cost||0);
+    s.storage+=r.storage_fee||0;
+    if(isAdv(r.bonus_type_name,r.supplier_oper_name))s.ads+=Math.abs(r.deduction||0);
+    else if(isWbFin(r.bonus_type_name,r.supplier_oper_name))s.wb_finance+=Math.abs(r.deduction||0);
+    else s.penalties+=Math.abs(r.deduction||0);
+    // Себестоимость по товарам
+    var nm=r.nm_id;
+    if(nm&&costMap[nm]&&doc==='продажа'){s.cost+=costMap[nm];}
+    // Сборка топа
+    if(nm){
+      if(!s._items[nm])s._items[nm]={name:r.sa_name||('Арт. '+nm),sales:0,profit:0,revenue:0,ad:0};
+      var it=s._items[nm];
+      if(doc==='продажа')it.sales++;
+      it.revenue+=rev;
+      it.profit+=(r.ppvz_for_pay||0)-(r.delivery_rub||0)-(r.rebill_logistic_cost||0)-(r.storage_fee||0);
+      if(isAdv(r.bonus_type_name,r.supplier_oper_name))it.ad+=Math.abs(r.deduction||0);
+      if(costMap[nm]&&doc==='продажа')it.profit-=costMap[nm];
     }
   }
-  if(!weekRows.length){
-    el.innerHTML='<div class="home-empty">За последние 7 дней WB не передал данных.<br><span style="font-size:11px;opacity:.6">Возможно, не было продаж или WB ещё не сформировал отчёт.</span></div>';
-    return;
-  }
-  renderHomeData(weekRows,[],{periodLabel:'с '+fmtRusDate(weekFrom)+' по '+fmtRusDate(msk.today),isWeek:true});
+  // Финализация: profit, top_items, alerts
+  var out=[];
+  Object.keys(byDay).forEach(function(k){
+    var s=byDay[k];
+    s.profit=s.payout-s.logistics-s.storage-s.ads-s.penalties-s.wb_finance-s.cost;
+    var items=Object.keys(s._items).map(function(nm){
+      var it=s._items[nm];
+      it.drr=it.revenue>0?Math.round(it.ad/it.revenue*100):0;
+      return it;
+    });
+    s.top_items=items.sort(function(a,b){return b.profit-a.profit;}).slice(0,5);
+    s.alerts=buildAlerts(items);
+    delete s._items;
+    out.push(s);
+  });
+  return out;
 }
-function renderHomeIdle(){
+function buildAlerts(items){
+  var alerts=[];
+  for(var i=0;i<items.length&&alerts.length<3;i++){
+    var it=items[i];
+    if(it.drr>50&&it.sales>0){
+      alerts.push({type:'high_drr',name:it.name,
+        msg:'реклама съедает '+it.drr+'% выручки'});
+    } else if(it.profit<0&&it.sales>0){
+      alerts.push({type:'loss',name:it.name,
+        msg:'убыток '+Math.round(Math.abs(it.profit)).toLocaleString('ru-RU')+' ₽'});
+    }
+  }
+  return alerts;
+}
+async function saveSnapshots(snapshots,token){
+  if(!snapshots||!snapshots.length)return;
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt)return;
+    await fetch('/api/snapshots',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify({snapshots:snapshots})
+    });
+  }catch(e){console.warn('saveSnapshots error',e);}
+}
+async function loadSnapshots(days){
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt)return [];
+    var r=await fetch('/api/snapshots?days='+(days||7),{headers:{'Authorization':'Bearer '+jwt}});
+    if(!r.ok)return [];
+    var d=await r.json();
+    return d.snapshots||[];
+  }catch(e){console.warn('loadSnapshots error',e);return [];}
+}
+
+// === ГЛАВНАЯ ===
+function renderHomeIdle(reason){
   var el=document.getElementById('homeContent');
   if(!el)return;
   el.dataset.rendered='1';
-  var token=localStorage.getItem('wb_token');
-  if(!token){
-    el.innerHTML='<div class="home-empty">Добавьте API токен в разделе «Калькулятор», затем вернитесь сюда.</div>';
-    return;
-  }
+  var msg=reason||'Сначала загрузите данные за неделю в разделе «Калькулятор» — и они появятся здесь.';
   el.innerHTML=
     '<div class="home-empty">'+
-      '<div style="font-size:14px;margin-bottom:6px">📊 Главная</div>'+
-      '<div style="font-size:12px;opacity:.7;margin-bottom:18px">Сводка по продажам за день или неделю</div>'+
-      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'+
-        '<button class="btn-week" onclick="loadHomeData()">Обновить за вчера</button>'+
-        '<button class="btn-week" onclick="loadHomeWeek()" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)">Загрузить за 7 дней</button>'+
-      '</div>'+
-      '<div style="font-size:11px;opacity:.5;margin-top:12px">Неделя — ~7 минут (WB: 1 запрос/мин)</div>'+
+      '<div style="font-size:32px;margin-bottom:10px">📊</div>'+
+      '<div style="font-size:14px;margin-bottom:6px">Главная пуста</div>'+
+      '<div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto 16px">'+msg+'</div>'+
+      '<button class="btn-week" onclick="showSection(\'calc\',document.getElementById(\'nav-calc\'))">Открыть Калькулятор</button>'+
     '</div>';
 }
 async function loadHomeData(){
   var el=document.getElementById('homeContent');
   if(!el)return;
+  el.dataset.rendered='1';
+  el.innerHTML='<div class="home-empty"><div class="home-spinner-icon">⏳</div>Загружаем сводку...</div>';
+  // 1) Читаем историю снапшотов из Supabase (быстро)
+  var snapshots=await loadSnapshots(14);
+  // 2) Параллельно — обновляем «вчера» одним запросом к WB (если есть токен)
   var token=localStorage.getItem('wb_token');
-  if(!token){el.innerHTML='<div class="home-empty">Добавьте API токен в разделе «Калькулятор»</div>';return;}
-  var msk=getTodayMoscow();
-  var setStatus=function(txt){el.innerHTML='<div class="home-spinner">'+txt+'</div>';};
-  setStatus('Загружаем данные за '+fmtRusDate(msk.today)+'...');
-  try{
-    var opts={headers:{Authorization:token},onProgress:setStatus};
-    // 1) Сегодня
-    var tRows=await fetchWbDay(msk.today,opts);
-    var activeFrom=msk.today,activeTo=msk.today,periodLabel=fmtRusDate(msk.today),prevFrom,prevTo;
-    if(tRows.length){
-      prevFrom=msk.yesterday;prevTo=msk.yesterday;
-    }else{
-      // 2) Вчера (за сегодня WB чаще всего ещё ничего не отдал)
-      setStatus('За сегодня данных пока нет. Загружаем вчерашний день...');
-      tRows=await fetchWbDay(msk.yesterday,opts);
-      activeFrom=msk.yesterday;activeTo=msk.yesterday;
-      periodLabel=fmtRusDate(msk.yesterday)+' (вчера)';
-      prevFrom=shiftDate(msk.yesterday,-1);prevTo=prevFrom;
-      if(!tRows.length){
-        // Не делаем авто-фолбэк на 7 дней — он медленный и грузит UI.
-        // Возвращаемся к idle с двумя кнопками + поясняем.
-        el.innerHTML=
-          '<div class="home-empty">'+
-            'За '+fmtRusDate(msk.today)+' и '+fmtRusDate(msk.yesterday)+' WB не передал данных.<br>'+
-            '<span style="font-size:12px;opacity:.7">Это нормально: WB обновляет отчёт раз в сутки.</span>'+
-            '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px">'+
-              '<button class="btn-week" onclick="loadHomeData()">Попробовать ещё раз</button>'+
-              '<button class="btn-week" onclick="loadHomeWeek()" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)">Загрузить за 7 дней</button>'+
-            '</div>'+
-            '<div style="font-size:11px;opacity:.5;margin-top:8px">Неделя — ~7 минут</div>'+
-          '</div>';
-        return;
-      }
-    }
-    setStatus('Загружаем предыдущий день для сравнения...');
-    var yRows=await fetchWbDay(prevFrom,opts);
-    console.log('Home loaded:',{tRows:tRows.length,yRows:yRows.length,periodLabel:periodLabel});
-    renderHomeData(tRows,yRows,{periodLabel:periodLabel,isWeek:false});
-  }catch(e){
-    console.error('loadHomeData error:',e);
-    el.innerHTML='<div class="home-empty">Ошибка загрузки. Проверьте токен.<br><span style="font-size:11px;opacity:.6">'+(e&&e.message||'')+'</span></div>';
+  if(token){
+    var msk=getTodayMoscow();
+    fetchWbDay(msk.yesterday,{headers:{Authorization:token}}).then(function(rows){
+      if(!rows||!rows.length)return;
+      var costMap=(JSON.parse(localStorage.getItem('wb_costs')||'{}'));
+      var fresh=aggregateRowsByDay(rows,costMap);
+      saveSnapshots(fresh.map(function(s){s.source='auto';return s;}));
+      // Перерисуем с обновлённым вчера
+      loadSnapshots(14).then(function(updated){renderDashboard(updated);});
+    }).catch(function(){});
   }
+  if(!snapshots.length){
+    renderHomeIdle();
+    return;
+  }
+  renderDashboard(snapshots);
 }
-function renderHomeData(rows,yRows,dates){
+function renderDashboard(snapshots){
   var el=document.getElementById('homeContent');
-  var tSales=0,tRet=0,tPay=0,tLog=0,tStor=0,tAd=0,tPen=0,tFin=0;
-  var items={};
-  rows.forEach(function(r){
-    var doc=(r.doc_type_name||'').toLowerCase();
-    if(doc==='продажа')tSales++;
-    if(doc==='возврат')tRet++;
-    tPay+=r.ppvz_for_pay||0;
-    tLog+=(r.delivery_rub||0)+(r.rebill_logistic_cost||0);
-    tStor+=r.storage_fee||0;
-    if(isAdv(r.bonus_type_name,r.supplier_oper_name))tAd+=Math.abs(r.deduction||0);
-    else if(isWbFin(r.bonus_type_name,r.supplier_oper_name))tFin+=Math.abs(r.deduction||0);
-    else tPen+=Math.abs(r.deduction||0);
-    if(!r.nm_id&&!r.sa_name)return;
-    var k=r.nm_id||(r.sa_name||'x');
-    if(!items[k])items[k]={name:r.sa_name||('Арт. '+r.nm_id),sales:0,pay:0,log:0,ad:0,stor:0};
-    var a=items[k];
-    if(doc==='продажа')a.sales++;
-    a.pay+=r.ppvz_for_pay||0;
-    a.log+=(r.delivery_rub||0)+(r.rebill_logistic_cost||0);
-    a.stor+=r.storage_fee||0;
-    if(isAdv(r.bonus_type_name,r.supplier_oper_name))a.ad+=Math.abs(r.deduction||0);
-  });
-  var profit=tPay-tLog-tStor-tAd-tPen-tFin;
-  var yProfit=0;
-  yRows.forEach(function(r){
-    var yL=(r.delivery_rub||0)+(r.rebill_logistic_cost||0)+(r.storage_fee||0);
-    var yA=isAdv(r.bonus_type_name,r.supplier_oper_name)?Math.abs(r.deduction||0):0;
-    var yP=(!isAdv(r.bonus_type_name,r.supplier_oper_name)&&!isWbFin(r.bonus_type_name,r.supplier_oper_name))?Math.abs(r.deduction||0):0;
-    var yF=isWbFin(r.bonus_type_name,r.supplier_oper_name)?Math.abs(r.deduction||0):0;
-    yProfit+=(r.ppvz_for_pay||0)-yL-yA-yP-yF;
-  });
-  var diff=yProfit?profit-yProfit:0;
-  var pct=yProfit?Math.round(diff/Math.abs(yProfit)*100):0;
-  var up=diff>=0;
-  var dispDate=dates.periodLabel;
-  var profitSubLabel=dates.isWeek?'чистая прибыль за период':'чистая прибыль за день';
-  var compareLabel=dates.isWeek?'vs прошлая неделя':'vs предыдущий день';
-  var topItems=Object.values(items).map(function(a){var p=a.pay-a.log-a.stor-a.ad;var drr=a.pay>0?Math.round(a.ad/a.pay*100):0;return Object.assign(a,{profit:p,drr:drr});}).sort(function(a,b){return b.profit-a.profit;});
-  var losers=topItems.filter(function(x){return x.profit<0;});
+  if(!el||!snapshots.length){renderHomeIdle();return;}
+  // Сортируем по дате DESC, берём вчера и неделю
+  snapshots.sort(function(a,b){return a.day<b.day?-1:1;});
+  var last=snapshots[snapshots.length-1];
+  var prev=snapshots.length>1?snapshots[snapshots.length-2]:null;
+  var week=snapshots.slice(-7);
+  var prevWeek=snapshots.length>=14?snapshots.slice(-14,-7):[];
+  var weekSum=sumSnaps(week);
+  var prevWeekSum=sumSnaps(prevWeek);
+  // === HTML ===
   var h='';
-  h+='<div class="live-header"><div>';
-  h+='<div class="live-date">'+dispDate+' · Москва</div>';
-  h+='<div class="live-profit">'+(profit>=0?'+':'−')+fmtR(profit)+'</div>';
-  h+='<div class="live-profit-sub">'+profitSubLabel+'</div>';
-  h+='</div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end">';
-  if(yProfit){h+='<div class="live-badge'+(up?'':' neg')+'">'+(up?'↑':'↓')+' '+Math.abs(pct)+'% '+compareLabel+'</div>';}
-  h+='<div style="font-size:11px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:5px"><span class="live-dot"></span>Обновлено сейчас</div>';
-  h+='</div></div>';
-  if(losers.length){losers.slice(0,2).forEach(function(l){h+='<div class="home-alert-box">⚠️ Убыток: <strong>'+l.name+'</strong>';if(l.drr>0)h+=' — реклама '+l.drr+'% от выручки';h+='</div>';});}
-  h+='<div class="live-grid">';
-  h+='<div class="live-card"><div class="live-card-label">Продажи</div><div class="live-card-val">'+tSales+' шт.</div></div>';
-  h+='<div class="live-card"><div class="live-card-label">Возвраты</div><div class="live-card-val red">'+tRet+' шт.</div></div>';
-  h+='<div class="live-card"><div class="live-card-label">Выплата WB</div><div class="live-card-val green">+'+fmtR(tPay)+'</div></div>';
-  h+='<div class="live-card"><div class="live-card-label">Логистика</div><div class="live-card-val red">−'+fmtR(tLog+tStor)+'</div></div>';
-  h+='<div class="live-card"><div class="live-card-label">Реклама</div><div class="live-card-val red">−'+fmtR(tAd)+'</div></div>';
-  h+='<div class="live-card"><div class="live-card-label">Штрафы</div><div class="live-card-val'+(tPen>0?' red':'')+'">'+( tPen>0?'−'+fmtR(tPen):'0 ₽')+'</div></div>';
+  // Greeting
+  var hour=new Date().getHours();
+  var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Добрый день':'Добрый вечер';
+  h+='<div class="home-greet">'+greet+'! Вот что произошло за '+fmtRusDate(last.day)+'.</div>';
+  // Block 1+2: Вчера + график
+  h+='<div class="home-grid-2">';
+  h+='<div class="home-card"><div class="home-card-title">🔥 ВЧЕРА</div>';
+  var profit=Number(last.profit||0);
+  h+='<div class="home-big '+(profit>=0?'green':'red')+'">'+(profit>=0?'+':'−')+fmtR(Math.abs(profit))+'</div>';
+  h+='<div class="home-sub">чистая прибыль</div>';
+  if(prev){
+    var diff=profit-Number(prev.profit||0);
+    var pct=prev.profit?Math.round(diff/Math.abs(prev.profit)*100):0;
+    h+='<div class="home-delta '+(diff>=0?'green':'red')+'">'+(diff>=0?'↑':'↓')+' '+Math.abs(pct)+'% vs '+fmtRusDate(prev.day)+'</div>';
+  }
+  h+='<div class="home-meta">Продано: '+(last.sales_count||0)+' шт · Возвратов: '+(last.returns_count||0)+'</div>';
   h+='</div>';
-  if(topItems.length){
-    h+='<div class="live-sec-title">Топ товаров за период</div>';
-    topItems.slice(0,5).forEach(function(it){
-      var loss=it.profit<0;
-      h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+it.name+'</div><div class="top-meta">'+it.sales+' прод. · ДРР '+it.drr+'%</div></div>';
-      h+='<div class="top-profit"><div class="top-profit-val '+(loss?'r':'g')+'">'+(loss?'−':'+')+fmtR(it.profit)+'</div><div class="top-profit-label">'+(loss?'убыток':'прибыль')+'</div></div></div>';
+  // График
+  h+='<div class="home-card"><div class="home-card-title">📈 СЕМИДНЕВНЫЙ ГРАФИК</div>';
+  h+=renderMiniChart(week);
+  if(week.length){
+    var best=week.reduce(function(a,b){return Number(a.profit||0)>Number(b.profit||0)?a:b;});
+    var worst=week.reduce(function(a,b){return Number(a.profit||0)<Number(b.profit||0)?a:b;});
+    h+='<div class="home-meta" style="margin-top:8px">Лучший: '+shortDate(best.day)+' ('+fmtRSign(best.profit)+') · Худший: '+shortDate(worst.day)+' ('+fmtRSign(worst.profit)+')</div>';
+  }
+  h+='</div>';
+  h+='</div>';
+  // Block 3: Куда ушли деньги
+  h+='<div class="home-card"><div class="home-card-title">⚖️ КУДА УШЛИ ДЕНЬГИ ВЧЕРА</div>';
+  h+=renderMoneyFlow(last);
+  h+='</div>';
+  // Block 4+5: Топ + Тревоги
+  h+='<div class="home-grid-2">';
+  h+='<div class="home-card"><div class="home-card-title">🏆 ТОП-3 ВЧЕРА</div>';
+  var top=Array.isArray(last.top_items)?last.top_items:[];
+  if(top.length){
+    top.slice(0,3).forEach(function(it,i){
+      var p=Number(it.profit||0);
+      h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+(i+1)+'. '+it.name+'</div><div class="top-meta">'+(it.sales||0)+' шт</div></div>';
+      h+='<div class="top-profit"><div class="top-profit-val '+(p>=0?'g':'r')+'">'+(p>=0?'+':'−')+fmtR(Math.abs(p))+'</div></div></div>';
     });
   } else {
-    h+='<div class="home-empty">За выбранный период WB не передал данных. Откройте «Калькулятор» и выберите период вручную.</div>';
+    h+='<div class="home-empty-mini">Нет данных по товарам</div>';
   }
+  h+='</div>';
+  h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ</div>';
+  var weekAlerts=collectWeekAlerts(week);
+  if(weekAlerts.length){
+    weekAlerts.slice(0,3).forEach(function(a){
+      h+='<div class="home-alert"><div class="alert-name">'+a.name+'</div><div class="alert-msg">'+a.msg+'</div></div>';
+    });
+  } else {
+    h+='<div class="home-empty-mini">Всё спокойно</div>';
+  }
+  h+='</div>';
+  h+='</div>';
+  // Block 6: Что сделать
+  h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
+  var actions=buildActions(week,weekAlerts);
+  if(actions.length){
+    actions.forEach(function(a,i){h+='<div class="home-action">'+(i+1)+'. '+a+'</div>';});
+  } else {
+    h+='<div class="home-empty-mini">Конкретных рекомендаций нет — продолжайте в том же духе!</div>';
+  }
+  h+='<div style="margin-top:14px;text-align:right"><a href="#" onclick="showSection(\'calc\',document.getElementById(\'nav-calc\'));return false;" class="home-link">Открыть детали в Калькуляторе →</a></div>';
+  h+='</div>';
   el.innerHTML=h;
 }
-
+function sumSnaps(arr){
+  var s={profit:0,revenue:0,ads:0,sales_count:0};
+  arr.forEach(function(x){s.profit+=Number(x.profit||0);s.revenue+=Number(x.revenue||0);s.ads+=Number(x.ads||0);s.sales_count+=Number(x.sales_count||0);});
+  return s;
+}
+function shortDate(iso){var p=iso.split('-');var m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return parseInt(p[2])+' '+m[parseInt(p[1])-1];}
+function fmtRSign(v){v=Number(v||0);return (v>=0?'+':'−')+fmtR(Math.abs(v));}
+function renderMiniChart(snaps){
+  if(!snaps.length)return '<div class="home-empty-mini">Мало данных</div>';
+  var max=0;snaps.forEach(function(s){var v=Math.abs(Number(s.profit||0));if(v>max)max=v;});
+  if(max===0)max=1;
+  var h='<div class="mini-chart">';
+  snaps.forEach(function(s){
+    var v=Number(s.profit||0);
+    var pct=Math.max(4,Math.round(Math.abs(v)/max*100));
+    var cls=v>=0?'mc-bar green':'mc-bar red';
+    var lbl=shortDate(s.day);
+    h+='<div class="mc-col"><div class="mc-bar-wrap"><div class="'+cls+'" style="height:'+pct+'%" title="'+lbl+': '+fmtRSign(v)+'"></div></div><div class="mc-lbl">'+lbl.split(' ')[0]+'</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+function renderMoneyFlow(s){
+  var rev=Number(s.revenue||0);
+  if(rev<=0)return '<div class="home-empty-mini">Нет данных по выручке</div>';
+  var rows=[
+    {label:'Выручка',val:rev,sign:'+',cls:'green'},
+    {label:'− Комиссия WB',val:Number(s.commission||0),sign:'−',cls:'red'},
+    {label:'− Логистика',val:Number(s.logistics||0),sign:'−',cls:'red'},
+    {label:'− Хранение',val:Number(s.storage||0),sign:'−',cls:'red'},
+    {label:'− Реклама',val:Number(s.ads||0),sign:'−',cls:'red'},
+    {label:'− Штрафы',val:Number(s.penalties||0),sign:'−',cls:'red'},
+    {label:'− Себестоим.',val:Number(s.cost||0),sign:'−',cls:'red'}
+  ];
+  var profit=Number(s.profit||0);
+  var h='<div class="flow">';
+  rows.forEach(function(r){
+    if(r.val<=0&&r.label!=='Выручка')return;
+    var pct=Math.max(2,Math.round(r.val/rev*100));
+    h+='<div class="flow-row"><div class="flow-lbl">'+r.label+'</div><div class="flow-bar-wrap"><div class="flow-bar '+r.cls+'" style="width:'+pct+'%"></div></div><div class="flow-val '+r.cls+'">'+r.sign+fmtR(r.val)+'</div></div>';
+  });
+  h+='<div class="flow-total"><div class="flow-lbl">= Чистая прибыль</div><div></div><div class="flow-val '+(profit>=0?'green':'red')+'">'+(profit>=0?'+':'−')+fmtR(Math.abs(profit))+'</div></div>';
+  h+='</div>';
+  return h;
+}
+function collectWeekAlerts(week){
+  // Группируем тревоги по name, считаем за сколько дней повторяется
+  var byName={};
+  week.forEach(function(s){
+    (s.alerts||[]).forEach(function(a){
+      if(!byName[a.name])byName[a.name]={name:a.name,count:0,last:a.msg,type:a.type};
+      byName[a.name].count++;
+      byName[a.name].last=a.msg;
+    });
+  });
+  var arr=Object.keys(byName).map(function(k){return byName[k];});
+  arr.sort(function(a,b){return b.count-a.count;});
+  return arr.map(function(a){
+    var msg=a.last+(a.count>1?' (уже '+a.count+' дн. подряд)':'');
+    return {name:a.name,msg:msg,type:a.type};
+  });
+}
+function buildActions(week,alerts){
+  var actions=[];
+  alerts.slice(0,3).forEach(function(a){
+    if(a.type==='high_drr')actions.push('Снизить или отключить рекламу на «'+a.name+'» — '+a.msg);
+    else if(a.type==='loss')actions.push('Проверить себестоимость и цену «'+a.name+'» — '+a.msg);
+    else actions.push('Проверить «'+a.name+'» — '+a.msg);
+  });
+  // Доп. инсайт: если общий профит за неделю упал
+  var ws=sumSnaps(week);
+  if(ws.profit<0)actions.push('Прибыль за неделю отрицательная — пересмотрите ценообразование убыточных товаров');
+  return actions;
+}
 </script>
 </body>
 </html>
