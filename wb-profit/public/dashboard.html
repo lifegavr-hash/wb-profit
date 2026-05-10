@@ -130,6 +130,49 @@ tr.loss td{background:#fff5f5}
 .btn-week{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border:0;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .btn-week:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
 .btn-week:active{transform:translateY(0)}
+/* === ANALYTICS === */
+.analytics-tabs{display:flex;gap:6px;margin-bottom:16px;align-items:center}
+.atab{background:var(--surface);border:1px solid var(--border);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:all .15s}
+.atab:hover{border-color:#7c3aed}
+.atab.active{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border-color:transparent}
+.atab-refresh{background:var(--surface);border:1px solid var(--border);width:36px;height:36px;border-radius:8px;font-size:16px;cursor:pointer;color:var(--muted);margin-left:auto;transition:all .15s}
+.atab-refresh:hover{color:#7c3aed;border-color:#7c3aed;transform:rotate(90deg)}
+.an-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+@media(max-width:900px){.an-grid{grid-template-columns:1fr}}
+.an-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.an-card-title{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);margin-bottom:14px;text-transform:uppercase}
+.an-chart{position:relative;height:240px}
+.an-chart-svg{width:100%;height:100%}
+.an-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;color:var(--muted)}
+.an-legend-dot{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.an-stat{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)}
+.an-stat:last-child{border-bottom:0}
+.an-stat-lbl{color:var(--muted)}
+.an-stat-val{font-weight:600}
+.abc-table{width:100%;border-collapse:collapse;font-size:12px}
+.abc-table th{text-align:left;padding:8px 6px;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+.abc-table td{padding:8px 6px;border-bottom:1px solid var(--border)}
+.abc-table tr:last-child td{border-bottom:0}
+.abc-cat{display:inline-block;width:22px;height:22px;border-radius:50%;text-align:center;line-height:22px;font-weight:700;font-size:11px;color:#fff}
+.abc-cat.A{background:#22c55e}
+.abc-cat.B{background:#f59e0b}
+.abc-cat.C{background:#94a3b8}
+.abc-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.abc-sum-item{background:rgba(124,58,237,.05);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.abc-sum-cat{font-size:11px;color:var(--muted);margin-bottom:4px}
+.abc-sum-val{font-size:18px;font-weight:700}
+.abc-sum-pct{font-size:11px;color:var(--muted)}
+.problem-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px}
+.problem-item:last-child{border-bottom:0}
+.problem-name{font-size:13px;font-weight:500;min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.problem-tag{font-size:10px;padding:3px 7px;border-radius:10px;font-weight:600;flex-shrink:0;text-transform:uppercase;letter-spacing:.3px}
+.problem-tag.loss{background:rgba(239,68,68,.12);color:#ef4444}
+.problem-tag.drr{background:rgba(251,146,60,.12);color:#ea580c}
+.problem-tag.idle{background:rgba(148,163,184,.15);color:#64748b}
+.problem-val{font-size:12px;font-weight:600;flex-shrink:0}
+.problem-val.red{color:#ef4444}
+.an-insight{background:rgba(124,58,237,.06);border-left:3px solid #7c3aed;padding:10px 14px;border-radius:0 8px 8px 0;margin-top:14px;font-size:12px;line-height:1.5}
+.an-insight strong{color:#7c3aed}
 /* === HOME DASHBOARD v2 === */
 .home-greet{font-size:14px;color:var(--muted);margin-bottom:14px}
 .home-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -304,9 +347,18 @@ tr.loss td{background:#fff5f5}
 
     <!-- Аналитика -->
     <div class="section" id="sectionAnalytics">
-      <div class="card">
-        <div class="ct">Аналитика</div>
-        <p style="color:var(--muted);font-size:14px">Сначала загрузите данные в разделе "Калькулятор"</p>
+      <!-- Переключатель периода -->
+      <div class="analytics-tabs">
+        <button class="atab" data-days="7" onclick="setAnalyticsPeriod(7,this)">7 дней</button>
+        <button class="atab active" data-days="30" onclick="setAnalyticsPeriod(30,this)">30 дней</button>
+        <button class="atab" data-days="90" onclick="setAnalyticsPeriod(90,this)">90 дней</button>
+        <button class="atab-refresh" onclick="loadAnalytics()" title="Обновить">↻</button>
+      </div>
+      <div id="analyticsContent">
+        <div class="home-empty">
+          <div class="home-spinner-icon">⏳</div>
+          Загружаем аналитику...
+        </div>
       </div>
     </div>
 
@@ -425,6 +477,7 @@ function showSection(name,el){
   document.getElementById('topbarTitle').textContent=titles[name]||'';
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
+  if(name==='analytics') loadAnalytics();
 }
 
 async function applyPromo(){
@@ -1314,6 +1367,296 @@ function buildActions(week,alerts){
   if(ws.profit<0)actions.push('Прибыль за неделю отрицательная — пересмотрите ценообразование убыточных товаров');
   return actions;
 }
+
+// === ANALYTICS ===
+var analyticsState={days:30};
+function setAnalyticsPeriod(days,btn){
+  analyticsState.days=days;
+  document.querySelectorAll('.atab').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  loadAnalytics();
+}
+async function loadAnalytics(){
+  var el=document.getElementById('analyticsContent');
+  if(!el)return;
+  el.innerHTML='<div class="home-empty"><div class="home-spinner-icon">⏳</div>Загружаем аналитику...</div>';
+  var snapshots=await loadSnapshots(analyticsState.days);
+  if(!snapshots.length){
+    el.innerHTML='<div class="home-empty">'+
+      '<div style="font-size:32px;margin-bottom:10px">📊</div>'+
+      '<div style="font-size:14px;margin-bottom:6px">Нет данных для аналитики</div>'+
+      '<div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto 16px">Зайдите в «Калькулятор», выберите период не менее '+analyticsState.days+' дней и нажмите «Загрузить».</div>'+
+      '<button class="btn-week" onclick="showSection(\'calc\',document.getElementById(\'nav-calc\'))">Открыть Калькулятор</button>'+
+    '</div>';
+    return;
+  }
+  snapshots.sort(function(a,b){return a.day<b.day?-1:1;});
+  renderAnalytics(snapshots);
+}
+function renderAnalytics(snaps){
+  var el=document.getElementById('analyticsContent');
+  if(!el)return;
+  var h='';
+  // Виджет 1: график за период
+  h+='<div class="an-card">';
+  h+='<div class="an-card-title">📈 ПРИБЫЛЬ ЗА '+snaps.length+' ДНЕЙ</div>';
+  h+=renderTimelineChart(snaps);
+  h+='</div>';
+  // Виджеты 2 и 3 в сетке
+  h+='<div class="an-grid">';
+  h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ</div>';
+  h+=renderExpenseStructure(snaps);
+  h+='</div>';
+  h+='<div class="an-card"><div class="an-card-title">⚠️ ТОП ПРОБЛЕМ</div>';
+  h+=renderProblems(snaps);
+  h+='</div>';
+  h+='</div>';
+  // Виджет 4: ABC-анализ
+  h+='<div class="an-card">';
+  h+='<div class="an-card-title">🏷️ ABC-АНАЛИЗ ТОВАРОВ</div>';
+  h+=renderABC(snaps);
+  h+='</div>';
+  el.innerHTML=h;
+}
+// === ВИДЖЕТ 1: Линейный график ===
+function renderTimelineChart(snaps){
+  if(!snaps.length)return '<div class="home-empty-mini">Нет данных</div>';
+  var W=900,H=240,pad={l:60,r:20,t:20,b:30};
+  var iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+  // Считаем суммарные расходы и прибыль
+  var pts=snaps.map(function(s){
+    var rev=Number(s.revenue||0);
+    var exp=Number(s.commission||0)+Number(s.logistics||0)+Number(s.storage||0)+Number(s.ads||0)+Number(s.penalties||0)+Number(s.wb_finance||0)+Number(s.cost||0);
+    var prof=Number(s.profit||0);
+    return {day:s.day,rev:rev,exp:exp,prof:prof};
+  });
+  var maxV=0,minV=0;
+  pts.forEach(function(p){
+    if(p.rev>maxV)maxV=p.rev;
+    if(p.exp>maxV)maxV=p.exp;
+    if(p.prof>maxV)maxV=p.prof;
+    if(p.prof<minV)minV=p.prof;
+  });
+  if(maxV===0)maxV=1;
+  var range=maxV-minV||1;
+  function x(i){return pad.l+(pts.length<=1?iw/2:i*iw/(pts.length-1));}
+  function y(v){return pad.t+ih-((v-minV)/range)*ih;}
+  function path(key){
+    return pts.map(function(p,i){return (i?'L':'M')+x(i)+','+y(p[key]);}).join(' ');
+  }
+  // Total
+  var total=pts.reduce(function(a,p){return {rev:a.rev+p.rev,exp:a.exp+p.exp,prof:a.prof+p.prof};},{rev:0,exp:0,prof:0});
+  var avgProfit=total.prof/pts.length;
+  // SVG
+  var h='<div class="an-legend">'+
+    '<span><span class="an-legend-dot" style="background:#22c55e"></span>Выручка</span>'+
+    '<span><span class="an-legend-dot" style="background:#ef4444"></span>Расходы</span>'+
+    '<span><span class="an-legend-dot" style="background:#7c3aed"></span>Прибыль</span>'+
+  '</div>';
+  h+='<svg class="an-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">';
+  // Сетка y=0
+  if(minV<0){
+    var yZero=y(0);
+    h+='<line x1="'+pad.l+'" y1="'+yZero+'" x2="'+(W-pad.r)+'" y2="'+yZero+'" stroke="#cbd5e1" stroke-dasharray="3,3"/>';
+  }
+  // Подписи Y (3 уровня)
+  for(var k=0;k<=3;k++){
+    var v=minV+range*k/3;
+    var yp=y(v);
+    h+='<line x1="'+pad.l+'" y1="'+yp+'" x2="'+(W-pad.r)+'" y2="'+yp+'" stroke="#f1f5f9"/>';
+    h+='<text x="'+(pad.l-6)+'" y="'+(yp+4)+'" font-size="10" fill="#94a3b8" text-anchor="end">'+fmtR(v)+'</text>';
+  }
+  // Линии
+  h+='<path d="'+path('rev')+'" stroke="#22c55e" stroke-width="2" fill="none"/>';
+  h+='<path d="'+path('exp')+'" stroke="#ef4444" stroke-width="2" fill="none"/>';
+  h+='<path d="'+path('prof')+'" stroke="#7c3aed" stroke-width="2.5" fill="none"/>';
+  // Точки
+  pts.forEach(function(p,i){
+    h+='<circle cx="'+x(i)+'" cy="'+y(p.prof)+'" r="2.5" fill="#7c3aed"/>';
+  });
+  // Подписи дат: первая, средняя, последняя
+  var idxs=[0,Math.floor(pts.length/2),pts.length-1];
+  idxs.forEach(function(i){
+    if(i<0||i>=pts.length)return;
+    h+='<text x="'+x(i)+'" y="'+(H-8)+'" font-size="10" fill="#94a3b8" text-anchor="middle">'+shortDate(pts[i].day)+'</text>';
+  });
+  h+='</svg>';
+  // Инсайт
+  var profitDays=pts.filter(function(p){return p.prof>0;}).length;
+  var lossDays=pts.length-profitDays;
+  h+='<div class="an-insight">'+
+    'Средняя прибыль за период: <strong>'+fmtRSign(avgProfit)+'/день</strong>. '+
+    'Прибыльных дней: <strong>'+profitDays+' из '+pts.length+'</strong>'+
+    (lossDays>0?', убыточных: <strong>'+lossDays+'</strong>':'.')+
+  '</div>';
+  return h;
+}
+// === ВИДЖЕТ 2: Структура расходов ===
+function renderExpenseStructure(snaps){
+  var t={commission:0,logistics:0,storage:0,ads:0,penalties:0,wb_finance:0,cost:0};
+  var rev=0;
+  snaps.forEach(function(s){
+    rev+=Number(s.revenue||0);
+    t.commission+=Number(s.commission||0);
+    t.logistics+=Number(s.logistics||0);
+    t.storage+=Number(s.storage||0);
+    t.ads+=Number(s.ads||0);
+    t.penalties+=Number(s.penalties||0);
+    t.wb_finance+=Number(s.wb_finance||0);
+    t.cost+=Number(s.cost||0);
+  });
+  if(rev<=0)return '<div class="home-empty-mini">Нет данных по выручке</div>';
+  var profit=rev-t.commission-t.logistics-t.storage-t.ads-t.penalties-t.wb_finance-t.cost;
+  var items=[
+    {lbl:'Себестоимость',val:t.cost,color:'#94a3b8'},
+    {lbl:'Комиссия WB',val:t.commission,color:'#ef4444'},
+    {lbl:'Реклама',val:t.ads,color:'#f59e0b'},
+    {lbl:'Логистика',val:t.logistics,color:'#3b82f6'},
+    {lbl:'Хранение',val:t.storage,color:'#06b6d4'},
+    {lbl:'Штрафы',val:t.penalties,color:'#dc2626'},
+    {lbl:'ВБ Финанс',val:t.wb_finance,color:'#8b5cf6'},
+    {lbl:'Прибыль',val:Math.max(0,profit),color:'#22c55e'}
+  ].filter(function(i){return i.val>0;});
+  // Pie
+  var total=items.reduce(function(a,i){return a+i.val;},0);
+  var cx=110,cy=110,r=80,start=-Math.PI/2;
+  var slices='';
+  items.forEach(function(it){
+    var angle=(it.val/total)*Math.PI*2;
+    var end=start+angle;
+    var x1=cx+r*Math.cos(start),y1=cy+r*Math.sin(start);
+    var x2=cx+r*Math.cos(end),y2=cy+r*Math.sin(end);
+    var large=angle>Math.PI?1:0;
+    slices+='<path d="M '+cx+' '+cy+' L '+x1+' '+y1+' A '+r+' '+r+' 0 '+large+' 1 '+x2+' '+y2+' Z" fill="'+it.color+'" stroke="#fff" stroke-width="1.5"/>';
+    start=end;
+  });
+  var h='<div style="display:flex;gap:18px;flex-wrap:wrap;align-items:center">';
+  h+='<svg viewBox="0 0 220 220" style="flex-shrink:0;width:200px;height:200px">'+slices+'</svg>';
+  h+='<div style="flex:1;min-width:160px">';
+  items.forEach(function(it){
+    var pct=(it.val/total*100).toFixed(1);
+    h+='<div class="an-stat"><div class="an-stat-lbl"><span class="an-legend-dot" style="background:'+it.color+'"></span>'+it.lbl+'</div><div class="an-stat-val">'+pct+'%</div></div>';
+  });
+  h+='</div></div>';
+  // Инсайт
+  var biggest=items.filter(function(i){return i.lbl!=='Прибыль'&&i.lbl!=='Себестоимость';}).sort(function(a,b){return b.val-a.val;})[0];
+  if(biggest){
+    var bp=(biggest.val/rev*100).toFixed(0);
+    h+='<div class="an-insight">Самая крупная статья WB-расходов: <strong>'+biggest.lbl+'</strong> ('+bp+'% от выручки, '+fmtR(biggest.val)+' за период).</div>';
+  }
+  return h;
+}
+// === ВИДЖЕТ 3: Топ проблем ===
+function renderProblems(snaps){
+  // Агрегируем top_items за весь период
+  var byName={};
+  snaps.forEach(function(s){
+    (s.top_items||[]).forEach(function(it){
+      if(!byName[it.name])byName[it.name]={name:it.name,sales:0,profit:0,ad:0,revenue:0,days:0};
+      var b=byName[it.name];
+      b.sales+=Number(it.sales||0);
+      b.profit+=Number(it.profit||0);
+      b.ad+=Number(it.ad||0);
+      b.revenue+=Number(it.revenue||0);
+      if(it.sales>0)b.days++;
+    });
+    // Из alerts тоже подтягиваем — там могут быть товары без продаж
+    (s.alerts||[]).forEach(function(a){
+      if(!byName[a.name])byName[a.name]={name:a.name,sales:0,profit:0,ad:0,revenue:0,days:0};
+    });
+  });
+  var items=Object.values(byName);
+  // Категоризируем
+  var problems=[];
+  items.forEach(function(it){
+    it.drr=it.revenue>0?Math.round(it.ad/it.revenue*100):0;
+    if(it.profit<-100&&it.sales>0){
+      problems.push({type:'loss',tag:'УБЫТОК',name:it.name,val:'−'+fmtR(Math.abs(it.profit)),sortKey:it.profit});
+    } else if(it.drr>50&&it.sales>0){
+      problems.push({type:'drr',tag:'ДРР '+it.drr+'%',name:it.name,val:'реклама '+fmtR(it.ad),sortKey:-it.ad});
+    } else if(it.sales===0){
+      problems.push({type:'idle',tag:'НЕТ ПРОДАЖ',name:it.name,val:'',sortKey:0});
+    }
+  });
+  problems.sort(function(a,b){return a.sortKey-b.sortKey;});
+  if(!problems.length){
+    return '<div class="home-empty-mini">Проблемных товаров не найдено 🎉<br><span style="font-size:11px;opacity:.6">За '+snaps.length+' дн. все товары работают в плюс.</span></div>';
+  }
+  var h='';
+  problems.slice(0,8).forEach(function(p){
+    h+='<div class="problem-item">'+
+      '<div class="problem-name">'+p.name+'</div>'+
+      '<span class="problem-tag '+p.type+'">'+p.tag+'</span>'+
+      (p.val?'<div class="problem-val red">'+p.val+'</div>':'')+
+    '</div>';
+  });
+  if(problems.length>8){
+    h+='<div style="font-size:11px;color:var(--muted);text-align:center;padding-top:8px">…и ещё '+(problems.length-8)+'</div>';
+  }
+  return h;
+}
+// === ВИДЖЕТ 4: ABC-анализ ===
+function renderABC(snaps){
+  // Агрегируем top_items за период по товарам
+  var byName={};
+  snaps.forEach(function(s){
+    (s.top_items||[]).forEach(function(it){
+      if(!byName[it.name])byName[it.name]={name:it.name,sales:0,profit:0,revenue:0};
+      var b=byName[it.name];
+      b.sales+=Number(it.sales||0);
+      b.profit+=Number(it.profit||0);
+      b.revenue+=Number(it.revenue||0);
+    });
+  });
+  var items=Object.values(byName).filter(function(i){return i.profit>0;});
+  if(!items.length){
+    return '<div class="home-empty-mini">Нет прибыльных товаров для ABC-анализа<br><span style="font-size:11px;opacity:.6">Загрузите больше данных в Калькуляторе.</span></div>';
+  }
+  // Сортируем по прибыли DESC
+  items.sort(function(a,b){return b.profit-a.profit;});
+  var totalProfit=items.reduce(function(a,i){return a+i.profit;},0);
+  // Определяем категории
+  var cum=0,countA=0,countB=0,countC=0,profitA=0,profitB=0,profitC=0;
+  items.forEach(function(it){
+    cum+=it.profit;
+    var pct=cum/totalProfit;
+    if(pct<=0.8){it.cat='A';countA++;profitA+=it.profit;}
+    else if(pct<=0.95){it.cat='B';countB++;profitB+=it.profit;}
+    else {it.cat='C';countC++;profitC+=it.profit;}
+  });
+  var total=items.length;
+  // Summary cards
+  var h='<div class="abc-summary">';
+  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat A">A</span> Фокус</div><div class="abc-sum-val">'+countA+'</div><div class="abc-sum-pct">'+(total?Math.round(countA/total*100):0)+'% товаров → '+Math.round(profitA/totalProfit*100)+'% прибыли</div></div>';
+  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat B">B</span> Стабильные</div><div class="abc-sum-val">'+countB+'</div><div class="abc-sum-pct">'+(total?Math.round(countB/total*100):0)+'% товаров → '+Math.round(profitB/totalProfit*100)+'% прибыли</div></div>';
+  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat C">C</span> Балласт</div><div class="abc-sum-val">'+countC+'</div><div class="abc-sum-pct">'+(total?Math.round(countC/total*100):0)+'% товаров → '+Math.round(profitC/totalProfit*100)+'% прибыли</div></div>';
+  h+='</div>';
+  // Таблица топ-15
+  h+='<table class="abc-table">';
+  h+='<thead><tr><th>Кат</th><th>Товар</th><th style="text-align:right">Продаж</th><th style="text-align:right">Прибыль</th><th style="text-align:right">% от общей</th></tr></thead><tbody>';
+  items.slice(0,15).forEach(function(it){
+    var pct=(it.profit/totalProfit*100).toFixed(1);
+    h+='<tr>'+
+      '<td><span class="abc-cat '+it.cat+'">'+it.cat+'</span></td>'+
+      '<td>'+it.name+'</td>'+
+      '<td style="text-align:right">'+fmt(it.sales)+'</td>'+
+      '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+'</td>'+
+      '<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'+
+    '</tr>';
+  });
+  h+='</tbody></table>';
+  if(items.length>15){
+    h+='<div style="font-size:11px;color:var(--muted);text-align:center;padding-top:10px">Показано 15 из '+items.length+' товаров</div>';
+  }
+  // Инсайт
+  if(countC>0){
+    h+='<div class="an-insight">Категория <strong>C</strong> ('+countC+' товаров) приносит всего '+Math.round(profitC/totalProfit*100)+'% прибыли. Кандидаты на снятие или пересмотр цены.</div>';
+  } else if(countA>0){
+    h+='<div class="an-insight">Все товары работают эффективно — категории C нет.</div>';
+  }
+  return h;
+}
+
 </script>
 </body>
 </html>
