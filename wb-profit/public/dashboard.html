@@ -1475,50 +1475,62 @@ async function loadHomeData(){
 function renderDashboard(snapshots){
   var el=document.getElementById('homeContent');
   if(!el||!snapshots.length){renderHomeIdle();return;}
-  // Сортируем по дате DESC, берём вчера и неделю
+  // Сортируем по дате ASC
   snapshots.sort(function(a,b){return a.day<b.day?-1:1;});
   var last=snapshots[snapshots.length-1];
   var prev=snapshots.length>1?snapshots[snapshots.length-2]:null;
-  var week=snapshots.slice(-7);
-  var prevWeek=snapshots.length>=14?snapshots.slice(-14,-7):[];
-  var weekSum=sumSnaps(week);
-  var prevWeekSum=sumSnaps(prevWeek);
   // === HTML ===
   var h='';
   // Greeting
   var hour=new Date().getHours();
   var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Добрый день':'Добрый вечер';
-  h+='<div class="home-greet">'+greet+'! Вот что произошло за '+fmtRusDate(last.day)+'.</div>';
-  // Block 1+2: Вчера + график
+  // Период последней недели: WB отчёт за неделю заканчивается датой last.day (понедельник).
+  // Неделя охватывает 7 дней до и включая эту дату.
+  var weekEnd=last.day;
+  var weekStart=shiftDate(last.day,-6);
+  h+='<div class="home-greet">'+greet+'! Вот сводка за неделю '+rangeRus(weekStart,weekEnd)+'.</div>';
+  // Block 1+2: за неделю + график
   h+='<div class="home-grid-2">';
-  h+='<div class="home-card"><div class="home-card-title">🔥 ВЧЕРА</div>';
+  h+='<div class="home-card"><div class="home-card-title">🔥 ЗА НЕДЕЛЮ '+rangeRus(weekStart,weekEnd).toUpperCase()+'</div>';
   var profit=Number(last.profit||0);
   h+='<div class="home-big '+(profit>=0?'green':'red')+'">'+(profit>=0?'+':'−')+fmtR(Math.abs(profit))+'</div>';
-  h+='<div class="home-sub">чистая прибыль</div>';
+  h+='<div class="home-sub">чистая прибыль за период</div>';
   if(prev){
-    var diff=profit-Number(prev.profit||0);
-    var pct=prev.profit?Math.round(diff/Math.abs(prev.profit)*100):0;
-    h+='<div class="home-delta '+(diff>=0?'green':'red')+'">'+(diff>=0?'↑':'↓')+' '+Math.abs(pct)+'% vs '+fmtRusDate(prev.day)+'</div>';
+    var prevP=Number(prev.profit||0);
+    var diff=profit-prevP;
+    var pctTxt='';
+    // Защита от ложного 2748%: показываем процент только если предыдущая прибыль значимая (>=100 ₽)
+    if(Math.abs(prevP)>=100){
+      var pct=Math.round(diff/Math.abs(prevP)*100);
+      // Ограничиваем до ±999% — выше нет смысла, это шум
+      if(Math.abs(pct)>999)pctTxt=(pct>0?'+':'−')+'>999%';
+      else pctTxt=(pct>0?'+':'')+pct+'%';
+    } else {
+      pctTxt=(diff>=0?'+':'−')+fmtR(Math.abs(diff))+' ₽';
+    }
+    var prevEnd=prev.day;
+    var prevStart=shiftDate(prev.day,-6);
+    h+='<div class="home-delta '+(diff>=0?'green':'red')+'">'+(diff>=0?'↑':'↓')+' '+pctTxt+' vs неделя '+rangeRus(prevStart,prevEnd)+'</div>';
   }
   h+='<div class="home-meta">Продано: '+(last.sales_count||0)+' шт · Возвратов: '+(last.returns_count||0)+'</div>';
   h+='</div>';
-  // График
-  h+='<div class="home-card"><div class="home-card-title">📈 СЕМИДНЕВНЫЙ ГРАФИК</div>';
-  h+=renderMiniChart(week);
-  if(week.length){
-    var best=week.reduce(function(a,b){return Number(a.profit||0)>Number(b.profit||0)?a:b;});
-    var worst=week.reduce(function(a,b){return Number(a.profit||0)<Number(b.profit||0)?a:b;});
-    h+='<div class="home-meta" style="margin-top:8px">Лучший: '+shortDate(best.day)+' ('+fmtRSign(best.profit)+') · Худший: '+shortDate(worst.day)+' ('+fmtRSign(worst.profit)+')</div>';
+  // График — все имеющиеся снапшоты (не «семидневный»)
+  h+='<div class="home-card"><div class="home-card-title">📈 ДИНАМИКА ПО НЕДЕЛЯМ</div>';
+  h+=renderMiniChart(snapshots);
+  if(snapshots.length){
+    var best=snapshots.reduce(function(a,b){return Number(a.profit||0)>Number(b.profit||0)?a:b;});
+    var worst=snapshots.reduce(function(a,b){return Number(a.profit||0)<Number(b.profit||0)?a:b;});
+    h+='<div class="home-meta" style="margin-top:8px">Лучшая неделя: '+shortDate(best.day)+' ('+fmtRSign(best.profit)+') · Худшая: '+shortDate(worst.day)+' ('+fmtRSign(worst.profit)+')</div>';
   }
   h+='</div>';
   h+='</div>';
-  // Block 3: Куда ушли деньги
-  h+='<div class="home-card"><div class="home-card-title">⚖️ КУДА УШЛИ ДЕНЬГИ ВЧЕРА</div>';
+  // Block 3: Куда ушли деньги — за последнюю неделю
+  h+='<div class="home-card"><div class="home-card-title">⚖️ КУДА УШЛИ ДЕНЬГИ ЗА НЕДЕЛЮ</div>';
   h+=renderMoneyFlow(last);
   h+='</div>';
   // Block 4+5: Топ + Тревоги
   h+='<div class="home-grid-2">';
-  h+='<div class="home-card"><div class="home-card-title">🏆 ТОП-3 ВЧЕРА</div>';
+  h+='<div class="home-card"><div class="home-card-title">🏆 ТОП-3 ЗА НЕДЕЛЮ</div>';
   var top=Array.isArray(last.top_items)?last.top_items:[];
   if(top.length){
     top.slice(0,3).forEach(function(it,i){
@@ -1559,6 +1571,15 @@ function sumSnaps(arr){
   return s;
 }
 function shortDate(iso){var p=iso.split('-');var m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return parseInt(p[2])+' '+m[parseInt(p[1])-1];}
+function rangeRus(fromIso,toIso){
+  // «28 апр – 4 мая» или «28 — 30 апр» если месяц одинаковый
+  var fp=fromIso.split('-'),tp=toIso.split('-');
+  var fd=parseInt(fp[2]),fm=parseInt(fp[1]);
+  var td=parseInt(tp[2]),tm=parseInt(tp[1]);
+  var mn=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  if(fm===tm)return fd+'–'+td+' '+mn[fm-1];
+  return fd+' '+mn[fm-1]+' – '+td+' '+mn[tm-1];
+}
 function fmtRSign(v){v=Number(v||0);return (v>=0?'+':'−')+fmtR(Math.abs(v));}
 function renderMiniChart(snaps){
   if(!snaps.length)return '<div class="home-empty-mini">Мало данных</div>';
@@ -1611,7 +1632,7 @@ function collectWeekAlerts(week){
   var arr=Object.keys(byName).map(function(k){return byName[k];});
   arr.sort(function(a,b){return b.count-a.count;});
   return arr.map(function(a){
-    var msg=a.last+(a.count>1?' (уже '+a.count+' дн. подряд)':'');
+    var msg=a.last+(a.count>1?' (уже '+a.count+' нед. подряд)':'');
     return {name:a.name,msg:msg,type:a.type};
   });
 }
@@ -1624,7 +1645,7 @@ function buildActions(week,alerts){
   });
   // Доп. инсайт: если общий профит за неделю упал
   var ws=sumSnaps(week);
-  if(ws.profit<0)actions.push('Прибыль за неделю отрицательная — пересмотрите ценообразование убыточных товаров');
+  if(ws.profit<0)actions.push('Общая прибыль за период отрицательная — пересмотрите ценообразование убыточных товаров');
   return actions;
 }
 
