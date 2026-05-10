@@ -2,6 +2,9 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WB Profit — Дашборд</title>
 <style>
@@ -1037,13 +1040,16 @@ function onRowCheckboxChange(){
 }
 function applyBulkCost(mode){
   var input=document.getElementById('bulkCost');
-  var val=parseFloat(input.value);
-  if(!val||val<=0){alert('Введите положительную себестоимость');return;}
+  var raw=String(input.value||'').replace(',','.').trim();
+  var val=parseFloat(raw);
+  if(!val||val<=0){alert('Введите положительную себестоимость в поле сверху');return;}
+  if(!rows||!rows.length){alert('Сначала загрузите данные в Калькуляторе');return;}
   var onlyEmpty=document.getElementById('bulkOnlyEmpty').checked;
   var indices=[];
   if(mode==='selected'){
-    document.querySelectorAll('.cb-row:checked').forEach(function(c){indices.push(parseInt(c.dataset.i,10));});
-    if(!indices.length){alert('Выберите товары галочкой');return;}
+    var checks=document.querySelectorAll('.cb-row:checked');
+    checks.forEach(function(c){indices.push(parseInt(c.dataset.i,10));});
+    if(!indices.length){alert('Сначала отметьте товары галочкой слева в строках');return;}
   } else {
     for(var i=0;i<rows.length;i++)indices.push(i);
   }
