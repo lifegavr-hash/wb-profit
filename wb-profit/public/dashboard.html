@@ -279,7 +279,7 @@ tr.loss td{background:#fff5f5}
             <table>
               <thead><tr>
                 <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
-                <th>Продажи</th><th>Возвраты</th><th>Остаток</th><th>Выплата WB ₽</th>
+                <th>Продажи</th><th>Возвраты</th><th title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th><th>Выплата WB ₽</th>
                 <th>Логистика ₽</th><th>Хранение ₽</th><th>Реклама ₽</th>
                 <th>Штрафы ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
               </tr></thead>
@@ -527,15 +527,23 @@ async function loadStocks(tok){
   return r.json();
 }
 function buildStocksMap(stocks){
-  // По nmId суммируем quantityFull (всего, включая в пути) и inWayToClient (в пути)
+  // По nmId агрегируем:
+  //   avail   — quantity (доступно к продаже)
+  //   total   — quantityFull + inWayToClient + inWayFromClient (всё в системе на складах + в пути)
+  //   inWay   — inWayToClient (для подсветки)
   var m={};
   if(!Array.isArray(stocks))return m;
   for(var i=0;i<stocks.length;i++){
     var s=stocks[i];
     var nm=s.nmId;if(!nm)continue;
-    if(!m[nm])m[nm]={total:0,inWay:0};
-    m[nm].total+=Number(s.quantityFull||s.quantity||0);
-    m[nm].inWay+=Number(s.inWayToClient||0);
+    if(!m[nm])m[nm]={avail:0,total:0,inWay:0};
+    var qFull=Number(s.quantityFull||s.quantity||0);
+    var qAvail=Number(s.quantity||0);
+    var inTo=Number(s.inWayToClient||0);
+    var inFrom=Number(s.inWayFromClient||0);
+    m[nm].avail+=qAvail;
+    m[nm].total+=qFull+inTo+inFrom;
+    m[nm].inWay+=inTo;
   }
   return m;
 }
@@ -851,12 +859,17 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
     var a=rows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
     var pc=prf>=0?'green':'red',ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
     // Остаток
-    var st=stocksMap[a.nm_id]||{total:0,inWay:0};
-    totalStock+=st.total;
-    var stockCellCls=st.total<5?'red':'';
-    var stockHtml='<span class="'+stockCellCls+'" style="font-weight:600">'+fmt(st.total)+'</span>';
-    if(st.inWay>0)stockHtml+='<div style="font-size:10px;color:var(--hint)">в пути '+fmt(st.inWay)+'</div>';
-    if(!stocksMap[a.nm_id])stockHtml='<span style="color:var(--hint)">—</span>';
+    var st=stocksMap[a.nm_id]||null;
+    var stockHtml;
+    if(st){
+      totalStock+=st.total;
+      var availCls=st.avail<5?'red':'';
+      stockHtml='<span class="'+availCls+'" style="font-weight:600">'+fmt(st.avail)+'</span>';
+      if(st.total!==st.avail)stockHtml+=' <span style="color:var(--hint);font-size:11px">из '+fmt(st.total)+'</span>';
+      if(st.inWay>0)stockHtml+='<div style="font-size:10px;color:var(--hint)">в пути '+fmt(st.inWay)+'</div>';
+    } else {
+      stockHtml='<span style="color:var(--hint)">—</span>';
+    }
     tb.innerHTML+='<tr'+(a.cost>0&&prf<0?' class="loss"':'')+'>'+
       '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
