@@ -130,6 +130,25 @@ tr.loss td{background:#fff5f5}
 .btn-week{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border:0;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .btn-week:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
 .btn-week:active{transform:translateY(0)}
+/* === BULK COST BAR === */
+.bulk-bar{background:linear-gradient(135deg,rgba(124,58,237,.05),rgba(84,51,198,.05));border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:12px 16px;margin-bottom:12px}
+.bulk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bulk-lbl{font-size:13px;font-weight:600;color:var(--text);margin:0}
+.bulk-input{width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff}
+.bulk-input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.bulk-btn{padding:8px 16px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:#fff;color:var(--text);transition:all .15s;white-space:nowrap}
+.bulk-btn:hover{border-color:#7c3aed;color:#7c3aed}
+.bulk-btn.primary{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border-color:transparent}
+.bulk-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3);color:#fff}
+.bulk-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.bulk-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;margin-left:auto}
+.bulk-check input{cursor:pointer}
+.cb-col{width:32px;text-align:center}
+.cb-col input{cursor:pointer;width:16px;height:16px}
+@media(max-width:768px){
+  .bulk-row{flex-direction:column;align-items:stretch}
+  .bulk-check{margin-left:0;justify-content:center}
+}
 /* === ANALYTICS === */
 .analytics-tabs{display:flex;gap:6px;margin-bottom:16px;align-items:center}
 .atab{background:var(--surface);border:1px solid var(--border);padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:all .15s}
@@ -318,9 +337,19 @@ tr.loss td{background:#fff5f5}
             <span style="font-size:12px;color:var(--hint)" id="cnt"></span>
           </div>
           <p class="hint" style="margin-bottom:12px">Себестоимость сохраняется автоматически. Убыточные товары выделены красным.</p>
+          <div class="bulk-bar">
+            <div class="bulk-row">
+              <label class="bulk-lbl">Себестоимость:</label>
+              <input type="number" id="bulkCost" placeholder="0" min="0" step="0.01" class="bulk-input">
+              <button class="bulk-btn primary" onclick="applyBulkCost('selected')" id="bulkSelBtn">Применить к выбранным (0)</button>
+              <button class="bulk-btn" onclick="applyBulkCost('all')">Применить ко всем</button>
+              <label class="bulk-check"><input type="checkbox" id="bulkOnlyEmpty"> Только пустые</label>
+            </div>
+          </div>
           <div class="tw">
             <table>
               <thead><tr>
+                <th class="cb-col"><input type="checkbox" id="cbAll" onchange="toggleAllCheckboxes(this.checked)" title="Выбрать все"></th>
                 <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
                 <th>Продажи</th><th>Возвраты</th><th title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th><th title="Реальная комиссия WB по товару, в %">Комиссия %</th><th>Выплата WB ₽</th>
                 <th>Логистика ₽</th><th>Хранение ₽</th><th>Реклама ₽</th>
@@ -957,6 +986,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       stockHtml='<span style="color:var(--hint)">—</span>';
     }
     tb.innerHTML+='<tr'+(a.cost>0&&prf<0?' class="loss"':'')+'>'+
+      '<td class="cb-col"><input type="checkbox" class="cb-row" data-i="'+i+'" onchange="onRowCheckboxChange()"></td>'+
       '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
       '<td>'+fmt(a.sales)+'</td><td class="red">'+fmt(a.ret)+'</td>'+
@@ -969,7 +999,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       '<td>'+ps+'</td></tr>';
   }
   var tf=document.getElementById('tfoot');
-  tf.innerHTML='<td colspan="3">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(totalStock)+'</td><td class="red">−'+fmt(Math.round(tComm))+' ₽</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
+  tf.innerHTML='<td colspan="4">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(totalStock)+'</td><td class="red">−'+fmt(Math.round(tComm))+' ₽</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
 }
 
 function switchTab(tab,e){
@@ -990,6 +1020,58 @@ function renderChart(data,tab){
   if(myChart) myChart.destroy();
   var ctx=document.getElementById('chart').getContext('2d');
   myChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:label,data:vals,backgroundColor:color,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmt(c.raw)+' ₽';}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return fmt(v)+' ₽';}}}}}});
+}
+
+function toggleAllCheckboxes(checked){
+  document.querySelectorAll('.cb-row').forEach(function(c){c.checked=checked;});
+  onRowCheckboxChange();
+}
+function onRowCheckboxChange(){
+  var n=document.querySelectorAll('.cb-row:checked').length;
+  var btn=document.getElementById('bulkSelBtn');
+  if(btn)btn.textContent='Применить к выбранным ('+n+')';
+  // Шапка: галочка только если все выбраны
+  var total=document.querySelectorAll('.cb-row').length;
+  var head=document.getElementById('cbAll');
+  if(head){head.checked=n===total&&total>0;head.indeterminate=n>0&&n<total;}
+}
+function applyBulkCost(mode){
+  var input=document.getElementById('bulkCost');
+  var val=parseFloat(input.value);
+  if(!val||val<=0){alert('Введите положительную себестоимость');return;}
+  var onlyEmpty=document.getElementById('bulkOnlyEmpty').checked;
+  var indices=[];
+  if(mode==='selected'){
+    document.querySelectorAll('.cb-row:checked').forEach(function(c){indices.push(parseInt(c.dataset.i,10));});
+    if(!indices.length){alert('Выберите товары галочкой');return;}
+  } else {
+    for(var i=0;i<rows.length;i++)indices.push(i);
+  }
+  var changed=0;
+  indices.forEach(function(i){
+    if(onlyEmpty&&rows[i].cost>0)return;
+    upd(i,val);
+    // Также обновим input в строке, чтобы пользователь видел число
+    var tr=document.getElementById('tb').rows[i];
+    if(tr){
+      var inp=tr.querySelector('input.ci');
+      if(inp)inp.value=val;
+    }
+    changed++;
+  });
+  input.value='';
+  // Сбросим галочки после применения «к выбранным», чтобы не запутаться
+  if(mode==='selected'){
+    document.querySelectorAll('.cb-row').forEach(function(c){c.checked=false;});
+    onRowCheckboxChange();
+  }
+  // Лёгкая обратная связь
+  var btn=document.querySelector(mode==='selected'?'#bulkSelBtn':'.bulk-btn:not(.primary)');
+  if(btn){
+    var orig=btn.textContent;
+    btn.textContent='✓ Обновлено: '+changed;
+    setTimeout(function(){btn.textContent=orig;onRowCheckboxChange();},1500);
+  }
 }
 
 function upd(i,val){
