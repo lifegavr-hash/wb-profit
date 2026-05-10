@@ -1039,45 +1039,82 @@ function onRowCheckboxChange(){
   if(head){head.checked=n===total&&total>0;head.indeterminate=n>0&&n<total;}
 }
 function applyBulkCost(mode){
+  console.log('[bulk] applyBulkCost called, mode=',mode);
   var input=document.getElementById('bulkCost');
+  if(!input){alert('Ошибка: поле ввода не найдено');return;}
   var raw=String(input.value||'').replace(',','.').trim();
   var val=parseFloat(raw);
+  console.log('[bulk] value=',raw,'parsed=',val);
   if(!val||val<=0){alert('Введите положительную себестоимость в поле сверху');return;}
   if(!rows||!rows.length){alert('Сначала загрузите данные в Калькуляторе');return;}
   var onlyEmpty=document.getElementById('bulkOnlyEmpty').checked;
+  // Собираем индексы товаров для применения
   var indices=[];
   if(mode==='selected'){
     var checks=document.querySelectorAll('.cb-row:checked');
+    console.log('[bulk] selected checkboxes:',checks.length);
     checks.forEach(function(c){indices.push(parseInt(c.dataset.i,10));});
     if(!indices.length){alert('Сначала отметьте товары галочкой слева в строках');return;}
   } else {
     for(var i=0;i<rows.length;i++)indices.push(i);
   }
+  console.log('[bulk] applying to indices:',indices.length);
+  // Применяем — сразу обновляем массив, costs в localStorage и пересчёт итогов в конце
   var changed=0;
+  var allCosts=getCosts();
   indices.forEach(function(i){
-    if(onlyEmpty&&rows[i].cost>0)return;
-    upd(i,val);
-    // Также обновим input в строке, чтобы пользователь видел число
+    var a=rows[i];
+    if(!a)return;
+    if(onlyEmpty&&a.cost>0)return;
+    a.cost=val;
+    var key=String(a.nm_id||a.sa||'x');
+    allCosts[key]=val;
+    changed++;
+    // Обновляем DOM строки: input + ячейка прибыли
     var tr=document.getElementById('tb').rows[i];
     if(tr){
       var inp=tr.querySelector('input.ci');
       if(inp)inp.value=val;
+      var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+      var pc=prf>=0?'green':'red';
+      tr.cells[tr.cells.length-1].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
+      tr.className=a.cost>0&&prf<0?'loss':'';
     }
-    changed++;
   });
+  saveCosts(allCosts);
+  console.log('[bulk] changed:',changed);
+  // Пересчёт итогов
+  recalcTotals();
   input.value='';
-  // Сбросим галочки после применения «к выбранным», чтобы не запутаться
   if(mode==='selected'){
     document.querySelectorAll('.cb-row').forEach(function(c){c.checked=false;});
     onRowCheckboxChange();
   }
-  // Лёгкая обратная связь
   var btn=document.querySelector(mode==='selected'?'#bulkSelBtn':'.bulk-btn:not(.primary)');
   if(btn){
     var orig=btn.textContent;
     btn.textContent='✓ Обновлено: '+changed;
     setTimeout(function(){btn.textContent=orig;onRowCheckboxChange();},1500);
   }
+}
+function recalcTotals(){
+  if(!rows||!rows.length)return;
+  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0;
+  for(var j=0;j<rows.length;j++){
+    var x=rows[j];
+    tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
+    tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
+    if(x.cost>0)tCost+=x.cost*Math.max(x.sales-x.ret,0);
+  }
+  var tp=tP-tD-tS-tAd-tPn-tCost;
+  // Карточка сверху
+  var pc=document.getElementById('profitCard');
+  if(pc){pc.className='mv '+(tp>=0?'green':'red');pc.textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
+  // Футер
+  var tfCost=document.getElementById('tfCost');
+  var tfProfit=document.getElementById('tfProfit');
+  if(tfCost)tfCost.innerHTML='−'+fmt(tCost)+' ₽';
+  if(tfProfit){tfProfit.className=tp>=0?'green':'red';tfProfit.innerHTML=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
 }
 
 function upd(i,val){
