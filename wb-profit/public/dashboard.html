@@ -322,7 +322,7 @@ tr.loss td{background:#fff5f5}
             <table>
               <thead><tr>
                 <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
-                <th>Продажи</th><th>Возвраты</th><th title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th><th>Выплата WB ₽</th>
+                <th>Продажи</th><th>Возвраты</th><th title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th><th title="Реальная комиссия WB по товару, в %">Комиссия %</th><th>Выплата WB ₽</th>
                 <th>Логистика ₽</th><th>Хранение ₽</th><th>Реклама ₽</th>
                 <th>Штрафы ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
               </tr></thead>
@@ -652,15 +652,25 @@ function process(raw){
     // Таблица товаров — только строки с артикулом
     if(!r.nm_id&&!r.sa_name) continue;
     var k=String(r.nm_id||r.sa_name||'x');
-    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0};
+    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0,commRub:0,commPct:0,_priceSum:0,_pctSum:0,_n:0};
     var a=bk[k];
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
+    // Реальная комиссия товара
+    if(doc==='продажа'||doc==='возврат'){
+      var _price=Number(r.retail_price||r.retail_price_withdisc_rub||r.retail_amount||0);
+      var _pct=Number(r.commission_percent||0);
+      var _sign=doc==='возврат'?-1:1;
+      a.commRub+=_sign*(_price*_pct/100);
+      if(_pct>0){a._pctSum+=_pct;a._n++;}
+    }
     a.ppvz+=r.ppvz_for_pay||0;a.del+=r.delivery_rub||0;a.stor+=r.storage_fee||0;a.pen+=r.penalty||0;
     if(isAdv(r.bonus_type_name,r.supplier_oper_name)){a.adv+=Math.abs(r.deduction||0);}else{a.pen+=Math.abs(r.deduction||0);}
     a.pen+=r.acceptance||0;
   }
   rows=Object.values(bk);
+  // Усреднённый % комиссии по товару
+  rows.forEach(function(x){x.commPct=x._n>0?Math.round(x._pctSum/x._n):0;delete x._pctSum;delete x._n;delete x._priceSum;});
   // Итоги из товаров с артикулом
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tWbFin=0,tCost=0;
   for(var j=0;j<rows.length;j++){
@@ -689,15 +699,21 @@ function process(raw){
     tPn+=rd.acceptance||0;
   }
   var tp=tP-tD-tS-tAd-tPn-tWbFin-tCost;
-  // Выручка и комиссия WB — считаем по строкам продаж/возвратов
+  // Выручка и комиссия WB — правильная формула:
+  //   Выручка   = retail_price (твоя цена селлера, до СПП)
+  //   Комиссия  = retail_price * commission_percent / 100
+  // Старая формула (retail_amount - ppvz_for_pay) давала отрицательные значения
+  // на товарах с СПП (когда WB субсидирует скидку покупателю).
   var tRev=0,tComm=0;
   for(var ri2=0;ri2<raw.length;ri2++){
     var rr=raw[ri2];
     var dt=(rr.doc_type_name||'').toLowerCase();
     if(dt==='продажа'||dt==='возврат'){
-      var rev=rr.retail_amount||rr.retail_price_withdisc_rub||0;
-      tRev+=rev;
-      tComm+=rev-(rr.ppvz_for_pay||0);
+      var price=Number(rr.retail_price||rr.retail_price_withdisc_rub||rr.retail_amount||0);
+      var pct=Number(rr.commission_percent||0);
+      var sign=dt==='возврат'?-1:1;
+      tRev+=sign*price;
+      tComm+=sign*(price*pct/100);
     }
   }
   var losers=rows.filter(function(x){return x.cost>0&&x.ppvz-x.del-x.stor-x.adv-x.pen-x.cost*Math.max(x.sales-x.ret,0)<0;});
@@ -717,7 +733,7 @@ function process(raw){
     '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(tCost)+' ₽</div></div>'+
     '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(tp>=0?'green':'red')+'" id="profitCard">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
-  renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp);
+  renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm);
   renderChart(byMonthData,'profit');
   document.getElementById('results').style.display='block';
   // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
@@ -911,7 +927,8 @@ function renderDetail(){
   document.getElementById('detailGrid').innerHTML=html;
 }
 
-function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
+function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
+  tComm=tComm||0;
   var tb=document.getElementById('tb');tb.innerHTML='';
   var stocksMap=window._stocksMap||{};
   var totalStock=0;
@@ -935,6 +952,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
       '<td>'+fmt(a.sales)+'</td><td class="red">'+fmt(a.ret)+'</td>'+
       '<td>'+stockHtml+'</td>'+
+      '<td><span style="font-weight:600">'+(a.commPct||0)+'%</span><div style="font-size:10px;color:var(--hint)">'+fmt(Math.round(a.commRub||0))+' ₽</div></td>'+
       '<td>'+fmt(a.ppvz)+' ₽</td><td class="red">−'+fmt(a.del)+' ₽</td>'+
       '<td class="red">−'+fmt(a.stor)+' ₽</td><td class="red">−'+fmt(a.adv)+' ₽</td>'+
       '<td class="red">−'+fmt(a.pen)+' ₽</td>'+
@@ -942,7 +960,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp){
       '<td>'+ps+'</td></tr>';
   }
   var tf=document.getElementById('tfoot');
-  tf.innerHTML='<td colspan="3">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(totalStock)+'</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
+  tf.innerHTML='<td colspan="3">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(totalStock)+'</td><td class="red">−'+fmt(Math.round(tComm))+' ₽</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
 }
 
 function switchTab(tab,e){
@@ -1093,27 +1111,33 @@ function aggregateRowsByDay(rows,costMap){
     var doc=(r.doc_type_name||'').toLowerCase();
     if(doc==='продажа')s.sales_count++;
     if(doc==='возврат')s.returns_count++;
-    var rev=r.retail_amount||r.retail_price_withdisc_rub||0;
-    s.revenue+=rev;
-    s.payout+=r.ppvz_for_pay||0;
-    s.commission+=rev-(r.ppvz_for_pay||0);
-    s.logistics+=(r.delivery_rub||0)+(r.rebill_logistic_cost||0);
-    s.storage+=r.storage_fee||0;
+    // Выручка = retail_price (твоя цена), комиссия = price * pct / 100
+    var price=Number(r.retail_price||r.retail_price_withdisc_rub||r.retail_amount||0);
+    var pct=Number(r.commission_percent||0);
+    var sign=doc==='возврат'?-1:1;
+    if(doc==='продажа'||doc==='возврат'){
+      s.revenue+=sign*price;
+      s.commission+=sign*(price*pct/100);
+    }
+    s.payout+=Number(r.ppvz_for_pay||0);
+    s.logistics+=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
+    s.storage+=Number(r.storage_fee||0);
     if(isAdv(r.bonus_type_name,r.supplier_oper_name))s.ads+=Math.abs(r.deduction||0);
     else if(isWbFin(r.bonus_type_name,r.supplier_oper_name))s.wb_finance+=Math.abs(r.deduction||0);
     else s.penalties+=Math.abs(r.deduction||0);
     // Себестоимость по товарам
     var nm=r.nm_id;
-    if(nm&&costMap[nm]&&doc==='продажа'){s.cost+=costMap[nm];}
+    if(nm&&costMap[nm]&&doc==='продажа'){s.cost+=Number(costMap[nm]);}
     // Сборка топа
     if(nm){
       if(!s._items[nm])s._items[nm]={name:r.sa_name||('Арт. '+nm),sales:0,profit:0,revenue:0,ad:0};
       var it=s._items[nm];
       if(doc==='продажа')it.sales++;
-      it.revenue+=rev;
-      it.profit+=(r.ppvz_for_pay||0)-(r.delivery_rub||0)-(r.rebill_logistic_cost||0)-(r.storage_fee||0);
+      // У товара выручка тоже по retail_price для сравнимости
+      if(doc==='продажа'||doc==='возврат')it.revenue+=sign*price;
+      it.profit+=sign*(Number(r.ppvz_for_pay||0)-Number(r.delivery_rub||0)-Number(r.rebill_logistic_cost||0)-Number(r.storage_fee||0));
       if(isAdv(r.bonus_type_name,r.supplier_oper_name))it.ad+=Math.abs(r.deduction||0);
-      if(costMap[nm]&&doc==='продажа')it.profit-=costMap[nm];
+      if(costMap[nm]&&doc==='продажа')it.profit-=Number(costMap[nm]);
     }
   }
   // Финализация: profit, top_items, alerts
