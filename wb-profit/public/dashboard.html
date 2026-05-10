@@ -627,13 +627,17 @@ function initCalc(){
   // Подсказка о последней синхронизации на главной
   refreshLastSync();
 }
-function refreshLastSync(){
+function refreshLastSync(rangeFrom,rangeTo){
   var info=document.getElementById('lastSyncInfo');if(!info)return;
   var ts=localStorage.getItem('wb_last_sync');
-  if(!ts){info.textContent='Нажмите «Загрузить», чтобы получить свежие данные с Wildberries';return;}
+  var prefix='';
+  if(rangeFrom&&rangeTo){
+    prefix='Данные за '+shortDate(rangeFrom)+' – '+shortDate(rangeTo)+'. ';
+  }
+  if(!ts){info.textContent=prefix||'Нажмите «Загрузить», чтобы получить свежие данные с Wildberries';return;}
   var d=new Date(parseInt(ts,10));
   var hh=String(d.getHours()).padStart(2,'0'),mm=String(d.getMinutes()).padStart(2,'0');
-  info.textContent='Последнее обновление: '+d.toLocaleDateString('ru-RU')+' в '+hh+':'+mm;
+  info.textContent=prefix+'Обновлено: '+d.toLocaleDateString('ru-RU')+' в '+hh+':'+mm;
 }
 function saveTokenManual(){
   var tk=document.getElementById('tok1');
@@ -892,7 +896,12 @@ async function process(raw){
     rows.forEach(function(x){if(x.nm_id&&x.cost>0)costByNm[x.nm_id]=x.cost;});
     var snaps=aggregateRowsByDay(raw,costByNm);
     if(snaps.length){
+      // Реальный диапазон дат из снапшотов — пользователь увидит, что покрыто фактически
+      snaps.sort(function(a,b){return a.day<b.day?-1:1;});
+      var realFrom=snaps[0].day;
+      var realTo=snaps[snaps.length-1].day;
       await saveSnapshots(snaps);
+      refreshLastSync(realFrom,realTo);
       // Если активна Главная — перерисовываем её свежими данными
       var homeActive=document.getElementById('sectionHome')&&document.getElementById('sectionHome').classList.contains('active');
       if(homeActive&&typeof loadHomeData==='function')loadHomeData();
