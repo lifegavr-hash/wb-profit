@@ -738,10 +738,19 @@ function process(raw){
   document.getElementById('results').style.display='block';
   // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
   try{
-    var costMap={};
-    rows.forEach(function(x){if(x.nm&&x.cost>0)costMap[x.nm]=x.cost;});
-    localStorage.setItem('wb_costs',JSON.stringify(costMap));
-    var snaps=aggregateRowsByDay(raw,costMap);
+    // Сливаем уже сохранённые себестоимости с текущими, не теряя ввод пользователя
+    var costMap=getCosts();
+    rows.forEach(function(x){
+      if(x.cost>0){
+        var key=String(x.nm_id||x.sa||'x');
+        costMap[key]=x.cost;
+      }
+    });
+    saveCosts(costMap);
+    // Для агрегатора передаём карту по nm_id (агрегатор ищет по r.nm_id)
+    var costByNm={};
+    rows.forEach(function(x){if(x.nm_id&&x.cost>0)costByNm[x.nm_id]=x.cost;});
+    var snaps=aggregateRowsByDay(raw,costByNm);
     if(snaps.length)saveSnapshots(snaps);
   }catch(e){console.warn('snapshots aggregation failed',e);}
 }
@@ -987,7 +996,8 @@ function upd(i,val){
   rows[i].cost=parseFloat(val)||0;var a=rows[i];
   var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
   var tr=document.getElementById('tb').rows[i];var pc=prf>=0?'green':'red';
-  tr.cells[11].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
+  // Прибыль теперь в последней ячейке. Используем length-1 для устойчивости к новым столбцам.
+  tr.cells[tr.cells.length-1].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
   tr.className=a.cost>0&&prf<0?'loss':'';
   var c=getCosts();var k=String(a.nm_id||a.sa||'x');if(a.cost>0) c[k]=a.cost;else delete c[k];saveCosts(c);
   // Итоги из товаров с артикулом
