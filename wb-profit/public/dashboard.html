@@ -518,13 +518,20 @@ async function go(){
   finally{document.getElementById('loadBtn').disabled=false;ldBox.style.display='none';}
 }
 async function loadStocks(tok){
-  var r=await fetch('/api/wb-stocks',{headers:{Authorization:tok}});
-  if(r.status===429){
-    // Если лимит — игнорируем без падения, остатков просто не будет
-    return null;
+  for(var attempt=0;attempt<3;attempt++){
+    try{
+      var r=await fetch('/api/wb-stocks',{headers:{Authorization:tok}});
+      if(r.status===429){
+        var ra=parseInt(r.headers.get('Retry-After')||'60',10);
+        if(attempt===2||ra>90){console.warn('stocks 429, giving up');return null;}
+        await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
+        continue;
+      }
+      if(!r.ok){console.warn('stocks not ok',r.status);return null;}
+      return r.json();
+    }catch(e){console.warn('stocks fetch error',e);return null;}
   }
-  if(!r.ok)return null;
-  return r.json();
+  return null;
 }
 function buildStocksMap(stocks){
   // По nmId агрегируем:

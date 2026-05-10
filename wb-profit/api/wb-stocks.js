@@ -80,6 +80,9 @@ export default async function handler(req, res) {
 
   const tokenHash = hashToken(token);
   const cacheKey = `stocks:${tokenHash}`;
+  // Отдельный ключ rate-limit, чтобы НЕ конфликтовать с /api/wb (sales).
+  // WB считает лимиты по эндпоинту, у нас должно быть так же.
+  const rlKey = `${tokenHash}:stocks`;
 
   // Кэш
   const cached = await getCache(cacheKey);
@@ -90,13 +93,13 @@ export default async function handler(req, res) {
     return res.send(JSON.stringify(cached.payload));
   }
 
-  // Rate limit
-  const rl = await checkRateLimit(tokenHash);
+  // Rate limit (только в рамках этого эндпоинта)
+  const rl = await checkRateLimit(rlKey);
   if (!rl.allowed) {
     res.setHeader('Retry-After', String(rl.retryAfterSec));
     return res.status(429).json({ error: 'Подождите перед следующим запросом', retryAfter: rl.retryAfterSec });
   }
-  await markRequest(tokenHash);
+  await markRequest(rlKey);
 
   // Запрос к WB. Передаём dateFrom = вчера (формальное требование API).
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
