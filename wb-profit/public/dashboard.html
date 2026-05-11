@@ -133,6 +133,40 @@ tr.loss td{background:#fff5f5}
 .btn-week{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border:0;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .btn-week:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
 .btn-week:active{transform:translateY(0)}
+/* === UNIT ECONOMICS === */
+.unit-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:768px){.unit-grid{grid-template-columns:1fr}}
+.unit-col{display:flex;flex-direction:column;gap:8px}
+.unit-label{font-size:12px;color:var(--muted);font-weight:600;margin-top:6px}
+.unit-col input,.unit-col select{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;width:100%}
+.unit-col input:focus,.unit-col select:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.unit-result{margin-top:18px;padding:16px;background:linear-gradient(135deg,rgba(124,58,237,.05),rgba(34,197,94,.05));border:1px solid var(--border);border-radius:12px}
+.unit-result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.unit-result-item{text-align:center;padding:10px;background:#fff;border-radius:10px;border:1px solid var(--border)}
+.unit-result-lbl{font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.unit-result-val{font-size:20px;font-weight:700}
+.unit-result-val.green{color:#22c55e}.unit-result-val.red{color:#ef4444}
+.unit-breakdown{margin-top:14px;font-size:12px;color:var(--muted)}
+.unit-breakdown-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--border)}
+.unit-breakdown-row:last-child{border-bottom:0}
+.unit-history-item{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.unit-history-item:last-child{border-bottom:0}
+.unit-history-name{font-size:13px;font-weight:500}
+.unit-history-meta{font-size:11px;color:var(--muted)}
+.unit-history-profit{font-weight:600;font-size:13px}
+.unit-history-profit.green{color:#22c55e}.unit-history-profit.red{color:#ef4444}
+.unit-history-action{padding:4px 10px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer}
+.unit-history-action:hover{border-color:#7c3aed;color:#7c3aed}
+.unit-history-action.danger:hover{border-color:#ef4444;color:#ef4444}
+/* === COLUMN SETTINGS === */
+.col-settings{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.col-settings summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);outline:none}
+.col-settings summary:hover{color:#7c3aed}
+.col-settings[open] summary{margin-bottom:10px}
+.col-settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.col-settings label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);cursor:pointer;padding:4px 6px;border-radius:6px}
+.col-settings label:hover{background:rgba(124,58,237,.05)}
+.col-settings label input{cursor:pointer}
 /* === LOAD BAR ON HOME === */
 .load-bar{background:linear-gradient(135deg,#1a0f3c,#2d1a7a);color:#fff;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .load-bar-title{font-size:14px;font-weight:600;margin-bottom:4px}
@@ -275,6 +309,7 @@ tr.loss td{background:#fff5f5}
     <button class="nav-item" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
     <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов</button>
     <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика</button>
+    <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)">💰 Подбор товара</button>
     <div class="nav-sec">Аккаунт</div>
     <button class="nav-item" id="nav-settings" onclick="showSection('settings',this)">⚙️ Настройки</button>
     <button class="nav-item" id="nav-promo" onclick="showSection('promo',this)">🎁 Промокод</button>
@@ -393,14 +428,40 @@ tr.loss td{background:#fff5f5}
               <label class="bulk-check"><input type="checkbox" id="bulkOnlyEmpty"> Только пустые</label>
             </div>
           </div>
+          <!-- Настройки видимости столбцов -->
+          <details class="col-settings">
+            <summary>⚙️ Настройки таблицы</summary>
+            <div class="col-settings-grid">
+              <label><input type="checkbox" class="col-toggle" data-col="drr" onchange="toggleCol(this)"> ДРР %</label>
+              <label><input type="checkbox" class="col-toggle" data-col="cpc" onchange="toggleCol(this)"> CPC</label>
+              <label><input type="checkbox" class="col-toggle" data-col="cpo" onchange="toggleCol(this)"> CPO</label>
+              <label><input type="checkbox" class="col-toggle" data-col="returns" checked onchange="toggleCol(this)"> Возвраты</label>
+              <label><input type="checkbox" class="col-toggle" data-col="stock" checked onchange="toggleCol(this)"> Остаток</label>
+              <label><input type="checkbox" class="col-toggle" data-col="commPct" checked onchange="toggleCol(this)"> Комиссия %</label>
+              <label><input type="checkbox" class="col-toggle" data-col="storage" checked onchange="toggleCol(this)"> Хранение</label>
+              <label><input type="checkbox" class="col-toggle" data-col="penalty" checked onchange="toggleCol(this)"> Штрафы</label>
+            </div>
+            <button class="bulk-btn" onclick="exportToExcel()" style="margin-top:10px">📥 Скачать в Excel</button>
+          </details>
           <div class="tw">
-            <table>
+            <table id="productsTable">
               <thead><tr>
                 <th class="cb-col"><input type="checkbox" id="cbAll" onchange="toggleAllCheckboxes(this.checked)" title="Выбрать все"></th>
                 <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
-                <th>Продажи</th><th>Возвраты</th><th title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th><th title="Реальная комиссия WB по товару, в %">Комиссия %</th><th>Выплата WB ₽</th>
-                <th>Логистика ₽</th><th>Хранение ₽</th><th>Реклама ₽</th>
-                <th>Штрафы ₽</th><th>Себест. ₽/шт</th><th>Чистая прибыль ₽</th>
+                <th>Продажи</th>
+                <th class="col-returns">Возвраты</th>
+                <th class="col-stock" title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th>
+                <th class="col-commPct" title="Реальная комиссия WB по товару, в %">Комиссия %</th>
+                <th>Выплата WB ₽</th>
+                <th>Логистика ₽</th>
+                <th class="col-storage">Хранение ₽</th>
+                <th>Реклама ₽</th>
+                <th class="col-drr" style="display:none" title="Доля рекламных расходов: реклама / выручка × 100%">ДРР %</th>
+                <th class="col-cpc" style="display:none" title="Стоимость рекламы на 1 проданную единицу">CPC</th>
+                <th class="col-cpo" style="display:none" title="Стоимость рекламы на 1 заказ (≈ продажу)">CPO</th>
+                <th class="col-penalty">Штрафы ₽</th>
+                <th>Себест. ₽/шт</th>
+                <th>Чистая прибыль ₽</th>
               </tr></thead>
               <tbody id="tb"></tbody>
               <tfoot><tr class="tfoot-row" id="tfoot"></tr></tfoot>
@@ -438,7 +499,61 @@ tr.loss td{background:#fff5f5}
       </div>
     </div>
 
-    <!-- Промокод -->
+    <!-- Подбор товара -->
+    <div class="section" id="sectionUnit">
+      <div class="card">
+        <div class="ct">Калькулятор подбора товара</div>
+        <p class="hint" style="margin-bottom:14px">Рассчитайте маржу и прибыль <strong>до закупки</strong>. Введите цену продажи на WB и себестоимость — мы покажем, окупится ли товар.</p>
+        <div class="unit-grid">
+          <div class="unit-col">
+            <label class="unit-label">Название товара / заметка</label>
+            <input type="text" id="unitName" placeholder="Например: Кроссовки белые 42">
+            <label class="unit-label">Категория WB</label>
+            <input type="text" id="unitCategory" placeholder="Например: Кроссовки">
+            <label class="unit-label">Цена продажи на WB, ₽</label>
+            <input type="number" id="unitRetailPrice" min="0" step="0.01" placeholder="2990" oninput="calcUnit()">
+            <label class="unit-label">Себестоимость закупки</label>
+            <div style="display:flex;gap:6px">
+              <input type="number" id="unitCostPrice" min="0" step="0.01" placeholder="800" oninput="calcUnit()" style="flex:1">
+              <select id="unitCostCurrency" onchange="calcUnit()" style="width:80px">
+                <option value="RUB">₽</option>
+                <option value="CNY">¥</option>
+                <option value="USD">$</option>
+                <option value="EUR">€</option>
+              </select>
+            </div>
+            <label class="unit-label">Курс к ₽ (для валют, кроме ₽)</label>
+            <input type="number" id="unitCostRate" min="0" step="0.0001" value="1" oninput="calcUnit()">
+          </div>
+          <div class="unit-col">
+            <label class="unit-label">Комиссия WB, %</label>
+            <input type="number" id="unitCommissionPct" min="0" max="100" step="0.1" value="22" oninput="calcUnit()">
+            <label class="unit-label">Вес, кг</label>
+            <input type="number" id="unitWeight" min="0" step="0.01" value="0.5" oninput="calcUnit()">
+            <label class="unit-label">Объём, литров (для логистики)</label>
+            <input type="number" id="unitVolume" min="0" step="0.1" value="1" oninput="calcUnit()">
+            <label class="unit-label">% выкупа покупателей</label>
+            <input type="number" id="unitRedemption" min="0" max="100" step="1" value="80" oninput="calcUnit()">
+            <label class="unit-label">Доля рекламы от выручки, %</label>
+            <input type="number" id="unitAdPct" min="0" max="100" step="0.1" value="5" oninput="calcUnit()">
+            <label class="unit-label">Налог, % (УСН доходы)</label>
+            <input type="number" id="unitTaxPct" min="0" max="100" step="0.1" value="7" oninput="calcUnit()">
+          </div>
+        </div>
+        <!-- Результат -->
+        <div class="unit-result" id="unitResult"></div>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="saveUnitCalc()">💾 Сохранить расчёт</button>
+          <button class="bulk-btn" onclick="resetUnitForm()">↺ Очистить</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="ct">История подборов</div>
+        <div id="unitHistory">
+          <div class="home-empty-mini">Загружаю...</div>
+        </div>
+      </div>
+    </div>
     <div class="section" id="sectionPromo">
       <div class="card">
         <div class="ct">Активировать промокод</div>
@@ -490,6 +605,7 @@ tr.loss td{background:#fff5f5}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 var sb=null, currentUser=null, currentProfile=null;
 var rows=[], byMonthData={}, myChart=null, curTab='profit';
@@ -542,8 +658,8 @@ async function logout(){
 }
 
 function showSection(name,el){
-  var sections=['home','calc','detail','analytics','settings','promo','admin'];
-  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
+  var sections=['home','calc','detail','analytics','unit','settings','promo','admin'];
+  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',unit:'Подбор товара',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
     var sec=document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1));
     if(sec) sec.classList.toggle('active',s===name);
@@ -554,6 +670,7 @@ function showSection(name,el){
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
+  if(name==='unit') loadUnitHistory();
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
     var rs=document.getElementById('results');var ce=document.getElementById('calcEmpty');
@@ -1095,6 +1212,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
   var tb=document.getElementById('tb');tb.innerHTML='';
   var stocksMap=window._stocksMap||{};
   var totalStock=0;
+  // Для CPC/CPO нужны суммы выручки и продаж по товарам — это уже в rows
   for(var i=0;i<rows.length;i++){
     var a=rows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
     var pc=prf>=0?'green':'red',ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
@@ -1110,22 +1228,292 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     } else {
       stockHtml='<span style="color:var(--hint)">—</span>';
     }
+    // ДРР: реклама / выручка × 100. Выручка считается из ppvz (т.к. ad считается за тот же период)
+    var revenueForDrr=(a.ppvz||0)+(a.del||0)+(a.stor||0); // приблизительно = выручка (ppvz_for_pay + удержания)
+    // Точнее — берём commRub/commPct*100 = retail_price * количество
+    var revFromComm=a.commPct>0?(a.commRub/a.commPct*100):0;
+    var revUsed=revFromComm>0?revFromComm:revenueForDrr;
+    var drr=revUsed>0?(a.adv/revUsed*100):0;
+    var drrCls=drr>50?'red':(drr>30?'':'green');
+    var drrHtml=a.adv>0?'<span class="'+drrCls+'" style="font-weight:600">'+drr.toFixed(1)+'%</span>':'<span style="color:var(--hint)">—</span>';
+    // CPC — стоимость рекламы на 1 продажу. У нас нет данных по кликам отдельно, поэтому CPC ≈ adv/sales (приблизительно)
+    var cpc=a.sales>0?(a.adv/a.sales):0;
+    var cpcHtml=a.adv>0&&a.sales>0?fmt(Math.round(cpc))+' ₽':'<span style="color:var(--hint)">—</span>';
+    // CPO — стоимость рекламы на 1 заказ. У нас sales ≈ orders, поэтому CPO ≈ CPC. Покажем то же значение.
+    var cpoHtml=cpcHtml;
     tb.innerHTML+='<tr'+(a.cost>0&&prf<0?' class="loss"':'')+'>'+
       '<td class="cb-col"><input type="checkbox" class="cb-row" data-i="'+i+'" onchange="onRowCheckboxChange()"></td>'+
       '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
-      '<td>'+fmt(a.sales)+'</td><td class="red">'+fmt(a.ret)+'</td>'+
-      '<td>'+stockHtml+'</td>'+
-      '<td><span style="font-weight:600">'+(a.commPct||0)+'%</span><div style="font-size:10px;color:var(--hint)">'+fmt(Math.round(a.commRub||0))+' ₽</div></td>'+
-      '<td>'+fmt(a.ppvz)+' ₽</td><td class="red">−'+fmt(a.del)+' ₽</td>'+
-      '<td class="red">−'+fmt(a.stor)+' ₽</td><td class="red">−'+fmt(a.adv)+' ₽</td>'+
-      '<td class="red">−'+fmt(a.pen)+' ₽</td>'+
+      '<td>'+fmt(a.sales)+'</td>'+
+      '<td class="col-returns red">'+fmt(a.ret)+'</td>'+
+      '<td class="col-stock">'+stockHtml+'</td>'+
+      '<td class="col-commPct"><span style="font-weight:600">'+(a.commPct||0)+'%</span><div style="font-size:10px;color:var(--hint)">'+fmt(Math.round(a.commRub||0))+' ₽</div></td>'+
+      '<td>'+fmt(a.ppvz)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.del)+' ₽</td>'+
+      '<td class="col-storage red">−'+fmt(a.stor)+' ₽</td>'+
+      '<td class="red">−'+fmt(a.adv)+' ₽</td>'+
+      '<td class="col-drr" style="display:none">'+drrHtml+'</td>'+
+      '<td class="col-cpc" style="display:none">'+cpcHtml+'</td>'+
+      '<td class="col-cpo" style="display:none">'+cpoHtml+'</td>'+
+      '<td class="col-penalty red">−'+fmt(a.pen)+' ₽</td>'+
       '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+i+',this.value)"></td>'+
       '<td>'+ps+'</td></tr>';
   }
   var tf=document.getElementById('tfoot');
-  tf.innerHTML='<td colspan="4">ИТОГО</td><td>'+fmt(tSl)+'</td><td class="red">'+fmt(tRt)+'</td><td>'+fmt(totalStock)+'</td><td class="red">−'+fmt(Math.round(tComm))+' ₽</td><td>'+fmt(tP)+' ₽</td><td class="red">−'+fmt(tD)+' ₽</td><td class="red">−'+fmt(tS)+' ₽</td><td class="red">−'+fmt(tAd)+' ₽</td><td class="red">−'+fmt(tPn)+' ₽</td><td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td><td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
+  // Итоги: считаем общий ДРР, CPC
+  var totalRevFromComm=rows.reduce(function(s,a){return s+(a.commPct>0?a.commRub/a.commPct*100:0);},0);
+  var totalDrr=totalRevFromComm>0?(tAd/totalRevFromComm*100):0;
+  var totalCpc=tSl>0?(tAd/tSl):0;
+  tf.innerHTML='<td colspan="4">ИТОГО</td>'+
+    '<td>'+fmt(tSl)+'</td>'+
+    '<td class="col-returns red">'+fmt(tRt)+'</td>'+
+    '<td class="col-stock">'+fmt(totalStock)+'</td>'+
+    '<td class="col-commPct red">−'+fmt(Math.round(tComm))+' ₽</td>'+
+    '<td>'+fmt(tP)+' ₽</td>'+
+    '<td class="red">−'+fmt(tD)+' ₽</td>'+
+    '<td class="col-storage red">−'+fmt(tS)+' ₽</td>'+
+    '<td class="red">−'+fmt(tAd)+' ₽</td>'+
+    '<td class="col-drr" style="display:none">'+(totalDrr>0?totalDrr.toFixed(1)+'%':'—')+'</td>'+
+    '<td class="col-cpc" style="display:none">'+(totalCpc>0?fmt(Math.round(totalCpc))+' ₽':'—')+'</td>'+
+    '<td class="col-cpo" style="display:none">'+(totalCpc>0?fmt(Math.round(totalCpc))+' ₽':'—')+'</td>'+
+    '<td class="col-penalty red">−'+fmt(tPn)+' ₽</td>'+
+    '<td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td>'+
+    '<td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
+  // После рендера применяем сохранённые настройки видимости
+  applyColPrefs();
 }
+function toggleCol(checkbox){
+  var col=checkbox.dataset.col;
+  var on=checkbox.checked;
+  document.querySelectorAll('.col-'+col).forEach(function(el){el.style.display=on?'':'none';});
+  // Сохраним
+  try{
+    var prefs=JSON.parse(localStorage.getItem('col_prefs')||'{}');
+    prefs[col]=on;
+    localStorage.setItem('col_prefs',JSON.stringify(prefs));
+  }catch(e){}
+}
+function applyColPrefs(){
+  try{
+    var prefs=JSON.parse(localStorage.getItem('col_prefs')||'{}');
+    document.querySelectorAll('.col-toggle').forEach(function(cb){
+      var col=cb.dataset.col;
+      if(col in prefs)cb.checked=prefs[col];
+      var on=cb.checked;
+      document.querySelectorAll('.col-'+col).forEach(function(el){el.style.display=on?'':'none';});
+    });
+  }catch(e){}
+}
+function exportToExcel(){
+  if(typeof XLSX==='undefined'){alert('Библиотека ещё грузится, попробуйте через 2 секунды');return;}
+  if(!rows||!rows.length){alert('Сначала загрузите данные');return;}
+  var stocksMap=window._stocksMap||{};
+  // Готовим данные построчно
+  var data=rows.map(function(a){
+    var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+    var st=stocksMap[a.nm_id]||{avail:0,total:0,inWay:0};
+    var revFromComm=a.commPct>0?(a.commRub/a.commPct*100):0;
+    var drr=revFromComm>0?(a.adv/revFromComm*100):0;
+    var cpc=a.sales>0?(a.adv/a.sales):0;
+    return {
+      'Артикул WB':a.nm_id||'',
+      'Артикул селлера':a.sa||'',
+      'Категория':a.cat||'',
+      'Продажи (шт)':a.sales||0,
+      'Возвраты (шт)':a.ret||0,
+      'Остаток доступно':st.avail,
+      'Остаток всего':st.total,
+      'В пути к клиенту':st.inWay,
+      'Комиссия WB %':a.commPct||0,
+      'Комиссия WB ₽':Math.round(a.commRub||0),
+      'Выручка ₽ (recv)':Math.round(revFromComm),
+      'Выплата WB ₽':Math.round(a.ppvz||0),
+      'Логистика ₽':Math.round(a.del||0),
+      'Хранение ₽':Math.round(a.stor||0),
+      'Реклама ₽':Math.round(a.adv||0),
+      'ДРР %':Number(drr.toFixed(1)),
+      'Стоимость рекламы / продажу ₽':Math.round(cpc),
+      'Штрафы ₽':Math.round(a.pen||0),
+      'Себестоимость ₽/шт':Math.round(a.cost||0),
+      'Чистая прибыль ₽':Math.round(prf)
+    };
+  });
+  var ws=XLSX.utils.json_to_sheet(data);
+  // Подгоняем ширину колонок по содержимому
+  var cols=Object.keys(data[0]||{});
+  ws['!cols']=cols.map(function(k){
+    var maxLen=k.length;
+    data.forEach(function(r){var l=String(r[k]).length;if(l>maxLen)maxLen=l;});
+    return {wch:Math.min(maxLen+2,30)};
+  });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Товары');
+  // Имя файла с датой
+  var d=new Date();
+  var fn='WB-Profit_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.xlsx';
+  XLSX.writeFile(wb,fn);
+}
+
+// === UNIT ECONOMICS ===
+function calcUnit(){
+  var retail=parseFloat(document.getElementById('unitRetailPrice').value)||0;
+  var costRaw=parseFloat(document.getElementById('unitCostPrice').value)||0;
+  var costCcy=document.getElementById('unitCostCurrency').value;
+  var rate=parseFloat(document.getElementById('unitCostRate').value)||1;
+  var cost=costCcy==='RUB'?costRaw:costRaw*rate;
+  var commPct=parseFloat(document.getElementById('unitCommissionPct').value)||0;
+  var weight=parseFloat(document.getElementById('unitWeight').value)||0;
+  var volume=parseFloat(document.getElementById('unitVolume').value)||0;
+  var redemption=(parseFloat(document.getElementById('unitRedemption').value)||0)/100;
+  var adPct=(parseFloat(document.getElementById('unitAdPct').value)||0)/100;
+  var taxPct=(parseFloat(document.getElementById('unitTaxPct').value)||0)/100;
+  // Расчёт по WB
+  var commission=retail*commPct/100;
+  // Логистика WB ≈ 50 + 5 за каждый литр (примерно). Для точного — нужен endpoint.
+  var logistics=Math.max(50,50+(volume-1)*10);
+  // Возвраты — за каждый невыкупленный платится логистика повторно
+  var logTotalPerSale=logistics+logistics*(1-redemption);
+  // Хранение ~ 1 руб/день на 1 литр × 30 дней
+  var storage=volume*30;
+  // Реклама — % от выручки
+  var ads=retail*adPct;
+  // Эквайринг ~ 2%
+  var acquiring=retail*0.02;
+  // Налог УСН ~ 7% от ppvz
+  var ppvz=retail-commission-acquiring;
+  var tax=ppvz*taxPct;
+  // Чистая прибыль на единицу проданного товара
+  var totalExp=commission+acquiring+logTotalPerSale+storage+ads+tax+cost;
+  var profit=retail-totalExp;
+  var marginPct=retail>0?(profit/retail*100):0;
+  var roiPct=cost>0?(profit/cost*100):0;
+  // Рендер результата
+  var el=document.getElementById('unitResult');
+  if(retail<=0||cost<=0){
+    el.innerHTML='<div class="home-empty-mini">Введите цену продажи и себестоимость, чтобы увидеть расчёт.</div>';
+    return;
+  }
+  var profCls=profit>=0?'green':'red';
+  var marCls=marginPct>=20?'green':(marginPct>=0?'':'red');
+  var roiCls=roiPct>=30?'green':(roiPct>=0?'':'red');
+  el.innerHTML=
+    '<div class="unit-result-grid">'+
+      '<div class="unit-result-item"><div class="unit-result-lbl">Прибыль с шт</div><div class="unit-result-val '+profCls+'">'+(profit>=0?'+':'−')+fmt(Math.abs(profit))+' ₽</div></div>'+
+      '<div class="unit-result-item"><div class="unit-result-lbl">Маржа</div><div class="unit-result-val '+marCls+'">'+marginPct.toFixed(1)+'%</div></div>'+
+      '<div class="unit-result-item"><div class="unit-result-lbl">ROI</div><div class="unit-result-val '+roiCls+'">'+roiPct.toFixed(1)+'%</div></div>'+
+    '</div>'+
+    '<div class="unit-breakdown">'+
+      '<div class="unit-breakdown-row"><span>Цена продажи</span><span style="color:#22c55e">+'+fmt(retail)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Комиссия WB ('+commPct+'%)</span><span style="color:#ef4444">−'+fmt(commission)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Эквайринг (2%)</span><span style="color:#ef4444">−'+fmt(acquiring)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Логистика (с учётом '+Math.round((1-redemption)*100)+'% невыкупа)</span><span style="color:#ef4444">−'+fmt(logTotalPerSale)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Хранение (≈)</span><span style="color:#ef4444">−'+fmt(storage)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Реклама</span><span style="color:#ef4444">−'+fmt(ads)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Налог УСН</span><span style="color:#ef4444">−'+fmt(tax)+' ₽</span></div>'+
+      '<div class="unit-breakdown-row"><span>− Себестоимость</span><span style="color:#ef4444">−'+fmt(cost)+' ₽</span></div>'+
+    '</div>';
+  // Сохраняем последние расчёты в localStorage чтобы при сохранении в БД не пересчитывать
+  window._lastUnitCalc={
+    retail_price:retail, cost_price:costRaw, cost_currency:costCcy, cost_rate:rate,
+    weight_kg:weight, volume_l:volume, commission_pct:commPct,
+    logistics_rub:logTotalPerSale, storage_rub:storage,
+    tax_pct:taxPct*100, redemption_pct:redemption*100, ad_pct:adPct*100,
+    profit:profit, margin_pct:marginPct, roi_pct:roiPct
+  };
+}
+function resetUnitForm(){
+  ['unitName','unitCategory','unitRetailPrice','unitCostPrice'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('unitCostCurrency').value='RUB';
+  document.getElementById('unitCostRate').value=1;
+  document.getElementById('unitCommissionPct').value=22;
+  document.getElementById('unitWeight').value=0.5;
+  document.getElementById('unitVolume').value=1;
+  document.getElementById('unitRedemption').value=80;
+  document.getElementById('unitAdPct').value=5;
+  document.getElementById('unitTaxPct').value=7;
+  document.getElementById('unitResult').innerHTML='<div class="home-empty-mini">Введите цену продажи и себестоимость, чтобы увидеть расчёт.</div>';
+}
+async function saveUnitCalc(){
+  if(!window._lastUnitCalc){alert('Сначала заполните цену продажи и себестоимость');return;}
+  var name=document.getElementById('unitName').value.trim()||'Подбор от '+new Date().toLocaleDateString('ru-RU');
+  var category=document.getElementById('unitCategory').value.trim();
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt){alert('Войдите снова');return;}
+    var payload=Object.assign({name:name,category:category},window._lastUnitCalc);
+    var r=await fetch('/api/calcs',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok){var t=await r.text();alert('Ошибка: '+t);return;}
+    loadUnitHistory();
+    // Лёгкий feedback
+    var btn=document.querySelector('#sectionUnit .btn-primary');
+    if(btn){var orig=btn.textContent;btn.textContent='✓ Сохранено';setTimeout(function(){btn.textContent=orig;},1500);}
+  }catch(e){alert('Ошибка сохранения: '+e.message);}
+}
+async function loadUnitHistory(){
+  var el=document.getElementById('unitHistory');
+  if(!el)return;
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt){el.innerHTML='<div class="home-empty-mini">Не авторизован</div>';return;}
+    var r=await fetch('/api/calcs',{headers:{'Authorization':'Bearer '+jwt}});
+    if(!r.ok){el.innerHTML='<div class="home-empty-mini">Ошибка загрузки</div>';return;}
+    var data=await r.json();
+    var calcs=data.calcs||[];
+    if(!calcs.length){el.innerHTML='<div class="home-empty-mini">Ещё нет сохранённых подборов. Заполните форму выше и нажмите «Сохранить».</div>';return;}
+    var h='';
+    calcs.forEach(function(c){
+      var p=Number(c.profit||0);
+      var pCls=p>=0?'green':'red';
+      var d=new Date(c.created_at);
+      var dateStr=d.toLocaleDateString('ru-RU');
+      h+='<div class="unit-history-item">'+
+        '<div><div class="unit-history-name">'+escapeHtml(c.name)+'</div>'+
+        '<div class="unit-history-meta">'+dateStr+' · цена '+fmt(c.retail_price)+' ₽ · себест. '+fmt(c.cost_price)+' '+c.cost_currency+'</div></div>'+
+        '<div class="unit-history-profit '+pCls+'">'+(p>=0?'+':'−')+fmt(Math.abs(p))+' ₽</div>'+
+        '<button class="unit-history-action" onclick="loadUnitFromHistory(\''+c.id+'\')">↩</button>'+
+        '<button class="unit-history-action danger" onclick="deleteUnitCalc(\''+c.id+'\')">×</button>'+
+      '</div>';
+    });
+    el.innerHTML=h;
+    window._unitCalcs=calcs;
+  }catch(e){el.innerHTML='<div class="home-empty-mini">Ошибка: '+e.message+'</div>';}
+}
+function loadUnitFromHistory(id){
+  var c=(window._unitCalcs||[]).find(function(x){return x.id===id;});
+  if(!c)return;
+  document.getElementById('unitName').value=c.name||'';
+  document.getElementById('unitCategory').value=c.category||'';
+  document.getElementById('unitRetailPrice').value=c.retail_price||'';
+  document.getElementById('unitCostPrice').value=c.cost_price||'';
+  document.getElementById('unitCostCurrency').value=c.cost_currency||'RUB';
+  document.getElementById('unitCostRate').value=c.cost_rate||1;
+  document.getElementById('unitCommissionPct').value=c.commission_pct||22;
+  document.getElementById('unitWeight').value=c.weight_kg||0.5;
+  document.getElementById('unitVolume').value=c.volume_l||1;
+  document.getElementById('unitRedemption').value=c.redemption_pct||80;
+  document.getElementById('unitAdPct').value=c.ad_pct||5;
+  document.getElementById('unitTaxPct').value=c.tax_pct||7;
+  calcUnit();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function deleteUnitCalc(id){
+  if(!confirm('Удалить этот подбор?'))return;
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    await fetch('/api/calcs?id='+encodeURIComponent(id),{method:'DELETE',headers:{'Authorization':'Bearer '+jwt}});
+    loadUnitHistory();
+  }catch(e){alert('Ошибка: '+e.message);}
+}
+function escapeHtml(s){return String(s||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+
 
 function switchTab(tab,e){
   curTab=tab;
