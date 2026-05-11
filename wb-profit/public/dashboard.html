@@ -171,18 +171,30 @@ tr.loss td{background:#fff5f5}
 .load-bar{background:linear-gradient(135deg,#1a0f3c,#2d1a7a);color:#fff;border-radius:14px;padding:18px 22px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:16px}
 .load-bar-title{font-size:14px;font-weight:600;margin-bottom:4px}
 .load-bar-sub{font-size:12px;color:rgba(255,255,255,.65)}
-.load-bar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.load-bar-select{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;cursor:pointer;min-width:120px}
-.load-bar-select option{background:#1a0f3c;color:#fff}
-.load-bar-select:focus{outline:none;border-color:#7c3aed}
+.load-bar-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.period-picker{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:4px;border-radius:10px;flex-wrap:wrap}
+.period-pill{background:transparent;color:rgba(255,255,255,.7);border:0;padding:7px 14px;font-size:12px;font-weight:500;cursor:pointer;border-radius:7px;transition:all .15s;white-space:nowrap}
+.period-pill:hover{color:#fff;background:rgba(255,255,255,.08)}
+.period-pill.active{background:#fff;color:#1a0f3c;font-weight:600}
 .load-bar .btn-primary{background:#fff;color:#1a0f3c;border:0;padding:9px 22px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
 .load-bar .btn-primary:hover:not(:disabled){background:#ede9fe;transform:translateY(-1px)}
 .load-bar .btn-primary:disabled{opacity:.6;cursor:not-allowed}
 @media(max-width:700px){
   .load-bar{flex-direction:column;align-items:stretch}
-  .load-bar-right{justify-content:stretch}
+  .load-bar-right{justify-content:stretch;flex-direction:column}
+  .period-picker{justify-content:center}
   .load-bar-right .btn-primary{flex:1}
 }
+/* Custom period popup */
+.period-popup{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center}
+.period-popup-bg{position:absolute;inset:0;background:rgba(15,12,30,.6);backdrop-filter:blur(4px)}
+.period-popup-card{position:relative;background:#fff;border-radius:14px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3);z-index:1}
+.period-popup-title{font-size:16px;font-weight:700;margin-bottom:14px}
+.period-popup-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.period-popup-row label{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:600;display:block;margin-bottom:4px;letter-spacing:.3px}
+.period-popup-row input{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px}
+.period-popup-row input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.period-popup-actions{display:flex;gap:8px;justify-content:flex-end}
 /* === BULK COST BAR === */
 .bulk-bar{background:linear-gradient(135deg,rgba(124,58,237,.05),rgba(84,51,198,.05));border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:12px 16px;margin-bottom:12px}
 .bulk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -344,14 +356,36 @@ tr.loss td{background:#fff5f5}
           <div class="load-bar-sub" id="lastSyncInfo">Нажмите «Загрузить», чтобы получить свежие данные с Wildberries</div>
         </div>
         <div class="load-bar-right">
-          <select id="loadPeriod" class="load-bar-select">
-            <option value="1">Сегодня</option>
-            <option value="7">7 дней</option>
-            <option value="30" selected>30 дней</option>
-            <option value="90">90 дней</option>
-          </select>
+          <div class="period-picker" id="periodPicker">
+            <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Сегодня</button>
+            <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
+            <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)">30 дней</button>
+            <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)">90 дней</button>
+            <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()">📅 Свой</button>
+          </div>
           <button class="btn-primary" id="loadBtnHome" onclick="goFromHome()">Загрузить</button>
         </div>
+      </div>
+      <!-- Popup выбора своего периода -->
+      <div class="period-popup" id="periodPopup" style="display:none">
+        <div class="period-popup-card">
+          <div class="period-popup-title">Выберите свой период</div>
+          <div class="period-popup-row">
+            <div>
+              <label>С даты</label>
+              <input type="date" id="customDf">
+            </div>
+            <div>
+              <label>По дату</label>
+              <input type="date" id="customDt">
+            </div>
+          </div>
+          <div class="period-popup-actions">
+            <button class="bulk-btn" onclick="closeCustomPeriod()">Отмена</button>
+            <button class="btn-primary" onclick="applyCustomPeriod()" style="padding:8px 20px">Применить</button>
+          </div>
+        </div>
+        <div class="period-popup-bg" onclick="closeCustomPeriod()"></div>
       </div>
       <div class="ld" id="ldBoxHome" style="margin-top:10px"><div class="sp"></div><span id="ldTxtHome">Загружаем...</span></div>
       <div id="errBoxHome" class="err"></div>
@@ -764,6 +798,51 @@ function saveTokenManual(){
   if(btn){var orig=btn.textContent;btn.textContent='✓ Сохранено';setTimeout(function(){btn.textContent=orig;},1500);}
   var sh=document.getElementById('savedHint');if(sh)sh.style.display='block';
 }
+// === PERIOD PICKER ===
+var _currentPeriod={mode:'preset',days:30,df:null,dt:null};
+function setPeriod(days){
+  _currentPeriod={mode:'preset',days:days,df:null,dt:null};
+  document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
+  var btn=document.querySelector('.period-pill[data-period="'+days+'"]');
+  if(btn)btn.classList.add('active');
+}
+function openCustomPeriod(){
+  // Заполняем дефолтные значения из текущего периода
+  var df,dt;
+  var today=new Date();
+  if(_currentPeriod.mode==='custom'){
+    df=_currentPeriod.df; dt=_currentPeriod.dt;
+  } else {
+    dt=today.toISOString().slice(0,10);
+    var a=new Date();a.setDate(today.getDate()-((_currentPeriod.days||30)-1));
+    df=a.toISOString().slice(0,10);
+  }
+  document.getElementById('customDf').value=df;
+  document.getElementById('customDt').value=dt;
+  // Ограничиваем max — нельзя в будущее
+  document.getElementById('customDf').max=today.toISOString().slice(0,10);
+  document.getElementById('customDt').max=today.toISOString().slice(0,10);
+  document.getElementById('periodPopup').style.display='flex';
+}
+function closeCustomPeriod(){
+  document.getElementById('periodPopup').style.display='none';
+}
+function applyCustomPeriod(){
+  var df=document.getElementById('customDf').value;
+  var dt=document.getElementById('customDt').value;
+  if(!df||!dt){alert('Выберите обе даты');return;}
+  if(df>dt){alert('Дата начала должна быть раньше даты окончания');return;}
+  _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
+  document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
+  var btn=document.querySelector('.period-pill[data-period="custom"]');
+  if(btn){
+    btn.classList.add('active');
+    // Покажем диапазон прямо в кнопке
+    btn.textContent='📅 '+shortDate(df)+'–'+shortDate(dt);
+  }
+  closeCustomPeriod();
+}
+
 async function goFromHome(){
   var token=localStorage.getItem('wb_token');
   if(!token){
@@ -771,12 +850,18 @@ async function goFromHome(){
     showSection('settings',document.getElementById('nav-settings'));
     return;
   }
-  var period=parseInt(document.getElementById('loadPeriod').value,10)||30;
-  var t=new Date(),a=new Date();
-  a.setDate(t.getDate()-(period-1));
-  document.getElementById('df').value=a.toISOString().split('T')[0];
-  document.getElementById('dt').value=t.toISOString().split('T')[0];
-  // Скрываем форму empty в Калькуляторе и запускаем загрузку
+  var df,dt;
+  var today=new Date();
+  if(_currentPeriod.mode==='custom'){
+    df=_currentPeriod.df; dt=_currentPeriod.dt;
+  } else {
+    var period=_currentPeriod.days||30;
+    var a=new Date();a.setDate(today.getDate()-(period-1));
+    dt=today.toISOString().slice(0,10);
+    df=a.toISOString().slice(0,10);
+  }
+  document.getElementById('df').value=df;
+  document.getElementById('dt').value=dt;
   await go(token);
 }
 
@@ -1864,8 +1949,9 @@ async function loadHomeData(){
   var el=document.getElementById('homeContent');
   if(!el)return;
   el.dataset.rendered='1';
-  // 1) Читаем историю снапшотов из Supabase (быстро)
-  var snapshots=await loadSnapshots(30);
+  el.innerHTML='<div class="home-empty"><div class="home-spinner-icon">⏳</div>Загружаем сводку...</div>';
+  // Читаем историю снапшотов из Supabase (быстро)
+  var snapshots=await loadSnapshots(90);
   if(!snapshots.length){
     renderHomeIdle();
     return;
