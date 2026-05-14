@@ -2,6 +2,7 @@
 // WB лимит: 1 запрос/мин на токен. Мы держим этот лимит сами и кэшируем прошлые дни.
 
 import crypto from 'node:crypto';
+import { extractJwt, getUserPlan, sendIfPlanError } from '../lib/plan-check.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -120,6 +121,31 @@ export default async function handler(req, res) {
 
   const { dateFrom, dateTo, rrdid = 0 } = req.query;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
+
+  // ─── Проверка тарифа ───
+  // Если период > 7 дней — требуем PRO. JWT берём из X-User-Auth (Authorization занят WB-токеном).
+  try {
+    const fromMs = new Date(dateFrom).getTime();
+    const toMs = new Date(dateTo).getTime();
+    const days = Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
+    if (days > 7) {
+      const jwt = extractJwt(req);
+      const plan = await getUserPlan(jwt);
+      if (plan.error) {
+        if (sendIfPlanError(res, plan)) return;
+      }
+      if (!plan.hasPro) {
+        return res.status(403).json({
+          error: 'PRO_REQUIRED',
+          message: `Период ${days} дней доступен только на тарифе PRO. Бесплатно — до 7 дней.`,
+          feature: `Период ${days} дней`,
+        });
+      }
+    }
+  } catch (e) {
+    // Если что-то сломалось в проверке тарифа — НЕ блокируем запрос (failsafe).
+    console.warn('[wb] plan-check error:', e.message);
+  }
 
   const tokenHash = hashToken(token);
   const cacheKey = `${tokenHash}:${dateFrom}:${dateTo}:${rrdid}`;

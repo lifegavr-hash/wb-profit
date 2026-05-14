@@ -838,6 +838,7 @@ async function init(){
   var {data:{session}}=await sb.auth.getSession();
   if(!session){window.location.href='/login.html';return;}
   currentUser=session.user;
+  window.currentJwt=session.access_token; // глобально для запросов с backend-проверкой тарифа
   var {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   // Авто-даунгрейд если PRO истёк (не для админа с 2099 годом — он всё равно not expired)
   if(profile&&profile.plan==='pro'&&profile.plan_expires_at&&!profile.is_admin){
@@ -1358,6 +1359,13 @@ function buildStocksMap(stocks){
   return m;
 }
 
+// Получить актуальный JWT (обновляется в init() и при каждом session refresh от Supabase)
+function getJwt(){
+  if(window.currentJwt)return window.currentJwt;
+  // fallback: попробуем достать асинхронно (но это уже edge case)
+  return null;
+}
+
 async function loadSales(tok,df,dt){
   var all=[],rid=0,pg=0;
   // Оценочное количество дней для прогресса
@@ -1366,7 +1374,18 @@ async function loadSales(tok,df,dt){
   while(true){
     pg++;
     setLoadStatus('Загружаем продажи... страница '+pg+' / период '+totalDays+' дн.');
-    var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:{Authorization:tok}});
+    var jwt=getJwt();
+    var headers={Authorization:tok};
+    if(jwt)headers['X-User-Auth']='Bearer '+jwt;
+    var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:headers});
+    if(r.status===403){
+      // PRO-required от backend
+      var body={};try{body=await r.json();}catch(e){}
+      if(body.error==='PRO_REQUIRED'){
+        showProUpgradeModal(body.feature||'Расширенный период');
+        throw new Error('PRO_REQUIRED');
+      }
+    }
     if(r.status===429){
       var ra=parseInt(r.headers.get('Retry-After')||'60',10);
       setLoadStatus('⏳ Лимит WB. Ждём '+ra+' сек (страница '+pg+')…');
@@ -2137,6 +2156,13 @@ async function saveUnitCalc(){
       headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
       body:JSON.stringify(payload)
     });
+    if(r.status===403){
+      var body={};try{body=await r.json();}catch(e){}
+      if(body.error==='PRO_REQUIRED'){
+        showProUpgradeModal(body.feature||'Безлимитные подборы товара');
+        return;
+      }
+    }
     if(!r.ok){var t=await r.text();alert('Ошибка: '+t);return;}
     loadUnitHistory();
     // Лёгкий feedback
