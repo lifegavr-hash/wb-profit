@@ -229,6 +229,13 @@ tr.loss td{background:#fff5f5}
 .period-popup-actions{display:flex;gap:8px;justify-content:flex-end}
 /* === BULK COST BAR === */
 .bulk-bar{background:linear-gradient(135deg,rgba(124,58,237,.05),rgba(84,51,198,.05));border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:12px 16px;margin-bottom:12px}
+/* Авто-сохранение индикатор справа от заголовка таблицы */
+.auto-save-status{font-size:12px;font-weight:500;padding:4px 10px;border-radius:6px;line-height:1.2;transition:all .2s;animation:fadeIn .2s ease}
+.auto-save-status.pending{background:#fef3c7;color:#92400e}
+.auto-save-status.saving{background:#dbeafe;color:#1e40af}
+.auto-save-status.saved{background:#d1fae5;color:#065f46}
+.auto-save-status.error{background:#fee2e2;color:#991b1b}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-2px)}to{opacity:1;transform:translateY(0)}}
 .bulk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .bulk-lbl{font-size:13px;font-weight:600;color:var(--text);margin:0}
 .bulk-input{width:120px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff}
@@ -542,9 +549,12 @@ tr.loss td{background:#fff5f5}
       <div id="results" style="display:none">
         <div class="metrics" id="mg"></div>
         <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:12px;flex-wrap:wrap">
             <span class="ct" style="margin:0">Разбивка по товарам</span>
-            <span style="font-size:12px;color:var(--hint)" id="cnt"></span>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span id="autoSaveStatus" class="auto-save-status" style="display:none"></span>
+              <span style="font-size:12px;color:var(--hint)" id="cnt"></span>
+            </div>
           </div>
           <p class="hint" style="margin-bottom:12px">Себестоимость сохраняется автоматически. Убыточные товары выделены красным.</p>
           <div class="bulk-bar">
@@ -1913,45 +1923,23 @@ function applyBulkCost(mode){
     setTimeout(function(){btn.textContent=orig;onRowCheckboxChange();},1500);
   }
 }
+// Пересчитывает ВСЕ итоги Калькулятора: 12 плиток + футер + строки таблицы.
+// Учитывает: товарные строки (rows) + операционные строки без артикула (из rawData).
+// Используется при изменении себестоимостей (вручную в строке или bulk-операцией).
 function recalcTotals(){
   if(!rows||!rows.length)return;
-  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0;
+  // 1) Подсчёт по товарам (rows)
+  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0,tWbFin=0;
   for(var j=0;j<rows.length;j++){
     var x=rows[j];
     tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
     tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
     if(x.cost>0)tCost+=x.cost*Math.max(x.sales-x.ret,0);
   }
-  var tp=tP-tD-tS-tAd-tPn-tCost;
-  // Карточка сверху
-  var pc=document.getElementById('profitCard');
-  if(pc){pc.className='mv '+(tp>=0?'green':'red');pc.textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
-  // Футер
-  var tfCost=document.getElementById('tfCost');
-  var tfProfit=document.getElementById('tfProfit');
-  if(tfCost)tfCost.innerHTML='−'+fmt(tCost)+' ₽';
-  if(tfProfit){tfProfit.className=tp>=0?'green':'red';tfProfit.innerHTML=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
-}
-
-function upd(i,val){
-  rows[i].cost=parseFloat(val)||0;var a=rows[i];
-  var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
-  var tr=document.getElementById('tb').rows[i];var pc=prf>=0?'green':'red';
-  // Прибыль теперь в последней ячейке. Используем length-1 для устойчивости к новым столбцам.
-  tr.cells[tr.cells.length-1].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
-  tr.className=a.cost>0&&prf<0?'loss':'';
-  var c=getCosts();var k=String(a.nm_id||a.sa||'x');if(a.cost>0) c[k]=a.cost;else delete c[k];saveCosts(c);
-  // Итоги из товаров с артикулом
-  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tWbFin=0,tCost=0;
-  for(var j=0;j<rows.length;j++){
-    var x=rows[j];
-    tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
-    tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
-    tCost+=x.cost*Math.max(x.sales-x.ret,0);
-  }
-  // Добавляем расходы из строк БЕЗ артикула
-  for(var ri=0;ri<raw.length;ri++){
-    var rd=raw[ri];
+  // 2) Подсчёт по строкам БЕЗ артикула (ВБ Финанс, общие штрафы, общая реклама, общая логистика)
+  var src=(typeof rawData!=='undefined'&&rawData)?rawData:[];
+  for(var ri=0;ri<src.length;ri++){
+    var rd=src[ri];
     if(rd.nm_id||rd.sa_name) continue;
     tP+=rd.ppvz_for_pay||0;
     tD+=rd.delivery_rub||0;
@@ -1960,19 +1948,143 @@ function upd(i,val){
     tPn+=rd.penalty||0;
     var ded=Math.abs(rd.deduction||0);
     if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)){
-      tWbFin+=ded; // ВБ Финанс отдельно
+      tWbFin+=ded;
     } else if(isAdv(rd.bonus_type_name,rd.supplier_oper_name)){
-      tAd+=ded; // Реклама отдельно
+      tAd+=ded;
     } else {
-      tPn+=ded; // Реальные штрафы и удержания
+      tPn+=ded;
     }
     tPn+=rd.acceptance||0;
   }
-  var tp=tP-tD-tS-tAd-tPn-tWbFin-tCost;var pc2=tp>=0?'green':'red';
-  document.getElementById('profitCard').className='mv '+pc2;document.getElementById('profitCard').textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';
-  document.getElementById('costCard').textContent='−'+fmt(tCost)+' ₽';
-  document.getElementById('tfCost').textContent='−'+fmt(tCost)+' ₽';
-  document.getElementById('tfProfit').className=pc2;document.getElementById('tfProfit').textContent=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';
+  // 3) Выручка и комиссия — пересчитываем заново по rawData (как в process)
+  var tRev=0,tComm=0;
+  for(var i=0;i<src.length;i++){
+    var rr=src[i];
+    var dt=(rr.doc_type_name||'').toLowerCase();
+    if(dt==='продажа'||dt==='возврат'){
+      var price=Number(rr.retail_amount||rr.retail_price_withdisc_rub||0);
+      var pct=Number(rr.commission_percent||0);
+      var sign=dt==='возврат'?-1:1;
+      tRev+=sign*price;
+      tComm+=sign*(price*pct/100);
+    }
+  }
+  var tp=tP-tD-tS-tAd-tPn-tWbFin-tCost;
+  // 4) Обновляем 12 плиток сверху
+  var setCard=function(label,val,cls){
+    var cards=document.querySelectorAll('#mg .m');
+    for(var k=0;k<cards.length;k++){
+      var lbl=cards[k].querySelector('.ml');
+      if(lbl&&lbl.textContent.trim()===label){
+        var mv=cards[k].querySelector('.mv');
+        if(mv){mv.textContent=val; if(cls!==undefined)mv.className='mv '+cls;}
+        return;
+      }
+    }
+  };
+  setCard('Продажи',fmt(tSl)+' шт.','mv');
+  setCard('Возвраты',fmt(tRt)+' шт.','mv red');
+  setCard('Выручка',fmt(tRev)+' ₽','mv');
+  setCard('Комиссия WB','−'+fmt(tComm)+' ₽','mv red');
+  setCard('Выплата WB',fmt(tP)+' ₽','mv');
+  setCard('Логистика','−'+fmt(tD)+' ₽','mv red');
+  setCard('Хранение','−'+fmt(tS)+' ₽','mv red');
+  setCard('Реклама WB','−'+fmt(tAd)+' ₽','mv red');
+  setCard('Штрафы','−'+fmt(tPn)+' ₽','mv red');
+  setCard('Себестоимость','−'+fmt(tCost)+' ₽','mv red');
+  setCard('Чистая прибыль',(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽','mv '+(tp>=0?'green':'red'));
+  if(tWbFin>0)setCard('ВБ Финанс (кредит)','−'+fmt(tWbFin)+' ₽','mv red');
+  // 5) Футер таблицы
+  var tfCost=document.getElementById('tfCost');
+  var tfProfit=document.getElementById('tfProfit');
+  if(tfCost)tfCost.innerHTML='−'+fmt(tCost)+' ₽';
+  if(tfProfit){tfProfit.className=tp>=0?'green':'red';tfProfit.innerHTML=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
+  // 6) Жёлтый банер «Убыточных товаров»
+  var losers=rows.filter(function(x){return x.cost>0&&x.ppvz-x.del-x.stor-x.adv-x.pen-x.cost*Math.max(x.sales-x.ret,0)<0;});
+  var wb=document.getElementById('warnBox');
+  if(wb){
+    if(losers.length){
+      wb.textContent='Внимание! Убыточных товаров: '+losers.length+' — '+losers.slice(0,3).map(function(x){return x.sa||x.nm_id;}).join(', ');
+      wb.style.display='block';
+    } else {
+      wb.style.display='none';
+    }
+  }
+  // 7) Запускаем auto-save со снапшотами в БД (debounced)
+  scheduleAutoSave();
+}
+
+// Auto-save с debounce: после последнего изменения через 2 сек — пишем в Supabase
+var _autoSaveTimer=null;
+function scheduleAutoSave(){
+  if(_autoSaveTimer)clearTimeout(_autoSaveTimer);
+  showSaveStatus('pending');
+  _autoSaveTimer=setTimeout(function(){doAutoSave();},2000);
+}
+async function doAutoSave(){
+  if(!rows||!rows.length)return;
+  showSaveStatus('saving');
+  try{
+    // Сохраняем себестоимости в Supabase (уже работает через saveCosts)
+    var costMap=getCosts();
+    rows.forEach(function(x){
+      if(x.cost>0){var key=String(x.nm_id||x.sa||'x');costMap[key]=x.cost;}
+    });
+    saveCosts(costMap);
+    // Пересоздаём снапшоты с актуальными себестоимостями
+    var costByNm={};
+    rows.forEach(function(x){if(x.nm_id&&x.cost>0)costByNm[x.nm_id]=x.cost;});
+    var src=(typeof rawData!=='undefined'&&rawData)?rawData:[];
+    if(src.length){
+      var snaps=aggregateRowsByDay(src,costByNm);
+      if(snaps.length){
+        await saveSnapshots(snaps);
+        // Если открыта Главная или Детализация/Аналитика — обновляем
+        ['Home','Detail','Analytics'].forEach(function(s){
+          var sec=document.getElementById('section'+s);
+          if(!sec||!sec.classList.contains('active'))return;
+          if(s==='Home'&&typeof loadHomeData==='function')loadHomeData();
+          if(s==='Detail'&&typeof renderDetail==='function')renderDetail();
+          if(s==='Analytics'&&typeof loadAnalytics==='function')loadAnalytics();
+        });
+      }
+    }
+    showSaveStatus('saved');
+  }catch(e){console.warn('auto-save failed',e);showSaveStatus('error');}
+}
+function showSaveStatus(state){
+  var el=document.getElementById('autoSaveStatus');
+  if(!el)return;
+  var conf={
+    pending:{text:'⌛ Изменения сохранятся через 2 сек...',cls:'pending'},
+    saving:{text:'💾 Сохраняем...',cls:'saving'},
+    saved:{text:'✓ Сохранено',cls:'saved'},
+    error:{text:'⚠ Ошибка сохранения',cls:'error'}
+  };
+  var c=conf[state]||conf.saved;
+  el.textContent=c.text;
+  el.className='auto-save-status '+c.cls;
+  el.style.display='block';
+  if(state==='saved'){setTimeout(function(){if(el.textContent==='✓ Сохранено')el.style.display='none';},2000);}
+}
+
+function upd(i,val){
+  if(!rows[i])return;
+  rows[i].cost=parseFloat(val)||0;
+  var a=rows[i];
+  var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+  var tr=document.getElementById('tb').rows[i];
+  if(tr){
+    var pc=prf>=0?'green':'red';
+    tr.cells[tr.cells.length-1].innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
+    tr.className=a.cost>0&&prf<0?'loss':'';
+  }
+  // Обновляем localStorage
+  var c=getCosts();var k=String(a.nm_id||a.sa||'x');
+  if(a.cost>0) c[k]=a.cost; else delete c[k];
+  saveCosts(c);
+  // Пересчитываем все плитки и футер (с учётом всех строк rawData)
+  recalcTotals();
 }
 
 function togglePen(btn){
