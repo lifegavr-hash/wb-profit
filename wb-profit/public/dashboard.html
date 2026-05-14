@@ -452,48 +452,49 @@ tr.loss td{background:#fff5f5}
 
   <div class="content">
 
+    <!-- Общая панель загрузки данных - видна на всех разделах с данными -->
+    <div class="load-bar" id="globalLoadBar">
+      <div class="load-bar-left">
+        <div class="load-bar-title">📥 Загрузка данных</div>
+        <div class="load-bar-sub" id="lastSyncInfo">Нажмите «Загрузить», чтобы получить свежие данные с Wildberries</div>
+      </div>
+      <div class="load-bar-right">
+        <div class="period-picker" id="periodPicker">
+          <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Сегодня</button>
+          <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
+          <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)">30 дней</button>
+          <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)">90 дней</button>
+          <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()">📅 Свой</button>
+        </div>
+        <button class="btn-primary" id="loadBtnHome" onclick="goFromHome()">Загрузить</button>
+      </div>
+    </div>
+    <!-- Popup выбора своего периода -->
+    <div class="period-popup" id="periodPopup" style="display:none">
+      <div class="period-popup-card">
+        <div class="period-popup-title">Выберите свой период</div>
+        <div class="period-popup-row">
+          <div>
+            <label>С даты</label>
+            <input type="date" id="customDf">
+          </div>
+          <div>
+            <label>По дату</label>
+            <input type="date" id="customDt">
+          </div>
+        </div>
+        <div class="period-popup-actions">
+          <button class="bulk-btn" onclick="closeCustomPeriod()">Отмена</button>
+          <button class="btn-primary" onclick="applyCustomPeriod()" style="padding:8px 20px">Применить</button>
+        </div>
+      </div>
+      <div class="period-popup-bg" onclick="closeCustomPeriod()"></div>
+    </div>
+    <div class="ld" id="ldBoxHome" style="margin-top:10px;display:none"><div class="sp"></div><span id="ldTxtHome">Загружаем...</span></div>
+    <div id="errBoxHome" class="err"></div>
+
     <!-- Дашборд -->
     <div class="section active" id="sectionHome">
-      <!-- Верхняя панель загрузки данных -->
-      <div class="load-bar">
-        <div class="load-bar-left">
-          <div class="load-bar-title">📥 Загрузка данных</div>
-          <div class="load-bar-sub" id="lastSyncInfo">Нажмите «Загрузить», чтобы получить свежие данные с Wildberries</div>
-        </div>
-        <div class="load-bar-right">
-          <div class="period-picker" id="periodPicker">
-            <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Сегодня</button>
-            <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
-            <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)">30 дней</button>
-            <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)">90 дней</button>
-            <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()">📅 Свой</button>
-          </div>
-          <button class="btn-primary" id="loadBtnHome" onclick="goFromHome()">Загрузить</button>
-        </div>
-      </div>
-      <!-- Popup выбора своего периода -->
-      <div class="period-popup" id="periodPopup" style="display:none">
-        <div class="period-popup-card">
-          <div class="period-popup-title">Выберите свой период</div>
-          <div class="period-popup-row">
-            <div>
-              <label>С даты</label>
-              <input type="date" id="customDf">
-            </div>
-            <div>
-              <label>По дату</label>
-              <input type="date" id="customDt">
-            </div>
-          </div>
-          <div class="period-popup-actions">
-            <button class="bulk-btn" onclick="closeCustomPeriod()">Отмена</button>
-            <button class="btn-primary" onclick="applyCustomPeriod()" style="padding:8px 20px">Применить</button>
-          </div>
-        </div>
-        <div class="period-popup-bg" onclick="closeCustomPeriod()"></div>
-      </div>
-      <div class="ld" id="ldBoxHome" style="margin-top:10px"><div class="sp"></div><span id="ldTxtHome">Загружаем...</span></div>
-      <div id="errBoxHome" class="err"></div>
       <div id="homeContent"></div>
     </div>
 
@@ -535,8 +536,7 @@ tr.loss td{background:#fff5f5}
       <div id="calcEmpty" class="card" style="text-align:center;padding:40px 20px">
         <div style="font-size:32px;margin-bottom:10px">📊</div>
         <div style="font-size:14px;margin-bottom:6px">Нет данных для расчёта</div>
-        <div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto 16px">Загрузите данные на Главной странице — они появятся здесь автоматически.</div>
-        <button class="btn-week" onclick="showSection('home',document.getElementById('nav-home'))">Перейти на Главную</button>
+        <div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto">Выберите период сверху и нажмите <strong>«Загрузить»</strong> — мы получим данные с Wildberries и заполним таблицу.</div>
       </div>
 
       <div id="results" style="display:none">
@@ -604,8 +604,7 @@ tr.loss td{background:#fff5f5}
       <div id="detailEmpty" class="card" style="text-align:center;padding:40px 20px">
         <div style="font-size:32px;margin-bottom:10px">🔍</div>
         <div style="font-size:14px;margin-bottom:6px">Детализация расходов пуста</div>
-        <div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto 16px">Сначала загрузите данные на Главной странице — здесь появится разбивка всех расходов по группам.</div>
-        <button class="btn-week" onclick="showSection('home',document.getElementById('nav-home'))">Перейти на Главную</button>
+        <div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto">Выберите период сверху и нажмите <strong>«Загрузить»</strong> — здесь появится разбивка всех расходов по группам.</div>
       </div>
       <div id="detailContent" style="display:none">
         <div class="metrics" id="detailMetrics"></div>
@@ -839,6 +838,12 @@ function showSection(name,el){
   document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');});
   if(el) el.classList.add('active');
   document.getElementById('topbarTitle').textContent=titles[name]||'';
+  // Глобальная панель загрузки — видна на разделах с WB-данными
+  var loadBar=document.getElementById('globalLoadBar');
+  if(loadBar){
+    var withData=['home','calc','detail','analytics'];
+    loadBar.style.display=withData.indexOf(name)>=0?'flex':'none';
+  }
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
@@ -1337,6 +1342,12 @@ async function process(raw){
       // Если активна Главная — перерисовываем её свежими данными
       var homeActive=document.getElementById('sectionHome')&&document.getElementById('sectionHome').classList.contains('active');
       if(homeActive&&typeof loadHomeData==='function')loadHomeData();
+      // Если активна Детализация — тоже обновим
+      var detailActive=document.getElementById('sectionDetail')&&document.getElementById('sectionDetail').classList.contains('active');
+      if(detailActive&&typeof renderDetail==='function')renderDetail();
+      // Если активна Аналитика — обновим
+      var anActive=document.getElementById('sectionAnalytics')&&document.getElementById('sectionAnalytics').classList.contains('active');
+      if(anActive&&typeof loadAnalytics==='function')loadAnalytics();
     }
   }catch(e){console.warn('snapshots aggregation failed',e);}
 }
