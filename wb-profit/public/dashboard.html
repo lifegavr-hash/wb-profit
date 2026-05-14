@@ -47,6 +47,16 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .topbar-title{font-size:16px;font-weight:500}
 .plan-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:#EEEDFE;color:#3C3489}
 .plan-badge.free{background:#f1efe8;color:#5f5e5a}
+.plan-badge.warning{background:#fef3c7;color:#92400e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+/* Замочки на PRO-функциях */
+.pro-lock{font-size:11px;opacity:.7}
+.nav-lock{margin-left:6px}
+.period-pill .pro-lock{margin-right:4px}
+/* Предупреждение о free-лимите товаров */
+.free-limit-warn{background:linear-gradient(135deg,#fef3c7,#fff);border:1px solid #f5c842;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13px;color:#7a5c00}
+.free-limit-warn a{color:#7c3aed;font-weight:600;text-decoration:none;margin-left:6px}
+.free-limit-warn a:hover{text-decoration:underline}
 .content{padding:1.5rem;overflow-y:auto;flex:1}
 .section{display:none}
 .section.active{display:block}
@@ -490,8 +500,8 @@ tr.loss td{background:#fff5f5}
     <div class="nav-sec">Главное</div>
     <button class="nav-item active" id="nav-home" onclick="showSection('home',this)">🏠 Главная</button>
     <button class="nav-item" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
-    <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов</button>
-    <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика</button>
+    <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
+    <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
     <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)">💰 Подбор товара</button>
     <div class="nav-sec">Аккаунт</div>
     <button class="nav-item" id="nav-settings" onclick="showSection('settings',this)">⚙️ Настройки</button>
@@ -528,9 +538,9 @@ tr.loss td{background:#fff5f5}
         <div class="period-picker" id="periodPicker">
           <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Сегодня</button>
           <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
-          <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)">30 дней</button>
-          <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)">90 дней</button>
-          <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()">📅 Свой</button>
+          <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)"><span class="pro-lock" style="display:none">🔒</span>30 дней</button>
+          <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)"><span class="pro-lock" style="display:none">🔒</span>90 дней</button>
+          <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()"><span class="pro-lock" style="display:none">🔒</span>📅 Свой</button>
         </div>
         <button class="btn-primary" id="loadBtnHome" onclick="goFromHome()">Загрузить</button>
       </div>
@@ -829,6 +839,15 @@ async function init(){
   if(!session){window.location.href='/login.html';return;}
   currentUser=session.user;
   var {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  // Авто-даунгрейд если PRO истёк (не для админа с 2099 годом — он всё равно not expired)
+  if(profile&&profile.plan==='pro'&&profile.plan_expires_at&&!profile.is_admin){
+    if(new Date(profile.plan_expires_at).getTime()<Date.now()){
+      // Истёк — даунгрейдим в БД
+      await sb.from('profiles').update({plan:'free',plan_expires_at:null}).eq('id',currentUser.id);
+      profile.plan='free';
+      profile.plan_expires_at=null;
+    }
+  }
   currentProfile=profile;
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
@@ -872,26 +891,81 @@ function onbFinish(){
   goFromHome();
 }
 
+// === ТАРИФЫ ===
+// Проверяет есть ли у пользователя активный PRO (с учётом срока истечения)
+function hasPRO(){
+  if(!currentProfile)return false;
+  var plan=currentProfile.plan;
+  if(plan!=='pro'&&plan!=='business')return false;
+  if(!currentProfile.plan_expires_at)return true; // бессрочный (например, админ)
+  return new Date(currentProfile.plan_expires_at).getTime()>Date.now();
+}
+// Сколько дней осталось PRO (для подсветки «триал заканчивается»)
+function daysUntilPlanExpires(){
+  if(!currentProfile||!currentProfile.plan_expires_at)return null;
+  var ms=new Date(currentProfile.plan_expires_at).getTime()-Date.now();
+  if(ms<=0)return 0;
+  return Math.ceil(ms/(24*60*60*1000));
+}
+// Универсальный гейт: показать модал «Доступно в PRO» если нет
+function requirePRO(featureName){
+  if(hasPRO())return true;
+  showProUpgradeModal(featureName);
+  return false;
+}
+// Модал апгрейда
+function showProUpgradeModal(featureName){
+  var f=featureName||'Эта функция';
+  var html=
+    '<p><strong>'+escHtml(f)+'</strong> — доступно только на тарифе PRO.</p>'+
+    '<p>PRO открывает все возможности приложения: расширенная статистика, аналитика, детализация расходов, безлимитный калькулятор и многое другое.</p>'+
+    '<p style="margin-top:14px"><button class="btn-primary" style="width:100%" onclick="closeInfoModal();showSection(\'promo\',document.getElementById(\'nav-promo\'))">🎁 Активировать промокод</button></p>'+
+    '<p style="margin-top:8px;font-size:12px;color:var(--muted);text-align:center">Есть промокод? Введите его в разделе «Промокод».</p>';
+  showInfoModal('🚀 Доступно в PRO', html);
+}
+
 function updateUI(profile,email,token){
   var initials=email.substring(0,2).toUpperCase();
   document.getElementById('userAvatar').textContent=initials;
   document.getElementById('userEmail').textContent=email;
   var plan=profile.plan||'free';
   var expires=profile.plan_expires_at?new Date(profile.plan_expires_at):null;
-  var planLabel=plan==='free'?'Free':plan.toUpperCase();
-  document.getElementById('userPlanLabel').textContent=planLabel;
+  var hasPro=hasPRO();
+  // Бейдж в сайдбаре
   var badge=document.getElementById('planBadge');
-  badge.textContent=planLabel;
-  badge.className='plan-badge'+(plan==='free'?' free':'');
+  var daysLeft=daysUntilPlanExpires();
+  var badgeLabel, badgeCls='plan-badge';
+  if(!hasPro){
+    badgeLabel='Free';
+    badgeCls+=' free';
+  } else if(daysLeft!==null&&daysLeft<=14){
+    badgeLabel='PRO · '+daysLeft+' '+plural(daysLeft,'день','дня','дней');
+    if(daysLeft<=3)badgeCls+=' warning';
+  } else {
+    badgeLabel=plan.toUpperCase();
+  }
+  document.getElementById('userPlanLabel').textContent=badgeLabel;
+  badge.textContent=badgeLabel;
+  badge.className=badgeCls;
+  // Карточка тарифа в разделе Промокод
   var planInfo=document.getElementById('planInfo');
-  if(plan==='free'){
-    planInfo.innerHTML='<p>Текущий тариф: <strong>Free</strong></p><p style="margin-top:8px;color:var(--hint)">Введите промокод выше чтобы получить PRO доступ</p>';
-    document.getElementById('upgradeBanner').style.display='flex';
+  if(!hasPro){
+    planInfo.innerHTML='<p>Текущий тариф: <strong>Free</strong></p><p style="margin-top:8px;color:var(--hint)">Введите промокод выше, чтобы получить PRO доступ.</p>';
+    var ub=document.getElementById('upgradeBanner');if(ub)ub.style.display='flex';
   } else {
     var exp=expires?expires.toLocaleDateString('ru-RU'):'бессрочно';
-    planInfo.innerHTML='<p>Текущий тариф: <strong>'+planLabel+'</strong></p><p style="margin-top:8px;color:var(--hint)">Действует до: '+exp+'</p>';
+    var subline=daysLeft!==null&&daysLeft<=14
+      ? '<span style="color:#f59e0b">Осталось '+daysLeft+' '+plural(daysLeft,'день','дня','дней')+'</span>'
+      : 'Действует до: '+exp;
+    planInfo.innerHTML='<p>Текущий тариф: <strong>'+plan.toUpperCase()+'</strong></p><p style="margin-top:8px;color:var(--hint)">'+subline+'</p>';
+    var ub2=document.getElementById('upgradeBanner');if(ub2)ub2.style.display='none';
   }
   if(profile.is_admin) loadAdminData(token);
+  // Показываем замочки на PRO-функциях в UI
+  document.querySelectorAll('.pro-lock').forEach(function(el){
+    el.style.display=hasPro?'none':'inline';
+  });
+  // Прячем нав-пункты которые недоступны на free? Нет — пусть видят, но при клике увидят модал
 }
 
 async function logout(){
@@ -908,6 +982,12 @@ function toggleMobMenu(force){
 function showSection(name,el){
   // На мобиле — закрываем меню при выборе
   toggleMobMenu(false);
+  // PRO-only разделы
+  if((name==='detail'||name==='analytics')&&!hasPRO()){
+    var featureName=name==='detail'?'Детализация расходов':'Аналитика';
+    requirePRO(featureName);
+    return;
+  }
   var sections=['home','calc','detail','analytics','unit','settings','promo','admin'];
   var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',unit:'Подбор товара',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
@@ -1023,12 +1103,21 @@ function saveTokenManual(){
 // === PERIOD PICKER ===
 var _currentPeriod={mode:'preset',days:30,df:null,dt:null};
 function setPeriod(days){
+  // Гейт: 30+ дней — только PRO
+  if(days>=30&&!hasPRO()){
+    requirePRO('Период «'+days+' дней»');
+    return;
+  }
   _currentPeriod={mode:'preset',days:days,df:null,dt:null};
   document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
   var btn=document.querySelector('.period-pill[data-period="'+days+'"]');
   if(btn)btn.classList.add('active');
 }
 function openCustomPeriod(){
+  if(!hasPRO()){
+    requirePRO('Произвольный период');
+    return;
+  }
   // Заполняем дефолтные значения из текущего периода
   var df,dt;
   var today=new Date();
@@ -1473,6 +1562,13 @@ async function process(raw){
   }
   rows=Object.values(bk);
   rows.forEach(function(x){x.commPct=x._n>0?Math.round(x._pctSum/x._n):0;delete x._pctSum;delete x._n;delete x._priceSum;});
+  // Free: лимит 30 товаров. Оставляем самые продаваемые.
+  window._freeLimitTriggered=false;
+  if(!hasPRO()&&rows.length>30){
+    rows.sort(function(a,b){return Number(b.sales||0)-Number(a.sales||0);});
+    window._freeLimitTriggered=rows.length;
+    rows=rows.slice(0,30);
+  }
 
   // ═════ ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ ═════
   // Все цифры — из computeFinancials. Чтобы Калькулятор/Детализация/Аналитика
@@ -1507,6 +1603,21 @@ async function process(raw){
     // Итог
     '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
+  // Free-предупреждение если обрезали
+  var freeWarn=document.getElementById('freeLimitWarn');
+  if(!freeWarn){
+    freeWarn=document.createElement('div');
+    freeWarn.id='freeLimitWarn';
+    freeWarn.className='free-limit-warn';
+    var mg=document.getElementById('mg');
+    if(mg&&mg.parentNode)mg.parentNode.insertBefore(freeWarn,mg.nextSibling);
+  }
+  if(window._freeLimitTriggered){
+    freeWarn.innerHTML='⚠️ На тарифе Free показано только <strong>30 из '+window._freeLimitTriggered+' товаров</strong> (самые продаваемые). <a href="#" onclick="showProUpgradeModal(\'Безлимит товаров в Калькуляторе\');return false">Перейти на PRO →</a>';
+    freeWarn.style.display='block';
+  } else {
+    freeWarn.style.display='none';
+  }
   renderTable(t.ppvz,t.delivery,t.storage,t.ads,t.penalty,t.salesCount,t.returnsCount,t.cost,t.profit,t.commission);
   document.getElementById('results').style.display='block';
   // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
@@ -2006,6 +2117,14 @@ function resetUnitForm(){
 }
 async function saveUnitCalc(){
   if(!window._lastUnitCalc){alert('Сначала заполните цену продажи и себестоимость');return;}
+  // Лимит для free: 5 сохранённых подборов
+  if(!hasPRO()){
+    var historyCount=(window._unitHistoryCount||0);
+    if(historyCount>=5){
+      requirePRO('Безлимитные подборы товара');
+      return;
+    }
+  }
   var name=document.getElementById('unitName').value.trim()||'Подбор от '+new Date().toLocaleDateString('ru-RU');
   var category=document.getElementById('unitCategory').value.trim();
   try{
@@ -2036,6 +2155,7 @@ async function loadUnitHistory(){
     if(!r.ok){el.innerHTML='<div class="home-empty-mini">Ошибка загрузки</div>';return;}
     var data=await r.json();
     var calcs=data.calcs||[];
+    window._unitHistoryCount=calcs.length;
     if(!calcs.length){el.innerHTML='<div class="home-empty-mini">Ещё нет сохранённых подборов. Заполните форму выше и нажмите «Сохранить».</div>';return;}
     var h='';
     calcs.forEach(function(c){
