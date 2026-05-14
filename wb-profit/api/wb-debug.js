@@ -28,6 +28,67 @@ export default async function handler(req, res) {
   monthAgo.setDate(now.getDate() - 30);
   const dateFrom = monthAgo.toISOString().slice(0, 10);
 
+  // === ACTION: PROBE ===
+  // Перебор гипотез какой endpoint возвращает ЕЖЕДНЕВНЫЕ отчёты
+  if (action === 'probe') {
+    const FROM = '2026-05-09';
+    const TO = '2026-05-13';
+    const probes = [
+      { name: 'list + reportType:3', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list', body: { dateFrom: FROM, dateTo: TO, reportType: 3 } },
+      { name: 'list + reportType:0', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list', body: { dateFrom: FROM, dateTo: TO, reportType: 0 } },
+      { name: 'list + frequency:DAILY', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list', body: { dateFrom: FROM, dateTo: TO, frequency: 'DAILY' } },
+      { name: 'list + period:daily', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list', body: { dateFrom: FROM, dateTo: TO, period: 'daily' } },
+      { name: 'list + isDaily:true', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list', body: { dateFrom: FROM, dateTo: TO, isDaily: true } },
+      { name: '/daily-reports/list', url: 'https://finance-api.wildberries.ru/api/finance/v1/daily-reports/list', body: { dateFrom: FROM, dateTo: TO } },
+      { name: '/sales-reports/daily/list', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/daily/list', body: { dateFrom: FROM, dateTo: TO } },
+      { name: '/sales-reports/daily', url: 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/daily', body: { dateFrom: FROM, dateTo: TO } },
+      { name: '/v2/sales-reports/list', url: 'https://finance-api.wildberries.ru/api/finance/v2/sales-reports/list', body: { dateFrom: FROM, dateTo: TO } },
+    ];
+    const results = [];
+    for (const p of probes) {
+      try {
+        const r = await fetch(p.url, {
+          method: 'POST',
+          headers: { Authorization: tok, 'Content-Type': 'application/json' },
+          body: JSON.stringify(p.body),
+        });
+        const txt = await r.text();
+        let parsed;
+        try { parsed = JSON.parse(txt); } catch { parsed = txt; }
+        let count = 0;
+        let datesRange = null;
+        let sample = null;
+        if (Array.isArray(parsed)) {
+          count = parsed.length;
+          if (parsed.length) {
+            sample = parsed[0];
+            const dates = parsed.map((x) => `${x.dateFrom}→${x.dateTo}(t${x.reportType})`);
+            datesRange = `${dates[0]} ... ${dates[dates.length-1]} (всего ${dates.length})`;
+          }
+        }
+        results.push({
+          name: p.name,
+          status: r.status,
+          ok: r.ok,
+          count,
+          datesRange,
+          firstReport: sample ? { dateFrom: sample.dateFrom, dateTo: sample.dateTo, reportType: sample.reportType, reportId: sample.reportId } : null,
+          rawHead: !r.ok ? (typeof parsed === 'string' ? parsed.slice(0, 200) : JSON.stringify(parsed).slice(0, 300)) : null,
+        });
+        // WB rate-limit 1 запрос/мин — но это разные endpoint'ы, лимит на каждый отдельный.
+        // Пауза 1.2 сек чтобы не словить общий лимит.
+        await new Promise((rs) => setTimeout(rs, 1200));
+      } catch (e) {
+        results.push({ name: p.name, error: e.message });
+      }
+    }
+    return res.status(200).json({
+      action: 'probe',
+      hint: 'Ищем endpoint для ежедневных отчётов. Где count = 5 (за 5 дней) и каждый report имеет dateFrom===dateTo - то и нужный.',
+      results,
+    });
+  }
+
   // === ACTION: INFO ===
   // Узнаём кто это, какие категории у токена
   if (action === 'info') {
