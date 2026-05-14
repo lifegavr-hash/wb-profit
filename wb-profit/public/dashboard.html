@@ -11,6 +11,18 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+@media(max-width:900px){
+  body{grid-template-columns:1fr}
+  .sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:1500;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.3)}
+  .sidebar.open{transform:translateX(0)}
+  .main{padding-top:60px!important}
+  .mob-menu-btn{display:flex!important}
+  .mob-menu-bg{display:none}
+  .sidebar.open ~ .mob-menu-bg{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1400}
+  .topbar{position:fixed!important;top:0;left:0;right:0;background:#fff;z-index:1000;padding:14px 20px 14px 64px;border-bottom:1px solid var(--border)}
+}
+.mob-menu-btn{display:none;position:fixed;top:10px;left:14px;width:42px;height:42px;background:#1a0f3c;border:0;border-radius:10px;color:#fff;font-size:20px;cursor:pointer;z-index:1600;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.mob-menu-btn:hover{background:#2d1a7a}
 .sidebar{background:#1a0f3c;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .logo{padding:1.25rem 1rem;border-bottom:1px solid rgba(255,255,255,.08)}
 .logo-name{font-size:17px;font-weight:600;color:#fff}
@@ -133,6 +145,23 @@ tr.loss td{background:#fff5f5}
 .btn-week{background:linear-gradient(135deg,#5433c6,#7c3aed);color:#fff;border:0;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;transition:transform .15s,box-shadow .15s}
 .btn-week:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.3)}
 .btn-week:active{transform:translateY(0)}
+/* === ONBOARDING === */
+.onb{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;padding:20px}
+.onb-bg{position:absolute;inset:0;background:rgba(15,12,30,.72);backdrop-filter:blur(8px)}
+.onb-card{position:relative;background:#fff;border-radius:20px;padding:40px 32px 32px;width:100%;max-width:480px;box-shadow:0 30px 80px rgba(0,0,0,.4);z-index:1}
+.onb-close{position:absolute;top:14px;right:18px;background:transparent;border:0;font-size:24px;color:var(--muted);cursor:pointer;line-height:1}
+.onb-close:hover{color:#000}
+.onb-dots{display:flex;justify-content:center;gap:8px;margin-bottom:20px}
+.onb-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .2s}
+.onb-dot.active{background:#7c3aed;width:28px;border-radius:4px}
+.onb-emoji{font-size:48px;text-align:center;margin-bottom:14px}
+.onb-title{font-size:20px;font-weight:700;text-align:center;margin-bottom:14px}
+.onb-text{font-size:14px;line-height:1.5;color:var(--text);text-align:center}
+.onb-list{margin:14px 0;padding-left:24px;font-size:13px;line-height:1.6;color:var(--text)}
+.onb-list li{margin-bottom:6px}
+.onb-input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-top:14px;font-family:monospace}
+.onb-input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.onb-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:24px}
 /* === UNIT ECONOMICS === */
 .unit-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 @media(max-width:768px){.unit-grid{grid-template-columns:1fr}}
@@ -309,6 +338,63 @@ tr.loss td{background:#fff5f5}
 <body>
 <input type="hidden" id="df">
 <input type="hidden" id="dt">
+<button class="mob-menu-btn" id="mobMenuBtn" onclick="toggleMobMenu()" aria-label="Меню">☰</button>
+<div class="mob-menu-bg" onclick="toggleMobMenu(false)"></div>
+
+<!-- ONBOARDING WIZARD -->
+<div class="onb" id="onbWizard" style="display:none">
+  <div class="onb-bg" onclick="closeOnboarding()"></div>
+  <div class="onb-card">
+    <button class="onb-close" onclick="closeOnboarding()" title="Закрыть">×</button>
+    <div class="onb-dots">
+      <span class="onb-dot active" data-step="1"></span>
+      <span class="onb-dot" data-step="2"></span>
+      <span class="onb-dot" data-step="3"></span>
+    </div>
+    <!-- Шаг 1 -->
+    <div class="onb-step" data-step="1">
+      <div class="onb-emoji">👋</div>
+      <div class="onb-title">Добро пожаловать в WB Profit!</div>
+      <div class="onb-text">Это сервис, который покажет реальную прибыль по каждому товару на Wildberries, найдёт убыточные позиции и подскажет, где утекают деньги.</div>
+      <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong>. Это безопасно — токен даёт только право читать статистику.</div>
+      <div class="onb-actions">
+        <button class="bulk-btn" onclick="closeOnboarding()">Позже</button>
+        <button class="btn-primary" onclick="onbNext(2)">Дальше →</button>
+      </div>
+    </div>
+    <!-- Шаг 2 -->
+    <div class="onb-step" data-step="2" style="display:none">
+      <div class="onb-emoji">🔑</div>
+      <div class="onb-title">Как получить API токен WB</div>
+      <ol class="onb-list">
+        <li>Откройте кабинет <strong>seller.wildberries.ru</strong></li>
+        <li>В правом верхнем углу — иконка профиля → <strong>Настройки</strong></li>
+        <li>Раздел <strong>Доступ к API</strong></li>
+        <li>Кнопка <strong>«Создать новый токен»</strong></li>
+        <li>Название: «WB Profit» · Тип: <strong>Только чтение</strong></li>
+        <li>Раздел: <strong>Статистика</strong> (обязательно!)</li>
+        <li>Создать → скопировать токен</li>
+      </ol>
+      <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:10px">⚠️ Не делитесь токеном с третьими лицами. Если что — его можно отозвать в том же разделе WB.</div>
+      <div class="onb-actions">
+        <button class="bulk-btn" onclick="onbNext(1)">← Назад</button>
+        <button class="btn-primary" onclick="onbNext(3)">Дальше →</button>
+      </div>
+    </div>
+    <!-- Шаг 3 -->
+    <div class="onb-step" data-step="3" style="display:none">
+      <div class="onb-emoji">🚀</div>
+      <div class="onb-title">Вставьте токен и запускаем</div>
+      <div class="onb-text">Вставьте скопированный токен сюда — мы сохраним его и сразу загрузим ваши данные.</div>
+      <input type="password" id="onbToken" placeholder="eyJhbGciOiJFUzI1NiIs..." class="onb-input">
+      <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:8px">Токен хранится только в вашем браузере и нигде не передаётся, кроме WB.</div>
+      <div class="onb-actions">
+        <button class="bulk-btn" onclick="onbNext(2)">← Назад</button>
+        <button class="btn-primary" onclick="onbFinish()">Сохранить и загрузить</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="sidebar">
   <div class="logo">
@@ -404,7 +490,10 @@ tr.loss td{background:#fff5f5}
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;margin-bottom:12px">
           <input type="checkbox" id="rememberTok" style="width:auto;padding:0"> Запомнить токен
         </label>
-        <button class="btn-primary" id="saveTokBtn" onclick="saveTokenManual()">Сохранить токен</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" id="saveTokBtn" onclick="saveTokenManual()">Сохранить токен</button>
+          <button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>
+        </div>
         <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Нужно право <strong>Статистика</strong>.</p>
       </div>
     </div>
@@ -507,8 +596,11 @@ tr.loss td{background:#fff5f5}
 
     <!-- Детализация расходов -->
     <div class="section" id="sectionDetail">
-      <div id="detailEmpty" class="card">
-        <div class="no-data">Сначала загрузите данные в разделе "Калькулятор"</div>
+      <div id="detailEmpty" class="card" style="text-align:center;padding:40px 20px">
+        <div style="font-size:32px;margin-bottom:10px">🔍</div>
+        <div style="font-size:14px;margin-bottom:6px">Детализация расходов пуста</div>
+        <div style="font-size:12px;opacity:.7;max-width:420px;margin:0 auto 16px">Сначала загрузите данные на Главной странице — здесь появится разбивка всех расходов по группам.</div>
+        <button class="btn-week" onclick="showSection('home',document.getElementById('nav-home'))">Перейти на Главную</button>
       </div>
       <div id="detailContent" style="display:none">
         <div class="metrics" id="detailMetrics"></div>
@@ -659,8 +751,41 @@ async function init(){
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
+  // Сначала подтягиваем себестоимости с сервера (фоном, не блокирует UI)
+  loadCostsFromServer();
   // Показываем сводку из Supabase. Если нет — отрендерится idle с подсказкой.
   loadHomeData();
+  // Если у пользователя нет токена и онбординг ещё не закрывали — показываем wizard
+  if(!localStorage.getItem('wb_token')&&!localStorage.getItem('onboarding_done')){
+    setTimeout(openOnboarding,500);
+  }
+}
+function openOnboarding(){
+  document.getElementById('onbWizard').style.display='flex';
+  onbNext(1);
+}
+function closeOnboarding(){
+  document.getElementById('onbWizard').style.display='none';
+  localStorage.setItem('onboarding_done','1');
+}
+function onbNext(step){
+  document.querySelectorAll('.onb-step').forEach(function(s){s.style.display='none';});
+  document.querySelector('.onb-step[data-step="'+step+'"]').style.display='block';
+  document.querySelectorAll('.onb-dot').forEach(function(d){
+    d.classList.toggle('active',parseInt(d.dataset.step,10)===step);
+  });
+}
+function onbFinish(){
+  var tk=document.getElementById('onbToken').value.trim();
+  if(!tk){alert('Вставьте токен');return;}
+  localStorage.setItem('wb_token',tk);
+  localStorage.setItem('onboarding_done','1');
+  // Также показываем в Настройках
+  var t1=document.getElementById('tok1');if(t1)t1.value=tk;
+  var rt=document.getElementById('rememberTok');if(rt)rt.checked=true;
+  closeOnboarding();
+  // Сразу запускаем загрузку 30 дней
+  goFromHome();
 }
 
 function updateUI(profile,email,token){
@@ -691,7 +816,14 @@ async function logout(){
   window.location.href='/login.html';
 }
 
+function toggleMobMenu(force){
+  var sb=document.querySelector('.sidebar');if(!sb)return;
+  var open=force===true||force===false?force:!sb.classList.contains('open');
+  sb.classList.toggle('open',open);
+}
 function showSection(name,el){
+  // На мобиле — закрываем меню при выборе
+  toggleMobMenu(false);
   var sections=['home','calc','detail','analytics','unit','settings','promo','admin'];
   var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',unit:'Подбор товара',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
@@ -866,7 +998,61 @@ async function goFromHome(){
 }
 
 function getCosts(){try{return JSON.parse(localStorage.getItem('wb_costs')||'{}');}catch(e){return {};}}
-function saveCosts(c){try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}}
+function saveCosts(c){
+  try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}
+  // Дебаунс отправки на сервер, чтобы не дёргать API на каждый ввод
+  scheduleCostsSync(c);
+}
+var _costsSyncTimer=null,_costsSyncPending={};
+function scheduleCostsSync(allCosts){
+  // Накапливаем изменения и шлём через 1.5 сек
+  Object.keys(allCosts).forEach(function(k){_costsSyncPending[k]=allCosts[k];});
+  if(_costsSyncTimer)clearTimeout(_costsSyncTimer);
+  _costsSyncTimer=setTimeout(function(){syncCostsNow();},1500);
+}
+async function syncCostsNow(){
+  if(!Object.keys(_costsSyncPending).length)return;
+  var payload=Object.assign({},_costsSyncPending);
+  _costsSyncPending={};
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt)return;
+    await fetch('/api/costs',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify({costs:payload})
+    });
+  }catch(e){console.warn('costs sync failed',e);}
+}
+// При входе — подтягиваем серверные себестоимости и сливаем с localStorage
+async function loadCostsFromServer(){
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt)return;
+    var r=await fetch('/api/costs',{headers:{'Authorization':'Bearer '+jwt}});
+    if(!r.ok)return;
+    var d=await r.json();
+    var serverCosts=d.costs||{};
+    var localCosts=getCosts();
+    // Сервер — источник истины. Локальные значения если есть только локально — отправим на сервер.
+    var merged=Object.assign({},serverCosts,localCosts);
+    localStorage.setItem('wb_costs',JSON.stringify(merged));
+    // Если localStorage содержал что-то новое — синхронизируем на сервер
+    var onlyLocal={};
+    Object.keys(localCosts).forEach(function(k){
+      if(!(k in serverCosts)||serverCosts[k]!==localCosts[k])onlyLocal[k]=localCosts[k];
+    });
+    if(Object.keys(onlyLocal).length){
+      await fetch('/api/costs',{
+        method:'POST',
+        headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+        body:JSON.stringify({costs:onlyLocal})
+      });
+    }
+  }catch(e){console.warn('loadCostsFromServer error',e);}
+}
 function showErr(msg){
   // Пишем в активный errBox
   var b=document.getElementById('errBoxHome');
@@ -956,12 +1142,16 @@ function buildStocksMap(stocks){
 
 async function loadSales(tok,df,dt){
   var all=[],rid=0,pg=0;
+  // Оценочное количество дней для прогресса
+  var totalDays=1;
+  try{var d1=new Date(df),d2=new Date(dt);totalDays=Math.max(1,Math.round((d2-d1)/86400000)+1);}catch(e){}
   while(true){
-    pg++;document.getElementById('ldTxt').textContent='Загружаем данные... страница '+pg;
+    pg++;
+    setLoadStatus('Загружаем продажи... страница '+pg+' / период '+totalDays+' дн.');
     var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:{Authorization:tok}});
     if(r.status===429){
       var ra=parseInt(r.headers.get('Retry-After')||'60',10);
-      document.getElementById('ldTxt').textContent='Лимит WB достигнут. Ждём '+ra+' сек (страница '+pg+')...';
+      setLoadStatus('⏳ Лимит WB. Ждём '+ra+' сек (страница '+pg+')…');
       await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
       pg--;continue;
     }
@@ -970,12 +1160,18 @@ async function loadSales(tok,df,dt){
     var d=await r.json();
     if(!d||!d.length) break;
     all=all.concat(d);
+    setLoadStatus('Получено '+all.length+' записей (страница '+pg+')…');
     var lid=d[d.length-1].rrd_id;
     if(lid<=rid) break;
     rid=lid;
     if(d.length<100000) break;
   }
+  setLoadStatus('Обрабатываем '+all.length+' записей…');
   return all;
+}
+function setLoadStatus(text){
+  var ids=['ldTxt','ldTxtHome'];
+  ids.forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=text;});
 }
 
 async function process(raw){
