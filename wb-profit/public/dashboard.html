@@ -187,8 +187,23 @@ tr.loss td{background:#fff5f5}
 .unit-result-val{font-size:20px;font-weight:700}
 .unit-result-val.green{color:#22c55e}.unit-result-val.red{color:#ef4444}
 .unit-breakdown{margin-top:14px;font-size:12px;color:var(--muted)}
+/* Подсказка про реальные средние пользователя */
+.unit-avg-hint{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#f0fdf4,#fff);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13px}
+.unit-avg-icon{font-size:24px;flex-shrink:0}
+.unit-avg-text{flex:1;line-height:1.4;color:var(--text)}
+.unit-avg-detail{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+@media(max-width:600px){.unit-avg-hint{flex-direction:column;align-items:stretch;text-align:center}}
 .unit-breakdown-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--border)}
 .unit-breakdown-row:last-child{border-bottom:0}
+/* Sensitivity-блок «А что если?» */
+.unit-sensitivity{margin-top:18px;background:linear-gradient(135deg,#faf5ff,#fff);border:1px solid rgba(124,58,237,.15);border-radius:12px;padding:14px 16px}
+.unit-sensitivity-title{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.unit-sensitivity-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px dashed rgba(124,58,237,.1)}
+.unit-sensitivity-row:last-of-type{border-bottom:0}
+.unit-sensitivity-row.current{background:#fff;margin:4px -8px;padding:8px;border-radius:8px;font-weight:600;border:1px solid rgba(124,58,237,.2)}
+.unit-sensitivity-row .green{color:#16a34a;font-weight:600}
+.unit-sensitivity-row .red{color:#dc2626;font-weight:600}
+.unit-sensitivity-breakeven{margin-top:10px;padding-top:10px;border-top:2px solid rgba(124,58,237,.2);font-size:13px;color:var(--text)}
 .unit-history-item{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
 .unit-history-item:last-child{border-bottom:0}
 .unit-history-name{font-size:13px;font-weight:500}
@@ -227,6 +242,25 @@ tr.loss td{background:#fff5f5}
 }
 /* Custom period popup */
 .period-popup{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center}
+/* Универсальный info-модал — для объяснения сложных плиток */
+.info-modal{position:fixed;inset:0;z-index:1500;background:rgba(15,12,30,.55);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px;animation:infoFadeIn .15s ease}
+.info-modal-card{background:#fff;border-radius:16px;padding:0;width:100%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:85vh;display:flex;flex-direction:column;animation:infoSlideIn .18s ease}
+.info-modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--border)}
+.info-modal-title{font-size:16px;font-weight:600;color:var(--text)}
+.info-modal-close{background:none;border:0;font-size:24px;cursor:pointer;color:var(--muted);line-height:1;padding:0;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all .15s}
+.info-modal-close:hover{background:#f5f5f4;color:var(--text)}
+.info-modal-body{padding:18px 22px 22px;overflow-y:auto;font-size:14px;line-height:1.55;color:var(--text)}
+.info-modal-body p{margin:0 0 10px}
+.info-modal-body p:last-child{margin-bottom:0}
+.info-modal-body strong{color:var(--text);font-weight:600}
+.info-modal-body .info-formula{background:#fafafa;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px;font-family:'SF Mono','Menlo','Monaco',monospace;line-height:1.7}
+.info-modal-body .info-example{background:#f0fdf4;border-left:3px solid #22c55e;padding:10px 14px;margin:10px 0;border-radius:8px;font-size:13px}
+@keyframes infoFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes infoSlideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+/* Кликабельная плитка с инфо-иконкой */
+.m.m-info{cursor:pointer;position:relative}
+.m.m-info:hover{background:linear-gradient(135deg,rgba(124,58,237,.04),#fff)}
+.m.m-info .ml::after{content:' ⓘ';color:var(--muted);font-size:11px}
 .period-popup-bg{position:absolute;inset:0;background:rgba(15,12,30,.6);backdrop-filter:blur(4px)}
 .period-popup-card{position:relative;background:#fff;border-radius:14px;padding:24px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3);z-index:1}
 .period-popup-title{font-size:16px;font-weight:700;margin-bottom:14px}
@@ -767,6 +801,17 @@ tr.loss td{background:#fff5f5}
   </div>
 </div>
 
+<!-- Универсальный info-модал — для объяснения сложных плиток и понятий -->
+<div id="infoModal" class="info-modal" style="display:none" onclick="closeInfoModal(event)">
+  <div class="info-modal-card" onclick="event.stopPropagation()">
+    <div class="info-modal-header">
+      <div class="info-modal-title" id="infoModalTitle"></div>
+      <button class="info-modal-close" onclick="closeInfoModal()" aria-label="Закрыть">×</button>
+    </div>
+    <div class="info-modal-body" id="infoModalBody"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
@@ -881,7 +926,7 @@ function showSection(name,el){
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
-  if(name==='unit') loadUnitHistory();
+  if(name==='unit'){loadUnitHistory();offerUserAverages();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
     var rs=document.getElementById('results');var ce=document.getElementById('calcEmpty');
@@ -1425,13 +1470,15 @@ async function process(raw){
   var fin=computeFinancials(raw,rows);
   var t=fin.t;
   var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
-  // Корректировка WB — показываем только если значимая (>=50 ₽). Положительная = плюс, отрицательная = минус.
+  // Корректировка WB — показываем только если значимая (>=50 ₽). Кликабельная — открывает объяснение.
   var adjHtml='';
   if(Math.abs(t.wbAdjust)>=50){
     var adjPos=t.wbAdjust>0;
     var adjTitle=adjPos?'Доплаты WB':'Удержано WB';
-    var adjHint=adjPos?'Премии, СПП-компенсации, корректировки':'Дополнительные удержания WB';
-    adjHtml='<div class="m" title="'+adjHint+'"><div class="ml">'+adjTitle+'</div><div class="mv '+(adjPos?'green':'red')+'">'+(adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div></div>';
+    adjHtml='<div class="m m-info" onclick="showAdjustInfo('+(adjPos?'true':'false')+','+Math.abs(t.wbAdjust)+')">'+
+            '<div class="ml">'+adjTitle+'</div>'+
+            '<div class="mv '+(adjPos?'green':'red')+'">'+(adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div>'+
+            '</div>';
   }
   document.getElementById('mg').innerHTML=
     // Доходные
@@ -1767,19 +1814,30 @@ function calcUnit(){
   var redemption=(parseFloat(document.getElementById('unitRedemption').value)||0)/100;
   var adPct=(parseFloat(document.getElementById('unitAdPct').value)||0)/100;
   var taxPct=(parseFloat(document.getElementById('unitTaxPct').value)||0)/100;
-  // Расчёт по WB
+
+  // ─── Расчёт для одной проданной (выкупленной) единицы ───
+  // Главное отличие от старой версии: учёт логистики ЗАВИСИТ от объёма + плата за каждый
+  // невыкупленный (он отправился туда-обратно и стоит логистики).
   var commission=retail*commPct/100;
-  // Логистика WB ≈ 50 + 5 за каждый литр (примерно). Для точного — нужен endpoint.
-  var logistics=Math.max(50,50+(volume-1)*10);
-  // Возвраты — за каждый невыкупленный платится логистика повторно
-  var logTotalPerSale=logistics+logistics*(1-redemption);
-  // Хранение ~ 1 руб/день на 1 литр × 30 дней
+  // Логистика WB по литражу. Тарифы 2025-2026:
+  //   1 литр = ~50₽ за прямую отправку + 50₽ за возврат если невыкуп
+  //   каждый дополнительный литр = +12-15₽ к одной отправке
+  // Для одного выкупленного: 1× прямая + (1/redemption − 1) × (прямая+возврат)
+  var logBase=Math.max(50, 50 + Math.max(volume-1,0)*15);
+  // Логистика на одну ВЫКУПЛЕННУЮ единицу с учётом невыкупа:
+  // На каждую проданную нужно отправить 1/redemption раз (часть вернётся).
+  // Каждый невозврат = 1× прямая + 1× обратная.
+  // Чтобы продать 1 шт нужно сделать (1/redemption) отправок, из них (1/redemption - 1) вернутся.
+  var shipsPerSale=redemption>0?1/redemption:1;
+  var returnsPerSale=Math.max(shipsPerSale-1, 0);
+  var logTotalPerSale=shipsPerSale*logBase + returnsPerSale*logBase; // прямая + возврат
+  // Хранение — за месяц на складе (~30 дней)
   var storage=volume*30;
   // Реклама — % от выручки
   var ads=retail*adPct;
-  // Эквайринг ~ 2%
+  // Эквайринг — WB его берёт, обычно ~1.5-2%. Оставим 2%.
   var acquiring=retail*0.02;
-  // Налог УСН ~ 7% от ppvz
+  // Налог УСН доходы — с того что фактически получили (ppvz)
   var ppvz=retail-commission-acquiring;
   var tax=ppvz*taxPct;
   // Чистая прибыль на единицу проданного товара
@@ -1787,7 +1845,7 @@ function calcUnit(){
   var profit=retail-totalExp;
   var marginPct=retail>0?(profit/retail*100):0;
   var roiPct=cost>0?(profit/cost*100):0;
-  // Рендер результата
+
   var el=document.getElementById('unitResult');
   if(retail<=0||cost<=0){
     el.innerHTML='<div class="home-empty-mini">Введите цену продажи и себестоимость, чтобы увидеть расчёт.</div>';
@@ -1796,6 +1854,47 @@ function calcUnit(){
   var profCls=profit>=0?'green':'red';
   var marCls=marginPct>=20?'green':(marginPct>=0?'':'red');
   var roiCls=roiPct>=30?'green':(roiPct>=0?'':'red');
+
+  // ─── Sensitivity-анализ: что будет при изменении цены ───
+  function calcAtPrice(p){
+    var c=p*commPct/100;
+    var a=p*0.02;
+    var ad=p*adPct;
+    var pz=p-c-a;
+    var t=pz*taxPct;
+    var ads_p=p*adPct;
+    return p - c - a - logTotalPerSale - storage - ads_p - t - cost;
+  }
+  // Минимальная цена для прибыли = 0 (точка безубыточности)
+  // retail*(1 - commPct/100 - 0.02 - adPct - taxPct*(1 - commPct/100 - 0.02)) - logTotal - storage - cost = 0
+  // Упростим: ищем итеративно (бинпоиск)
+  var breakeven=retail;
+  if(profit>0){
+    var lo=cost, hi=retail;
+    for(var bi=0;bi<30;bi++){
+      var mid=(lo+hi)/2;
+      if(calcAtPrice(mid)>=0)hi=mid; else lo=mid;
+    }
+    breakeven=hi;
+  } else {
+    var lo2=retail, hi2=retail*5;
+    for(var bi2=0;bi2<30;bi2++){
+      var mid2=(lo2+hi2)/2;
+      if(calcAtPrice(mid2)>=0)hi2=mid2; else lo2=mid2;
+    }
+    breakeven=hi2;
+  }
+
+  var sensitivityHtml='<div class="unit-sensitivity">'+
+    '<div class="unit-sensitivity-title">А что если изменить цену?</div>'+
+    '<div class="unit-sensitivity-row"><span>−10% (' + fmt(retail*0.9) + ' ₽)</span><span class="'+(calcAtPrice(retail*0.9)>=0?'green':'red')+'">'+(calcAtPrice(retail*0.9)>=0?'+':'−')+fmt(Math.abs(calcAtPrice(retail*0.9)))+' ₽</span></div>'+
+    '<div class="unit-sensitivity-row"><span>−5% (' + fmt(retail*0.95) + ' ₽)</span><span class="'+(calcAtPrice(retail*0.95)>=0?'green':'red')+'">'+(calcAtPrice(retail*0.95)>=0?'+':'−')+fmt(Math.abs(calcAtPrice(retail*0.95)))+' ₽</span></div>'+
+    '<div class="unit-sensitivity-row current"><span>Сейчас ('+fmt(retail)+' ₽)</span><span class="'+profCls+'">'+(profit>=0?'+':'−')+fmt(Math.abs(profit))+' ₽</span></div>'+
+    '<div class="unit-sensitivity-row"><span>+5% (' + fmt(retail*1.05) + ' ₽)</span><span class="'+(calcAtPrice(retail*1.05)>=0?'green':'red')+'">'+(calcAtPrice(retail*1.05)>=0?'+':'−')+fmt(Math.abs(calcAtPrice(retail*1.05)))+' ₽</span></div>'+
+    '<div class="unit-sensitivity-row"><span>+10% (' + fmt(retail*1.1) + ' ₽)</span><span class="'+(calcAtPrice(retail*1.1)>=0?'green':'red')+'">'+(calcAtPrice(retail*1.1)>=0?'+':'−')+fmt(Math.abs(calcAtPrice(retail*1.1)))+' ₽</span></div>'+
+    '<div class="unit-sensitivity-breakeven"><strong>Цена безубыточности:</strong> '+fmt(breakeven)+' ₽</div>'+
+    '</div>';
+
   el.innerHTML=
     '<div class="unit-result-grid">'+
       '<div class="unit-result-item"><div class="unit-result-lbl">Прибыль с шт</div><div class="unit-result-val '+profCls+'">'+(profit>=0?'+':'−')+fmt(Math.abs(profit))+' ₽</div></div>'+
@@ -1811,7 +1910,8 @@ function calcUnit(){
       '<div class="unit-breakdown-row"><span>− Реклама</span><span style="color:#ef4444">−'+fmt(ads)+' ₽</span></div>'+
       '<div class="unit-breakdown-row"><span>− Налог УСН</span><span style="color:#ef4444">−'+fmt(tax)+' ₽</span></div>'+
       '<div class="unit-breakdown-row"><span>− Себестоимость</span><span style="color:#ef4444">−'+fmt(cost)+' ₽</span></div>'+
-    '</div>';
+    '</div>'+
+    sensitivityHtml;
   // Сохраняем последние расчёты в localStorage чтобы при сохранении в БД не пересчитывать
   window._lastUnitCalc={
     retail_price:retail, cost_price:costRaw, cost_currency:costCcy, cost_rate:rate,
@@ -1821,6 +1921,67 @@ function calcUnit(){
     profit:profit, margin_pct:marginPct, roi_pct:roiPct
   };
 }
+// Если у пользователя есть данные — предлагаем подставить его реальные средние.
+// Это бывает полезно когда селлер думает добавить новый товар: «у меня обычно комиссия 17%, выкуп 80%».
+function offerUserAverages(){
+  var hintBox=document.getElementById('unitAveragesHint');
+  if(hintBox)hintBox.remove(); // убираем старую если была
+  if(!window.rawData||!window.rawData.length||!window.rows||!window.rows.length)return;
+  // Вычисляем средние из текущих данных пользователя
+  var avg=computeUserAverages(window.rawData, window.rows);
+  if(!avg)return;
+  // Вставляем подсказку перед результатом
+  var resultEl=document.getElementById('unitResult');
+  if(!resultEl)return;
+  var hint=document.createElement('div');
+  hint.id='unitAveragesHint';
+  hint.className='unit-avg-hint';
+  hint.innerHTML=
+    '<div class="unit-avg-icon">📊</div>'+
+    '<div class="unit-avg-text">'+
+      '<strong>У вас уже есть данные.</strong> Подставить ваши реальные средние? '+
+      '<span class="unit-avg-detail">Комиссия '+avg.commissionPct.toFixed(1)+'%, выкуп '+avg.redemptionPct.toFixed(0)+'%</span>'+
+    '</div>'+
+    '<button class="bulk-btn" onclick="applyUserAverages()">Подставить</button>';
+  resultEl.parentNode.insertBefore(hint, resultEl);
+}
+function computeUserAverages(rawData, rows){
+  if(!rawData||!rawData.length)return null;
+  // Средняя комиссия — взвешенная по выручке
+  var revSum=0, commSum=0;
+  for(var i=0;i<rawData.length;i++){
+    var r=rawData[i];
+    var doc=(r.doc_type_name||'').toLowerCase();
+    if(doc!=='продажа')continue;
+    var price=Number(r.retail_price||r.retail_price_withdisc_rub||r.retail_amount||0);
+    var pct=Number(r.commission_percent||0);
+    if(price>0&&pct>0){
+      revSum+=price;
+      commSum+=price*pct/100;
+    }
+  }
+  var commissionPct=revSum>0?(commSum/revSum*100):22;
+  // % выкупа = продажи / (продажи + возвраты) по штукам
+  var sales=0, returns=0;
+  for(var j=0;j<rows.length;j++){
+    sales+=Number(rows[j].sales||0);
+    returns+=Number(rows[j].ret||0);
+  }
+  var redemptionPct=(sales+returns)>0?(sales/(sales+returns)*100):80;
+  return {commissionPct:commissionPct, redemptionPct:redemptionPct};
+}
+function applyUserAverages(){
+  var avg=computeUserAverages(window.rawData||[], window.rows||[]);
+  if(!avg)return;
+  document.getElementById('unitCommissionPct').value=avg.commissionPct.toFixed(1);
+  document.getElementById('unitRedemption').value=Math.round(avg.redemptionPct);
+  // Скрываем подсказку
+  var hintBox=document.getElementById('unitAveragesHint');
+  if(hintBox)hintBox.remove();
+  // Пересчитываем
+  calcUnit();
+}
+
 function resetUnitForm(){
   ['unitName','unitCategory','unitRetailPrice','unitCostPrice'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('unitCostCurrency').value='RUB';
@@ -2472,6 +2633,44 @@ function renderHomeIntro(last,prev){
   '</div>';
 }
 function escHtml(s){return String(s||'').replace(/[<>&"']/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c];});}
+
+// Универсальный info-модал — для объяснения непонятных терминов / плиток
+function showInfoModal(title, htmlBody){
+  var m=document.getElementById('infoModal');
+  if(!m)return;
+  document.getElementById('infoModalTitle').textContent=title;
+  document.getElementById('infoModalBody').innerHTML=htmlBody;
+  m.style.display='flex';
+  // Закрытие на Escape
+  document.addEventListener('keydown',_escapeInfoModal);
+}
+function closeInfoModal(e){
+  // если вызвано как обработчик клика по фону — событие приходит первым параметром
+  if(e&&e.currentTarget&&e.target&&e.currentTarget!==e.target)return;
+  var m=document.getElementById('infoModal');
+  if(m)m.style.display='none';
+  document.removeEventListener('keydown',_escapeInfoModal);
+}
+function _escapeInfoModal(e){if(e.key==='Escape')closeInfoModal();}
+
+// Готовые описания плиток — единое место для текстов
+function showAdjustInfo(isPos, amount){
+  var title=isPos?'Доплаты WB':'Удержано WB';
+  var html='';
+  if(isPos){
+    html+='<p>Это <strong>дополнительные поступления</strong> от Wildberries сверх обычной формулы «выручка − комиссия».</p>';
+    html+='<p>Сюда входят:</p>';
+    html+='<p>• <strong>Компенсация СПП</strong> — WB субсидирует часть скидки покупателю и доплачивает её селлеру<br>';
+    html+='• <strong>Премии</strong> за участие в акциях, рейтинг продавца<br>';
+    html+='• <strong>Корректировки</strong> возвратов и спорных операций</p>';
+  } else {
+    html+='<p>Это <strong>дополнительные удержания</strong> от Wildberries сверх обычной комиссии.</p>';
+    html+='<p>Это может быть: компенсация скидки покупателю за счёт селлера, удержание за нарушения, корректировки расчётов прошлых периодов.</p>';
+  }
+  html+='<div class="info-formula">Корректировка = Выплата WB − (Выручка − Комиссия)</div>';
+  html+='<p style="font-size:12px;color:var(--muted)">Цифра берётся из официального отчёта WB (поле <code>ppvz_for_pay</code>). Она <strong>уже учтена</strong> в чистой прибыли — это для прозрачности расчёта.</p>';
+  showInfoModal(title, html);
+}
 function sumSnaps(arr){
   var s={profit:0,revenue:0,ads:0,sales_count:0};
   arr.forEach(function(x){s.profit+=Number(x.profit||0);s.revenue+=Number(x.revenue||0);s.ads+=Number(x.ads||0);s.sales_count+=Number(x.sales_count||0);});
@@ -2527,7 +2726,7 @@ function renderMoneyFlow(s){
   return h;
 }
 function collectWeekAlerts(week){
-  // Группируем тревоги по name, считаем за сколько дней повторяется
+  // ─── 1) Алерты по товарам (high_drr, loss) — из daily snapshot.alerts ───
   var byName={};
   week.forEach(function(s){
     (s.alerts||[]).forEach(function(a){
@@ -2538,8 +2737,69 @@ function collectWeekAlerts(week){
     });
   });
   var arr=Object.keys(byName).map(function(k){return byName[k];});
-  arr.sort(function(a,b){return b.count-a.count;});
+
+  // ─── 2) Новые алерты на основе ТРЕНДОВ — сравнение последнего дня с историей ───
+  // Берём последний день и считаем средние за предыдущие дни (без последнего)
+  if(week.length>=3){
+    var last=week[week.length-1];
+    var prev=week.slice(0,-1);
+    var prevCount=prev.length;
+
+    // 2a) АНОМАЛЬНЫЕ ВОЗВРАТЫ — за вчера возвратов в 2+ раза больше среднего
+    var avgReturns=prev.reduce(function(a,s){return a+Number(s.returns_count||0);},0)/prevCount;
+    var lastReturns=Number(last.returns_count||0);
+    if(lastReturns>=3 && avgReturns>0 && lastReturns>=avgReturns*2){
+      arr.unshift({
+        name:'Всплеск возвратов',
+        msg:'за '+shortDate(last.day)+' возвратов: '+lastReturns+' шт (среднее за '+prevCount+' дн: '+avgReturns.toFixed(1)+')',
+        type:'returns_spike'
+      });
+    }
+
+    // 2b) ПАДЕНИЕ ПРОДАЖ — продаж резко меньше чем обычно
+    var avgSales=prev.reduce(function(a,s){return a+Number(s.sales_count||0);},0)/prevCount;
+    var lastSales=Number(last.sales_count||0);
+    if(avgSales>=3 && lastSales<avgSales*0.4){
+      arr.unshift({
+        name:'Продажи упали',
+        msg:'за '+shortDate(last.day)+' продано '+lastSales+' шт, обычно ~'+Math.round(avgSales)+' шт/день',
+        type:'sales_drop'
+      });
+    }
+
+    // 2c) РОСТ ЛОГИСТИКИ — последняя половина периода vs первая
+    if(week.length>=6){
+      var mid=Math.floor(week.length/2);
+      var firstHalf=week.slice(0,mid);
+      var secondHalf=week.slice(mid);
+      var logFirst=firstHalf.reduce(function(a,s){return a+Number(s.logistics||0);},0);
+      var logSecond=secondHalf.reduce(function(a,s){return a+Number(s.logistics||0);},0);
+      // Нормируем на длину половин (на случай нечётного количества)
+      var logFirstPerDay=logFirst/firstHalf.length;
+      var logSecondPerDay=logSecond/secondHalf.length;
+      if(logFirstPerDay>=200 && logSecondPerDay>logFirstPerDay*1.5){
+        var growth=Math.round((logSecondPerDay/logFirstPerDay-1)*100);
+        arr.unshift({
+          name:'Логистика выросла',
+          msg:'в среднем '+Math.round(logSecondPerDay)+' ₽/день — на '+growth+'% больше первой половины периода',
+          type:'logistics_growth'
+        });
+      }
+    }
+  }
+
+  // ─── 3) Сортировка по важности (новые тренды-алерты идут первыми) ───
+  arr.sort(function(a,b){
+    var priorityA=(a.type==='returns_spike'||a.type==='sales_drop'||a.type==='logistics_growth')?100:(a.count||1);
+    var priorityB=(b.type==='returns_spike'||b.type==='sales_drop'||b.type==='logistics_growth')?100:(b.count||1);
+    return priorityB-priorityA;
+  });
+
   return arr.map(function(a){
+    // Для старых алертов добавляем дату/серию, для новых — оставляем как есть
+    if(a.type==='returns_spike'||a.type==='sales_drop'||a.type==='logistics_growth'){
+      return {name:a.name,msg:a.msg,type:a.type};
+    }
     var dateStr=a.lastDay?' · '+shortDate(a.lastDay):'';
     var streak=a.count>1?' (уже '+a.count+' дн. подряд)':'';
     return {name:a.name,msg:a.last+streak+dateStr,type:a.type};
@@ -2550,6 +2810,9 @@ function buildActions(week,alerts){
   alerts.slice(0,3).forEach(function(a){
     if(a.type==='high_drr')actions.push('Снизить или отключить рекламу на «'+a.name+'» — '+a.msg);
     else if(a.type==='loss')actions.push('Проверить себестоимость и цену «'+a.name+'» — '+a.msg);
+    else if(a.type==='returns_spike')actions.push('Разобраться с возвратами — '+a.msg+'. Возможно проблема с качеством, размерами или описанием.');
+    else if(a.type==='sales_drop')actions.push('Проверить остатки и видимость карточек — '+a.msg+'. Возможно товар скрылся в поиске или кончился на складе.');
+    else if(a.type==='logistics_growth')actions.push('Изучить причины роста логистики — '+a.msg+'. Возможно много возвратов или товар уехал на дальние склады.');
     else actions.push('Проверить «'+a.name+'» — '+a.msg);
   });
   // Доп. инсайт: если общий профит за неделю упал
