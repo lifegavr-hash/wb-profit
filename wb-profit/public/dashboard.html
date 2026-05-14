@@ -65,7 +65,7 @@ input:focus{border-color:var(--purple)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .err{background:var(--red-bg);border:1px solid #f5c6c2;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem;display:none}
 .ok-msg{background:#EAF3DE;border:1px solid #C0DD97;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--green);margin-bottom:1rem;display:none}
-.warn{background:#fff8e6;border:1px solid #f5c842;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:#7a5c00;margin-bottom:1rem;display:none}
+.warn{display:none}
 .ld{display:none;align-items:center;gap:10px;color:var(--muted);font-size:14px;padding:1rem 0}
 .sp{width:16px;height:16px;border:2px solid #ddd;border-top-color:#555;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -536,7 +536,6 @@ tr.loss td{background:#fff5f5}
       </div>
 
       <div id="errBox" class="err"></div>
-      <div id="warnBox" class="warn"></div>
       <div class="ld" id="ldBox"><div class="sp"></div><span id="ldTxt">Загружаем...</span></div>
 
       <!-- Подсказка если данных ещё нет -->
@@ -1122,7 +1121,7 @@ async function go(tokenArg){
   var df=document.getElementById('df').value;
   var dt=document.getElementById('dt').value;
   // Скрываем сообщения об ошибках везде
-  ['errBox','errBoxHome','warnBox'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});
+  ['errBox','errBoxHome'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});
   var rs=document.getElementById('results');if(rs)rs.style.display='none';
   var ce=document.getElementById('calcEmpty');if(ce)ce.style.display='none';
   if(!tok){showErr('Сначала добавьте токен в Настройках');return;}
@@ -1308,8 +1307,6 @@ async function process(raw){
       tComm+=sign*(price*pct/100);
     }
   }
-  var losers=rows.filter(function(x){return x.cost>0&&x.ppvz-x.del-x.stor-x.adv-x.pen-x.cost*Math.max(x.sales-x.ret,0)<0;});
-  if(losers.length>0){var wb=document.getElementById('warnBox');wb.textContent='Внимание! Убыточных товаров: '+losers.length+' — '+losers.slice(0,3).map(function(x){return x.sa||x.nm_id;}).join(', ');wb.style.display='block';}
   var wbFinHtml=tWbFin>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(tWbFin)+' ₽</div></div>':'';
   document.getElementById('mg').innerHTML=
     '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(tSl)+' шт.</div></div>'+
@@ -1865,12 +1862,10 @@ function onRowCheckboxChange(){
   if(head){head.checked=n===total&&total>0;head.indeterminate=n>0&&n<total;}
 }
 function applyBulkCost(mode){
-  console.log('[bulk] applyBulkCost called, mode=',mode);
   var input=document.getElementById('bulkCost');
   if(!input){alert('Ошибка: поле ввода не найдено');return;}
   var raw=String(input.value||'').replace(',','.').trim();
   var val=parseFloat(raw);
-  console.log('[bulk] value=',raw,'parsed=',val);
   if(!val||val<=0){alert('Введите положительную себестоимость в поле сверху');return;}
   if(!rows||!rows.length){alert('Сначала загрузите данные в Калькуляторе');return;}
   var onlyEmpty=document.getElementById('bulkOnlyEmpty').checked;
@@ -1878,13 +1873,11 @@ function applyBulkCost(mode){
   var indices=[];
   if(mode==='selected'){
     var checks=document.querySelectorAll('.cb-row:checked');
-    console.log('[bulk] selected checkboxes:',checks.length);
     checks.forEach(function(c){indices.push(parseInt(c.dataset.i,10));});
     if(!indices.length){alert('Сначала отметьте товары галочкой слева в строках');return;}
   } else {
     for(var i=0;i<rows.length;i++)indices.push(i);
   }
-  console.log('[bulk] applying to indices:',indices.length);
   // Применяем — сразу обновляем массив, costs в localStorage и пересчёт итогов в конце
   var changed=0;
   var allCosts=getCosts();
@@ -1908,7 +1901,6 @@ function applyBulkCost(mode){
     }
   });
   saveCosts(allCosts);
-  console.log('[bulk] changed:',changed);
   // Пересчёт итогов
   recalcTotals();
   input.value='';
@@ -1927,8 +1919,7 @@ function applyBulkCost(mode){
 // Учитывает: товарные строки (rows) + операционные строки без артикула (из rawData).
 // Используется при изменении себестоимостей (вручную в строке или bulk-операцией).
 function recalcTotals(){
-  console.log('[recalc] called, rows='+(rows?rows.length:'no'));
-  if(!rows||!rows.length){console.warn('[recalc] no rows, skip');return;}
+  if(!rows||!rows.length)return;
   // 1) Подсчёт по товарам (rows)
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0,tWbFin=0;
   for(var j=0;j<rows.length;j++){
@@ -1974,7 +1965,7 @@ function recalcTotals(){
   // 4) Обновляем 12 плиток сверху
   var setCard=function(label,val,cls){
     var cards=document.querySelectorAll('#mg .m');
-    if(!cards.length){console.warn('[recalc] no #mg .m cards in DOM');return;}
+    if(!cards.length)return;
     for(var k=0;k<cards.length;k++){
       var lbl=cards[k].querySelector('.ml');
       if(lbl&&lbl.textContent.trim()===label){
@@ -1983,7 +1974,6 @@ function recalcTotals(){
         return;
       }
     }
-    console.warn('[recalc] card not found:',label);
   };
   setCard('Продажи',fmt(tSl)+' шт.','mv');
   setCard('Возвраты',fmt(tRt)+' шт.','mv red');
@@ -2002,17 +1992,6 @@ function recalcTotals(){
   var tfProfit=document.getElementById('tfProfit');
   if(tfCost)tfCost.innerHTML='−'+fmt(tCost)+' ₽';
   if(tfProfit){tfProfit.className=tp>=0?'green':'red';tfProfit.innerHTML=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
-  // 6) Жёлтый банер «Убыточных товаров»
-  var losers=rows.filter(function(x){return x.cost>0&&x.ppvz-x.del-x.stor-x.adv-x.pen-x.cost*Math.max(x.sales-x.ret,0)<0;});
-  var wb=document.getElementById('warnBox');
-  if(wb){
-    if(losers.length){
-      wb.textContent='Внимание! Убыточных товаров: '+losers.length+' — '+losers.slice(0,3).map(function(x){return x.sa||x.nm_id;}).join(', ');
-      wb.style.display='block';
-    } else {
-      wb.style.display='none';
-    }
-  }
   // 7) Запускаем auto-save со снапшотами в БД (debounced)
   scheduleAutoSave();
 }
@@ -2072,7 +2051,6 @@ function showSaveStatus(state){
 }
 
 function upd(i,val){
-  console.log('[upd] called, i='+i+' val='+val);
   if(!rows[i])return;
   rows[i].cost=parseFloat(val)||0;
   var a=rows[i];
