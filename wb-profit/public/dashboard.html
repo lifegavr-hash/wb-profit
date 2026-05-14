@@ -71,6 +71,11 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .btn-primary{padding:9px 20px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer}
 .btn-primary:hover{opacity:.9}
 input[type=password],input[type=date],input[type=number],input[type=text]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;color:var(--text);background:var(--surface);outline:none}
+/* WB-токен: визуально маскируем как пароль, но НЕ используем type="password",
+   иначе Chrome предлагает «сохранить пароль». -webkit-text-security работает
+   в Chrome/Safari/Edge, в Firefox текст останется видимым (но это не критично
+   для WB-токена и Firefox не имеет такого же password-prompt бага). */
+.wb-token-input{-webkit-text-security:disc;text-security:disc;font-family:monospace}
 input:focus{border-color:var(--purple)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .err{background:var(--red-bg);border:1px solid #f5c6c2;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem;display:none}
@@ -481,7 +486,7 @@ tr.loss td{background:#fff5f5}
       <div class="onb-emoji">🚀</div>
       <div class="onb-title">Вставьте токен и запускаем</div>
       <div class="onb-text">Вставьте скопированный токен сюда — мы сохраним его и сразу загрузим ваши данные.</div>
-      <input type="password" id="onbToken" placeholder="eyJhbGciOiJFUzI1NiIs..." class="onb-input">
+      <input type="text" id="onbToken" placeholder="eyJhbGciOiJFUzI1NiIs..." class="onb-input wb-token-input" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" spellcheck="false">
       <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:8px">Токен хранится только в вашем браузере и нигде не передаётся, кроме WB.</div>
       <div class="onb-actions">
         <button class="bulk-btn" onclick="onbNext(2)">← Назад</button>
@@ -580,7 +585,7 @@ tr.loss td{background:#fff5f5}
         <div class="ct">Подключение к Wildberries</div>
         <div style="margin-bottom:12px">
           <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">API токен WB</label>
-          <input type="password" id="tok1" placeholder="eyJhbGciOiJFUzI1NiIs...">
+          <input type="text" id="tok1" placeholder="eyJhbGciOiJFUzI1NiIs..." class="wb-token-input" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" spellcheck="false">
           <p class="hint" id="savedHint" style="display:none;color:var(--green)">Токен сохранён</p>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;margin-bottom:12px">
