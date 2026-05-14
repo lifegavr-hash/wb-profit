@@ -11,6 +11,9 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+/* Скрытые поля и абсолютные оверлеи не должны участвовать в grid-сетке body */
+body > input[type="hidden"]{display:none!important}
+body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 @media(max-width:900px){
   body{grid-template-columns:1fr}
   .sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:1500;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.3)}
