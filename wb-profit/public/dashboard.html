@@ -285,6 +285,23 @@ tr.loss td{background:#fff5f5}
 .abc-cat.B{background:#f59e0b}
 .abc-cat.C{background:#94a3b8}
 .abc-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+/* Раскрывающиеся группы ABC */
+.abc-group{border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;background:#fff}
+.abc-group-header{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#fafafa;border:0;cursor:pointer;text-align:left;font-family:inherit;transition:background .15s}
+.abc-group-header:hover{background:#f0f0f0}
+.abc-group[data-cat="A"] .abc-group-header{background:linear-gradient(135deg,rgba(34,197,94,.08),#fff)}
+.abc-group[data-cat="B"] .abc-group-header{background:linear-gradient(135deg,rgba(245,158,11,.08),#fff)}
+.abc-group[data-cat="C"] .abc-group-header{background:linear-gradient(135deg,rgba(148,163,184,.08),#fff)}
+.abc-group-title{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text);flex:1;min-width:0}
+.abc-group-title .arrow{font-size:11px;color:var(--muted);width:12px;display:inline-block}
+.abc-group-sub{font-size:12px;font-weight:400;color:var(--muted);margin-left:4px}
+.abc-group-total{font-size:13px;font-weight:600;color:#16a34a;white-space:nowrap}
+.abc-group-body{padding:0 14px 12px;background:#fff}
+.abc-group-body .abc-table{margin-top:6px}
+@media(max-width:600px){
+  .abc-group-sub{display:none}
+  .abc-group-title{font-size:13px}
+}
 .abc-sum-item{background:rgba(124,58,237,.05);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
 .abc-sum-cat{font-size:11px;color:var(--muted);margin-bottom:4px}
 .abc-sum-val{font-size:18px;font-weight:700}
@@ -2504,14 +2521,6 @@ function renderAnalytics(snaps){
   h+='<div class="an-card-title">📈 ПРИБЫЛЬ ЗА '+snaps.length+' ДНЕЙ</div>';
   h+=renderTimelineChart(snaps);
   h+='</div>';
-  // Виджет 1.5: динамика по месяцам (если охватываем >=2 месяцев)
-  var monthlyHtml=renderMonthlyDynamics(snaps);
-  if(monthlyHtml){
-    h+='<div class="an-card">';
-    h+='<div class="an-card-title">📅 ДИНАМИКА ПО МЕСЯЦАМ</div>';
-    h+=monthlyHtml;
-    h+='</div>';
-  }
   // Виджеты 2 и 3 в сетке
   h+='<div class="an-grid">';
   h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ</div>';
@@ -2527,91 +2536,6 @@ function renderAnalytics(snaps){
   h+=renderABC(snaps);
   h+='</div>';
   el.innerHTML=h;
-}
-
-// === ВИДЖЕТ «По месяцам»: суммирует снапшоты по году-месяцу ===
-// Показывается только если охватили хотя бы 2 разных месяца.
-window._monthlyMetric=window._monthlyMetric||'profit';
-function renderMonthlyDynamics(snaps){
-  // Группируем по 'YYYY-MM'
-  var byMo={};
-  snaps.forEach(function(s){
-    var ym=String(s.day||'').slice(0,7);
-    if(!ym)return;
-    if(!byMo[ym])byMo[ym]={revenue:0,profit:0,ads:0,commission:0,logistics:0,storage:0,penalties:0,cost:0,sales:0};
-    byMo[ym].revenue+=Number(s.revenue||0);
-    byMo[ym].profit+=Number(s.profit||0);
-    byMo[ym].ads+=Number(s.ads||0);
-    byMo[ym].commission+=Number(s.commission||0);
-    byMo[ym].logistics+=Number(s.logistics||0);
-    byMo[ym].storage+=Number(s.storage||0);
-    byMo[ym].penalties+=Number(s.penalties||0);
-    byMo[ym].cost+=Number(s.cost||0);
-    byMo[ym].sales+=Number(s.sales_count||0);
-  });
-  var months=Object.keys(byMo).sort();
-  if(months.length<2)return ''; // Нет смысла рисовать график для одного месяца
-  var metric=window._monthlyMetric;
-  // Готовим значения
-  var moNames=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
-  var data=months.map(function(ym){
-    var m=byMo[ym];
-    var p=ym.split('-');
-    var label=moNames[parseInt(p[1])-1]+' '+p[0].slice(2);
-    var val;
-    if(metric==='profit')val=m.profit;
-    else if(metric==='revenue')val=m.revenue;
-    else if(metric==='ads')val=m.ads;
-    else /* expenses */ val=m.commission+m.logistics+m.storage+m.ads+m.penalties+m.cost;
-    return {label:label,val:val,sales:m.sales};
-  });
-  // Переключатель
-  var tabs=[
-    {k:'profit',l:'Прибыль'},
-    {k:'revenue',l:'Выручка'},
-    {k:'expenses',l:'Расходы'},
-    {k:'ads',l:'Реклама'},
-  ];
-  var tabsHtml='<div class="month-tabs">'+tabs.map(function(t){
-    return '<button class="month-tab'+(t.k===metric?' active':'')+'" onclick="setMonthlyMetric(\''+t.k+'\')">'+t.l+'</button>';
-  }).join('')+'</div>';
-  // SVG-столбики
-  var W=900,H=240,pad={l:60,r:20,t:20,b:40};
-  var iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
-  var maxV=Math.max.apply(null,data.map(function(d){return Math.abs(d.val);}));
-  if(maxV===0)maxV=1;
-  var barW=iw/data.length*0.65;
-  var step=iw/data.length;
-  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto">';
-  // Y-grid 4 линии
-  for(var i=0;i<=4;i++){
-    var y=pad.t+ih*i/4;
-    var v=Math.round(maxV*(1-i/4));
-    svg+='<line x1="'+pad.l+'" y1="'+y+'" x2="'+(pad.l+iw)+'" y2="'+y+'" stroke="#eee" stroke-width="1"/>';
-    svg+='<text x="'+(pad.l-6)+'" y="'+(y+4)+'" font-size="10" fill="#94a3b8" text-anchor="end">'+fmtR(v)+'</text>';
-  }
-  // Bars
-  data.forEach(function(d,idx){
-    var cx=pad.l+step*idx+(step-barW)/2;
-    var h=Math.abs(d.val)/maxV*ih;
-    var cy=pad.t+ih-h;
-    var color=d.val>=0?'#16a34a':'#dc2626';
-    if(metric==='ads')color='#a855f7';
-    else if(metric==='expenses')color='#f59e0b';
-    else if(metric==='revenue')color='#5433c6';
-    svg+='<rect x="'+cx+'" y="'+cy+'" width="'+barW+'" height="'+h+'" rx="4" fill="'+color+'" opacity="0.85"/>';
-    // value above bar
-    svg+='<text x="'+(cx+barW/2)+'" y="'+(cy-6)+'" font-size="11" fill="#1a1a18" text-anchor="middle" font-weight="600">'+(d.val>=0?'+':'−')+fmtR(d.val)+'</text>';
-    // month label
-    svg+='<text x="'+(cx+barW/2)+'" y="'+(pad.t+ih+18)+'" font-size="11" fill="#6b6b68" text-anchor="middle">'+d.label+'</text>';
-  });
-  svg+='</svg>';
-  return tabsHtml+'<div style="margin-top:10px">'+svg+'</div>';
-}
-function setMonthlyMetric(k){
-  window._monthlyMetric=k;
-  // Перерисуем аналитику
-  loadAnalytics();
 }
 
 // === ВИДЖЕТ 1: Линейный график ===
@@ -2811,46 +2735,80 @@ function renderABC(snaps){
   // Сортируем по прибыли DESC
   items.sort(function(a,b){return b.profit-a.profit;});
   var totalProfit=items.reduce(function(a,i){return a+i.profit;},0);
-  // Определяем категории
-  var cum=0,countA=0,countB=0,countC=0,profitA=0,profitB=0,profitC=0;
+  // Определяем категории и собираем по группам
+  var cum=0;
+  var groupA=[], groupB=[], groupC=[];
   items.forEach(function(it){
     cum+=it.profit;
     var pct=cum/totalProfit;
-    if(pct<=0.8){it.cat='A';countA++;profitA+=it.profit;}
-    else if(pct<=0.95){it.cat='B';countB++;profitB+=it.profit;}
-    else {it.cat='C';countC++;profitC+=it.profit;}
+    if(pct<=0.8){it.cat='A';groupA.push(it);}
+    else if(pct<=0.95){it.cat='B';groupB.push(it);}
+    else {it.cat='C';groupC.push(it);}
   });
+  function sumProfit(arr){return arr.reduce(function(a,i){return a+i.profit;},0);}
+  var profitA=sumProfit(groupA),profitB=sumProfit(groupB),profitC=sumProfit(groupC);
   var total=items.length;
-  // Summary cards
+
+  // Краткая сводка сверху
   var h='<div class="abc-summary">';
-  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat A">A</span> Фокус</div><div class="abc-sum-val">'+countA+'</div><div class="abc-sum-pct">'+(total?Math.round(countA/total*100):0)+'% товаров → '+Math.round(profitA/totalProfit*100)+'% прибыли</div></div>';
-  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat B">B</span> Стабильные</div><div class="abc-sum-val">'+countB+'</div><div class="abc-sum-pct">'+(total?Math.round(countB/total*100):0)+'% товаров → '+Math.round(profitB/totalProfit*100)+'% прибыли</div></div>';
-  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat C">C</span> Балласт</div><div class="abc-sum-val">'+countC+'</div><div class="abc-sum-pct">'+(total?Math.round(countC/total*100):0)+'% товаров → '+Math.round(profitC/totalProfit*100)+'% прибыли</div></div>';
+  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat A">A</span> Фокус</div><div class="abc-sum-val">'+groupA.length+'</div><div class="abc-sum-pct">'+(total?Math.round(groupA.length/total*100):0)+'% товаров → '+Math.round(profitA/totalProfit*100)+'% прибыли</div></div>';
+  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat B">B</span> Стабильные</div><div class="abc-sum-val">'+groupB.length+'</div><div class="abc-sum-pct">'+(total?Math.round(groupB.length/total*100):0)+'% товаров → '+Math.round(profitB/totalProfit*100)+'% прибыли</div></div>';
+  h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat C">C</span> Балласт</div><div class="abc-sum-val">'+groupC.length+'</div><div class="abc-sum-pct">'+(total?Math.round(groupC.length/total*100):0)+'% товаров → '+Math.round(profitC/totalProfit*100)+'% прибыли</div></div>';
   h+='</div>';
-  // Таблица топ-15
-  h+='<table class="abc-table">';
-  h+='<thead><tr><th>Кат</th><th>Товар</th><th style="text-align:right">Продаж</th><th style="text-align:right">Прибыль</th><th style="text-align:right">% от общей</th></tr></thead><tbody>';
-  items.slice(0,15).forEach(function(it){
-    var pct=(it.profit/totalProfit*100).toFixed(1);
-    h+='<tr>'+
-      '<td><span class="abc-cat '+it.cat+'">'+it.cat+'</span></td>'+
-      '<td>'+it.name+'</td>'+
-      '<td style="text-align:right">'+fmt(it.sales)+'</td>'+
-      '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+'</td>'+
-      '<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'+
-    '</tr>';
-  });
-  h+='</tbody></table>';
-  if(items.length>15){
-    h+='<div style="font-size:11px;color:var(--muted);text-align:center;padding-top:10px">Показано 15 из '+items.length+' товаров</div>';
+
+  // Раскрывающиеся группы (A развёрнута по умолчанию)
+  function renderGroup(cat, label, sub, list, totalCat, isOpen){
+    if(!list.length) return '';
+    var id='abc-grp-'+cat;
+    var arrow=isOpen?'▼':'▶';
+    var displayStyle=isOpen?'block':'none';
+    var s='<div class="abc-group" data-cat="'+cat+'">';
+    s+='<button class="abc-group-header" onclick="toggleAbcGroup(\''+id+'\', this)">';
+    s+='<span class="abc-group-title"><span class="arrow">'+arrow+'</span> <span class="abc-cat '+cat+'">'+cat+'</span> '+label+' <span class="abc-group-sub">'+sub+'</span></span>';
+    s+='<span class="abc-group-total">+'+fmtR(totalCat)+' ₽ · '+Math.round(totalCat/totalProfit*100)+'%</span>';
+    s+='</button>';
+    s+='<div class="abc-group-body" id="'+id+'" style="display:'+displayStyle+'">';
+    s+='<table class="abc-table">';
+    s+='<thead><tr><th>Товар</th><th style="text-align:right">Продаж</th><th style="text-align:right">Прибыль</th><th style="text-align:right">% от общей</th></tr></thead><tbody>';
+    list.forEach(function(it){
+      var pct=(it.profit/totalProfit*100).toFixed(1);
+      s+='<tr>'+
+        '<td>'+escHtml(it.name)+'</td>'+
+        '<td style="text-align:right">'+fmt(it.sales)+'</td>'+
+        '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+' ₽</td>'+
+        '<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'+
+      '</tr>';
+    });
+    s+='</tbody></table>';
+    s+='</div>';
+    s+='</div>';
+    return s;
   }
+  h+=renderGroup('A','Фокус','— приносят основную прибыль', groupA, profitA, true);
+  h+=renderGroup('B','Стабильные','— середняки', groupB, profitB, false);
+  h+=renderGroup('C','Балласт','— кандидаты на снятие', groupC, profitC, false);
+
   // Инсайт
-  if(countC>0){
-    h+='<div class="an-insight">Категория <strong>C</strong> ('+countC+' товаров) приносит всего '+Math.round(profitC/totalProfit*100)+'% прибыли. Кандидаты на снятие или пересмотр цены.</div>';
-  } else if(countA>0){
+  if(groupC.length>0){
+    h+='<div class="an-insight">Категория <strong>C</strong> ('+groupC.length+' '+(groupC.length===1?'товар':(groupC.length<5?'товара':'товаров'))+') приносит всего '+Math.round(profitC/totalProfit*100)+'% прибыли. Кандидаты на снятие или пересмотр цены.</div>';
+  } else if(groupA.length>0){
     h+='<div class="an-insight">Все товары работают эффективно — категории C нет.</div>';
   }
   return h;
+}
+
+// Раскрытие/сворачивание группы ABC
+function toggleAbcGroup(id, btn){
+  var body=document.getElementById(id);
+  if(!body)return;
+  var arrow=btn.querySelector('.arrow');
+  if(body.style.display==='none'){
+    body.style.display='block';
+    if(arrow)arrow.textContent='▼';
+  } else {
+    body.style.display='none';
+    if(arrow)arrow.textContent='▶';
+  }
 }
 
 </script>
