@@ -1223,22 +1223,137 @@ function setLoadStatus(text){
   ids.forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=text;});
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ для всех денежных расчётов.
+// Калькулятор, Детализация расходов, Аналитика — все используют ЭТУ функцию.
+// Любое изменение формулы — только здесь, и нигде больше.
+//
+// Принципы:
+// 1. Каждая строка rawData попадает РОВНО В ОДНУ статью расходов.
+// 2. Используется одна и та же классификация типов операций.
+// 3. Возвращает: t.* — итоги по статьям, byCategory — для Детализации,
+//    byOper — список операций для раскрывающихся групп.
+//
+// Состав статей:
+//   revenue       — Выручка: retail_price (цена селлера, до СПП)
+//   commission    — Комиссия WB: retail_price * commission_percent
+//   ppvz          — Выплата от WB (ppvz_for_pay)
+//   delivery      — Логистика (delivery_rub + rebill_logistic_cost)
+//   storage       — Хранение (storage_fee)
+//   ads           — Реклама (deduction с bonus/oper «Продвижение»/«Реклама»)
+//   penalty       — Штрафы (penalty + acceptance + deduction вне рекламы/ВБФ)
+//   wbFinance     — ВБ Финанс / кредит (deduction по bonus/oper «Финанс»)
+//   cost          — Себестоимость (cost × выкупленные шт)
+//   profit        — Чистая прибыль = ppvz - delivery - storage - ads - penalty - wbFinance - cost
+//   salesCount, returnsCount — продажи и возвраты в шт.
+// ═══════════════════════════════════════════════════════════════════════════
+function computeFinancials(rawData, rows){
+  var t={
+    revenue:0, commission:0, ppvz:0, delivery:0, storage:0,
+    ads:0, penalty:0, wbFinance:0, cost:0, profit:0,
+    salesCount:0, returnsCount:0
+  };
+  // Карта категория → список операций; для Детализации расходов.
+  // Каждая операция учитывается в той категории, к которой она относится по СУММЕ
+  // (rebill, deduction, penalty, acceptance — всё суммируется в одну строку группы).
+  var byOper={}; // ключ = supplier_oper_name; { count, delivery, storage, penalty, ads, wbFinance, deduction, total }
+  function getOper(name){
+    if(!byOper[name]){
+      byOper[name]={count:0, delivery:0, storage:0, penalty:0, ads:0, wbFinance:0, deduction:0, acceptance:0, rebill:0, total:0};
+    }
+    return byOper[name];
+  }
+
+  // 1) Подсчёт по rawData (если есть)
+  var raw=Array.isArray(rawData)?rawData:[];
+  for(var i=0;i<raw.length;i++){
+    var r=raw[i];
+    var oper=r.supplier_oper_name||'Без названия';
+    var o=getOper(oper);
+    o.count++;
+    // Выплата от WB (учитывается ОТДЕЛЬНО, не входит в total группы — это поступление)
+    t.ppvz+=Number(r.ppvz_for_pay||0);
+    // Логистика: delivery_rub + rebill_logistic_cost (rebill — допплата за возврат)
+    var delLine=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
+    t.delivery+=delLine;
+    o.delivery+=delLine;
+    o.rebill+=Number(r.rebill_logistic_cost||0);
+    // Хранение
+    var stLine=Number(r.storage_fee||0);
+    t.storage+=stLine;
+    o.storage+=stLine;
+    // Штрафы (поле penalty + acceptance)
+    var penLine=Number(r.penalty||0)+Number(r.acceptance||0);
+    t.penalty+=penLine;
+    o.penalty+=Number(r.penalty||0);
+    o.acceptance+=Number(r.acceptance||0);
+    // Удержания (deduction) — классифицируем по bonus/oper
+    var ded=Math.abs(Number(r.deduction||0));
+    if(ded>0){
+      if(isWbFin(r.bonus_type_name,r.supplier_oper_name)){
+        t.wbFinance+=ded;
+        o.wbFinance+=ded;
+      } else if(isAdv(r.bonus_type_name,r.supplier_oper_name)){
+        t.ads+=ded;
+        o.ads+=ded;
+      } else {
+        t.penalty+=ded; // прочие удержания идут в штрафы
+        o.deduction+=ded;
+      }
+    }
+    // Продажи и возвраты — считаем штуки и выручку
+    var dt=(r.doc_type_name||'').toLowerCase();
+    if(dt==='продажа'){
+      t.salesCount++;
+      var price=Number(r.retail_amount||r.retail_price_withdisc_rub||0);
+      var pct=Number(r.commission_percent||0);
+      t.revenue+=price;
+      t.commission+=price*pct/100;
+    } else if(dt==='возврат'){
+      t.returnsCount++;
+      var pr=Number(r.retail_amount||r.retail_price_withdisc_rub||0);
+      var pc=Number(r.commission_percent||0);
+      t.revenue-=pr;
+      t.commission-=pr*pc/100;
+    }
+    // total строки операции (без выплаты)
+    o.total=o.delivery+o.storage+o.penalty+o.acceptance+o.deduction+o.ads+o.wbFinance;
+  }
+
+  // 2) Себестоимость — по товарам (rows)
+  if(Array.isArray(rows)){
+    for(var j=0;j<rows.length;j++){
+      var x=rows[j];
+      if(x.cost>0){
+        t.cost+=x.cost*Math.max(x.sales-x.ret,0);
+      }
+    }
+  }
+
+  // 3) Чистая прибыль
+  t.profit=t.ppvz-t.delivery-t.storage-t.ads-t.penalty-t.wbFinance-t.cost;
+
+  return {t:t, byOper:byOper};
+}
+
 async function process(raw){
+  rawData=raw; // глобально сохраняем чтобы Детализация/Аналитика могли использовать
   var costs=getCosts();var bk={};byMonthData={};
+  // Сначала собираем товарные строки (rows) — это нужно для таблицы и себестоимости
   for(var i=0;i<raw.length;i++){
     var r=raw[i];
     var doc=(r.doc_type_name||'').toLowerCase();
-    // Графики и итоги — считаем ВСЕ строки включая без артикула
+    // Графики (по месяцам) — оставляем как было, для совместимости
     var mo=getMonth(r);
     if(mo){
       if(!byMonthData[mo]) byMonthData[mo]={ppvz:0,del:0,stor:0,adv:0,pen:0};
       byMonthData[mo].ppvz+=r.ppvz_for_pay||0;
-      byMonthData[mo].del+=r.delivery_rub||0;
+      byMonthData[mo].del+=(Number(r.delivery_rub)||0)+(Number(r.rebill_logistic_cost)||0);
       byMonthData[mo].stor+=r.storage_fee||0;
-      byMonthData[mo].pen+=r.penalty||0;
-      if(isAdv(r.bonus_type_name,r.supplier_oper_name)){byMonthData[mo].adv+=Math.abs(r.deduction||0);}
-      else{byMonthData[mo].pen+=Math.abs(r.deduction||0);}
-      byMonthData[mo].pen+=r.acceptance||0;
+      byMonthData[mo].pen+=Number(r.penalty||0)+Number(r.acceptance||0);
+      var dedM=Math.abs(Number(r.deduction||0));
+      if(isAdv(r.bonus_type_name,r.supplier_oper_name)){byMonthData[mo].adv+=dedM;}
+      else if(!isWbFin(r.bonus_type_name,r.supplier_oper_name)){byMonthData[mo].pen+=dedM;}
     }
     // Таблица товаров — только строки с артикулом
     if(!r.nm_id&&!r.sa_name) continue;
@@ -1247,7 +1362,6 @@ async function process(raw){
     var a=bk[k];
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
-    // Реальная комиссия товара
     if(doc==='продажа'||doc==='возврат'){
       var _price=Number(r.retail_price||r.retail_price_withdisc_rub||r.retail_amount||0);
       var _pct=Number(r.commission_percent||0);
@@ -1255,78 +1369,42 @@ async function process(raw){
       a.commRub+=_sign*(_price*_pct/100);
       if(_pct>0){a._pctSum+=_pct;a._n++;}
     }
-    a.ppvz+=r.ppvz_for_pay||0;a.del+=r.delivery_rub||0;a.stor+=r.storage_fee||0;a.pen+=r.penalty||0;
-    if(isAdv(r.bonus_type_name,r.supplier_oper_name)){a.adv+=Math.abs(r.deduction||0);}else{a.pen+=Math.abs(r.deduction||0);}
-    a.pen+=r.acceptance||0;
+    a.ppvz+=r.ppvz_for_pay||0;
+    a.del+=(Number(r.delivery_rub)||0)+(Number(r.rebill_logistic_cost)||0);
+    a.stor+=r.storage_fee||0;
+    a.pen+=Number(r.penalty||0)+Number(r.acceptance||0);
+    var ded=Math.abs(Number(r.deduction||0));
+    if(isWbFin(r.bonus_type_name,r.supplier_oper_name)){/* ВБФ не в товаре */}
+    else if(isAdv(r.bonus_type_name,r.supplier_oper_name)){a.adv+=ded;}
+    else{a.pen+=ded;}
   }
   rows=Object.values(bk);
-  // Усреднённый % комиссии по товару
   rows.forEach(function(x){x.commPct=x._n>0?Math.round(x._pctSum/x._n):0;delete x._pctSum;delete x._n;delete x._priceSum;});
-  // Итоги из товаров с артикулом
-  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tWbFin=0,tCost=0;
-  for(var j=0;j<rows.length;j++){
-    var x=rows[j];
-    tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
-    tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
-    tCost+=x.cost*Math.max(x.sales-x.ret,0);
-  }
-  // Добавляем расходы из строк БЕЗ артикула
-  for(var ri=0;ri<raw.length;ri++){
-    var rd=raw[ri];
-    if(rd.nm_id||rd.sa_name) continue;
-    tP+=rd.ppvz_for_pay||0;
-    tD+=rd.delivery_rub||0;
-    tD+=rd.rebill_logistic_cost||0;
-    tS+=rd.storage_fee||0;
-    tPn+=rd.penalty||0;
-    var ded=Math.abs(rd.deduction||0);
-    if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)){
-      tWbFin+=ded; // ВБ Финанс отдельно
-    } else if(isAdv(rd.bonus_type_name,rd.supplier_oper_name)){
-      tAd+=ded; // Реклама отдельно
-    } else {
-      tPn+=ded; // Реальные штрафы и удержания
-    }
-    tPn+=rd.acceptance||0;
-  }
-  var tp=tP-tD-tS-tAd-tPn-tWbFin-tCost;
-  // Выручка и комиссия WB — правильная формула:
-  //   Выручка   = retail_price (твоя цена селлера, до СПП)
-  //   Комиссия  = retail_price * commission_percent / 100
-  // Старая формула (retail_amount - ppvz_for_pay) давала отрицательные значения
-  // на товарах с СПП (когда WB субсидирует скидку покупателю).
-  var tRev=0,tComm=0;
-  for(var ri2=0;ri2<raw.length;ri2++){
-    var rr=raw[ri2];
-    var dt=(rr.doc_type_name||'').toLowerCase();
-    if(dt==='продажа'||dt==='возврат'){
-      var price=Number(rr.retail_price||rr.retail_price_withdisc_rub||rr.retail_amount||0);
-      var pct=Number(rr.commission_percent||0);
-      var sign=dt==='возврат'?-1:1;
-      tRev+=sign*price;
-      tComm+=sign*(price*pct/100);
-    }
-  }
-  var wbFinHtml=tWbFin>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(tWbFin)+' ₽</div></div>':'';
+
+  // ═════ ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ ═════
+  // Все цифры — из computeFinancials. Чтобы Калькулятор/Детализация/Аналитика
+  // давали ОДИНАКОВЫЕ суммы. Никаких параллельных формул.
+  var fin=computeFinancials(raw,rows);
+  var t=fin.t;
+  var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
   document.getElementById('mg').innerHTML=
-    '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(tSl)+' шт.</div></div>'+
-    '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(tRt)+' шт.</div></div>'+
-    '<div class="m"><div class="ml">Выручка</div><div class="mv">'+fmt(tRev)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(tComm)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Выплата WB</div><div class="mv">'+fmt(tP)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(tD)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(tS)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(tAd)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(tPn)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(t.salesCount)+' шт.</div></div>'+
+    '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
+    '<div class="m"><div class="ml">Выручка</div><div class="mv">'+fmt(t.revenue)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(t.commission)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Выплата WB</div><div class="mv">'+fmt(t.ppvz)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(t.delivery)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
     wbFinHtml+
-    '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(tCost)+' ₽</div></div>'+
-    '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(tp>=0?'green':'red')+'" id="profitCard">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</div></div>';
+    '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
+    '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
-  renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm);
+  renderTable(t.ppvz,t.delivery,t.storage,t.ads,t.penalty,t.salesCount,t.returnsCount,t.cost,t.profit,t.commission);
   document.getElementById('results').style.display='block';
   // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
   try{
-    // Сливаем уже сохранённые себестоимости с текущими, не теряя ввод пользователя
     var costMap=getCosts();
     rows.forEach(function(x){
       if(x.cost>0){
@@ -1335,24 +1413,19 @@ async function process(raw){
       }
     });
     saveCosts(costMap);
-    // Для агрегатора передаём карту по nm_id (агрегатор ищет по r.nm_id)
     var costByNm={};
     rows.forEach(function(x){if(x.nm_id&&x.cost>0)costByNm[x.nm_id]=x.cost;});
     var snaps=aggregateRowsByDay(raw,costByNm);
     if(snaps.length){
-      // Реальный диапазон дат из снапшотов — пользователь увидит, что покрыто фактически
       snaps.sort(function(a,b){return a.day<b.day?-1:1;});
       var realFrom=snaps[0].day;
       var realTo=snaps[snaps.length-1].day;
       await saveSnapshots(snaps);
       refreshLastSync(realFrom,realTo);
-      // Если активна Главная — перерисовываем её свежими данными
       var homeActive=document.getElementById('sectionHome')&&document.getElementById('sectionHome').classList.contains('active');
       if(homeActive&&typeof loadHomeData==='function')loadHomeData();
-      // Если активна Детализация — тоже обновим
       var detailActive=document.getElementById('sectionDetail')&&document.getElementById('sectionDetail').classList.contains('active');
       if(detailActive&&typeof renderDetail==='function')renderDetail();
-      // Если активна Аналитика — обновим
       var anActive=document.getElementById('sectionAnalytics')&&document.getElementById('sectionAnalytics').classList.contains('active');
       if(anActive&&typeof loadAnalytics==='function')loadAnalytics();
     }
@@ -1360,7 +1433,7 @@ async function process(raw){
 }
 
 function renderDetail(){
-  if(!rawData.length){
+  if(!rawData||!rawData.length){
     document.getElementById('detailEmpty').style.display='block';
     document.getElementById('detailContent').style.display='none';
     return;
@@ -1368,173 +1441,90 @@ function renderDetail(){
   document.getElementById('detailEmpty').style.display='none';
   document.getElementById('detailContent').style.display='block';
 
-  // Собираем статистику по типам операций
-  var byOper={};
-  var totLogistic=0, totStorage=0, totPenalty=0, totAdv=0, totOther=0;
+  // ЕДИНЫЙ источник правды — те же цифры, что и в Калькуляторе
+  var fin=computeFinancials(rawData,rows||[]);
+  var t=fin.t;
+  var byOper=fin.byOper;
 
-  for(var i=0;i<rawData.length;i++){
-    var r=rawData[i];
-    if(isWbFin(r.bonus_type_name,r.supplier_oper_name)||isAdv(r.bonus_type_name,r.supplier_oper_name)) continue;
-    var oper=r.supplier_oper_name||'Без названия';
-    if(!byOper[oper]) byOper[oper]={count:0,logistic:0,storage:0,penalty:0,deduction:0,rebill:0,other:0};
-    var o=byOper[oper];
-    o.count++;
-    o.logistic+=r.delivery_rub||0;
-    o.storage+=r.storage_fee||0;
-    o.penalty+=r.penalty||0;
-    o.rebill+=r.rebill_logistic_cost||0;
-    // Из удержаний тоже убираем ВБ Финанс и рекламу (дополнительная защита)
-    var ded=r.deduction||0;
-    if(!isWbFin(r.bonus_type_name,r.supplier_oper_name)&&!isAdv(r.bonus_type_name,r.supplier_oper_name)){
-      o.deduction+=Math.abs(ded);
-    }
-    o.other+=r.acceptance||0;
-    totLogistic+=r.delivery_rub||0;
-    totStorage+=r.storage_fee||0;
-    totPenalty+=r.penalty||0;
-  }
-
-
-  // Метрики
-  var totalExpenses=(totLogistic||0)+(totStorage||0)+(totPenalty||0)+(totAdv||0);
-  document.getElementById('detailMetrics').innerHTML=
-    '<div class="m"><div class="ml">Всего типов операций</div><div class="mv">'+Object.keys(byOper).length+'</div></div>'+
-    '<div class="m"><div class="ml">Всего строк</div><div class="mv">'+fmt(rawData.length)+'</div></div>'+
-    '<div class="m"><div class="ml">Суммарные расходы</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>';
-
-  // Группируем по категориям
-  var groups = {
-    'Логистика и доставка': {},
-    'Хранение': {},
-    'Реклама и продвижение': {},
-    'ВБ Финанс (кредит)': {},
-    'Штрафы и удержания': {},
-    'Возвраты': {},
-    'Прочие операции': {}
+  // Группируем операции в категории расходов
+  // Каждая operation (supplier_oper_name) попадает в ОДНУ группу, где её основная сумма
+  var groups={
+    'Логистика и доставка':   {icon:'🚚', total:t.delivery,  ops:[]},
+    'Хранение':                {icon:'📦', total:t.storage,   ops:[]},
+    'Реклама и продвижение':   {icon:'📣', total:t.ads,       ops:[]},
+    'Штрафы и удержания':      {icon:'⚠️', total:t.penalty,   ops:[]},
+    'ВБ Финанс (кредит)':      {icon:'🏦', total:t.wbFinance, ops:[]},
+    'Комиссия WB':             {icon:'💼', total:t.commission,ops:[]},
+    'Себестоимость товаров':   {icon:'📦', total:t.cost,      ops:[]}
   };
-
-  // Собираем ВБ Финанс
-  var wbFinanceTotal=0, wbFinanceCount=0, wbFinanceRows=[];
-  for(var fi=0;fi<rawData.length;fi++){
-    var fr=rawData[fi];
-    if(isWbFin(fr.bonus_type_name,fr.supplier_oper_name)){
-      var famt=Math.abs(fr.deduction||0);
-      wbFinanceTotal+=famt;
-      wbFinanceCount++;
-      wbFinanceRows.push(fr);
-    }
-  }
-  if(wbFinanceCount>0){
-    groups['ВБ Финанс (кредит)']['Платёж по договору займа МКК «ВБ ФИНАНС»']={
-      name:'Платёж по договору займа МКК «ВБ ФИНАНС»',
-      count:wbFinanceCount,
-      total:-wbFinanceTotal,
-      rows:wbFinanceRows
-    };
-  }
-
-  // Собираем рекламу
-  var advRows=rawData.filter(function(r){return isAdv(r.bonus_type_name,r.supplier_oper_name);});
-  var advByOper={};
-  advRows.forEach(function(r){
-    var oper='Реклама WB (Продвижение)';
-    if(!advByOper[oper]) advByOper[oper]={count:0,total:0,rows:[]};
-    advByOper[oper].count++;
-    advByOper[oper].total+=Math.abs(r.deduction||0);
-    advByOper[oper].rows.push(r);
-    totAdv+=Math.abs(r.deduction||0);
-  });
-  Object.keys(advByOper).forEach(function(k){
-    groups['Реклама и продвижение'][k]={name:k,count:advByOper[k].count,total:-advByOper[k].total,rows:advByOper[k].rows};
-  });
-
-  var keys=Object.keys(byOper);
-  for(var i=0;i<keys.length;i++){
-    var name=keys[i];
+  // Раскидываем операции по группам — по доминирующей сумме
+  Object.keys(byOper).forEach(function(name){
     var o=byOper[name];
-    var total=(o.logistic||0)+(o.storage||0)+(o.penalty||0)+(o.deduction||0)+(o.rebill||0)+(o.other||0);
-    var item={name:name, count:o.count, total:total};
-
-    if(name.indexOf('перевозк')>=0||name.indexOf('логистик')>=0||name.indexOf('доставк')>=0||name.indexOf('Логистика')>=0){
-      groups['Логистика и доставка'][name]=item;
-    } else if(name.indexOf('ранение')>=0||name.indexOf('хранени')>=0){
-      groups['Хранение'][name]=item;
-    } else if(name.indexOf('родвижени')>=0||name.indexOf('реклам')>=0||name.indexOf('Продвижени')>=0){
-      groups['Реклама и продвижение'][name]=item;
-    } else if(name.indexOf('траф')>=0||name.indexOf('держани')>=0||name.indexOf('Штраф')>=0){
-      groups['Штрафы и удержания'][name]=item;
-    } else if(name.indexOf('озврат')>=0||name.indexOf('выдач')>=0||name.indexOf('ПВЗ')>=0){
-      groups['Возвраты'][name]=item;
-    } else {
-      groups['Прочие операции'][name]=item;
-    }
+    // Сумма по операции отдельно для каждой статьи — добавляется в свою группу
+    if(o.delivery>0) groups['Логистика и доставка'].ops.push({name:name, count:o.count, amount:o.delivery, source:'delivery'});
+    if(o.storage>0)  groups['Хранение'].ops.push({name:name, count:o.count, amount:o.storage, source:'storage'});
+    if(o.ads>0)      groups['Реклама и продвижение'].ops.push({name:name, count:o.count, amount:o.ads, source:'ads'});
+    // Штрафы = penalty (поле) + acceptance + deduction (вне рекламы/ВБФ)
+    var penAmount=o.penalty+o.acceptance+o.deduction;
+    if(penAmount>0) groups['Штрафы и удержания'].ops.push({name:name, count:o.count, amount:penAmount, source:'penalty'});
+    if(o.wbFinance>0) groups['ВБ Финанс (кредит)'].ops.push({name:name, count:o.count, amount:o.wbFinance, source:'wbFinance'});
+  });
+  // Комиссия — одной строкой
+  if(t.commission>0){
+    groups['Комиссия WB'].ops.push({name:'Комиссия маркетплейса', count:t.salesCount+t.returnsCount, amount:t.commission, source:'commission'});
+  }
+  // Себестоимость — одной строкой
+  if(t.cost>0){
+    groups['Себестоимость товаров'].ops.push({name:'Закупочная стоимость проданных товаров', count:t.salesCount, amount:t.cost, source:'cost'});
   }
 
-  var icons={'Логистика и доставка':'🚚','Хранение':'📦','Реклама и продвижение':'📣','ВБ Финанс (кредит)':'🏦','Штрафы и удержания':'⚠️','Возвраты':'↩️','Прочие операции':'📋'};
-  var html='';
+  // Сводка сверху
+  var totalExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost;
+  document.getElementById('detailMetrics').innerHTML=
+    '<div class="m"><div class="ml">Выручка</div><div class="mv">'+fmt(t.revenue)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Все расходы</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
+    '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
 
+  // Рендер групп
+  var html='';
   var groupKeys=Object.keys(groups);
   for(var g=0;g<groupKeys.length;g++){
     var groupName=groupKeys[g];
-    var items=groups[groupName];
-    var itemKeys=Object.keys(items);
-    if(!itemKeys.length) continue;
-
-    var groupTotal=0;
-    for(var k=0;k<itemKeys.length;k++) groupTotal+=(items[itemKeys[k]].total||0);
-
-    // Сортируем по сумме
-    itemKeys.sort(function(a,b){return Math.abs(items[b].total)-Math.abs(items[a].total);});
-
-    var maxAmt=Math.abs(items[itemKeys[0]].total||0)||1;
+    var grp=groups[groupName];
+    if(grp.total<=0) continue; // пустые группы скрываем
+    // Сортируем операции по убыванию суммы
+    grp.ops.sort(function(a,b){return b.amount-a.amount;});
+    var maxAmt=grp.ops.length?grp.ops[0].amount:1;
 
     html+='<div class="detail-card">';
     html+='<div class="detail-card-header">';
-    html+='<span class="detail-card-title">'+icons[groupName]+' '+groupName+'</span>';
-    html+='<span class="detail-card-total">−'+fmt(Math.abs(groupTotal))+' ₽</span>';
+    html+='<span class="detail-card-title">'+grp.icon+' '+groupName+'</span>';
+    html+='<span class="detail-card-total">−'+fmt(grp.total)+' ₽</span>';
     html+='</div>';
 
-    for(var k=0;k<itemKeys.length;k++){
-      var item=items[itemKeys[k]];
-      var pct=Math.round(Math.abs(item.total)/maxAmt*100);
-      var amtClass=item.total>=0?'pos':'';
-      var isPenGroup=groupName==='Штрафы и удержания'||groupName==='ВБ Финанс (кредит)'||groupName==='Реклама и продвижение';
-      var secId='pen_'+g+'_'+k;
+    for(var k=0;k<grp.ops.length;k++){
+      var op=grp.ops[k];
+      var pct=maxAmt>0?Math.round(op.amount/maxAmt*100):0;
       html+='<div>';
       html+='<div class="detail-row">';
-      html+='<span class="detail-name">'+item.name+'</span>';
-      html+='<span class="detail-count">'+fmt(item.count)+' оп.</span>';
-      html+='<span class="detail-amount '+amtClass+'">'+(item.total>=0?'':'−')+fmt(Math.abs(item.total))+' ₽</span>';
+      html+='<span class="detail-name">'+escHtml(op.name)+'</span>';
+      html+='<span class="detail-count">'+fmt(op.count)+' оп.</span>';
+      html+='<span class="detail-amount">−'+fmt(op.amount)+' ₽</span>';
       html+='</div>';
-      if(pct>0&&item.total<0){
+      if(pct>0){
         html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
-      }
-      if(isPenGroup){
-        var penRows=item.rows||rawData.filter(function(rd){if(rd.supplier_oper_name!==item.name) return false;if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)||isAdv(rd.bonus_type_name,rd.supplier_oper_name)) return false;return rd.penalty>0||Math.abs(rd.deduction||0)>0;});
-        if(penRows.length>0){
-          html+='<button class="expand-btn" onclick="togglePen(this)">' + '▶ Показать детали (' + penRows.length + ' операций)</button>';
-          html+='<div class="pen-section" id="'+secId+'">';
-          html+='<div style="overflow-x:auto"><table class="pen-table" style="min-width:500px"><thead><tr><th>Дата</th><th>Товар/Баркод</th><th>Причина</th><th>Сумма</th></tr></thead><tbody>';
-          penRows.forEach(function(pr){
-            var dt=pr.rr_dt||(pr.sale_dt?pr.sale_dt.substring(0,10):'');
-            var art=pr.sa_name||(pr.nm_id&&pr.nm_id>0?String(pr.nm_id):'');
-            var reason=pr.bonus_type_name||pr.ts_name||'';
-            // Если нет артикула — показываем штрихкод и название операции
-            if(!art){
-              art=pr.barcode||'Общее по кабинету';
-              if(!reason) reason=pr.supplier_oper_name||'';
-            }
-            var amt=Math.abs(pr.penalty||0)+Math.abs(pr.deduction||0);
-            if(amt===0) return; // Пропускаем нулевые
-            html+='<tr><td>'+dt+'</td><td style="font-size:12px">'+art+'</td><td style="max-width:220px;white-space:normal;line-height:1.4;font-size:12px">'+reason+'</td><td class="red">−'+fmt(amt)+' ₽</td></tr>';
-          });
-          html+='</tbody></table></div>';
-          html+='</div>';
-        }
       }
       html+='</div>';
     }
     html+='</div>';
+  }
+
+  // Контрольная проверка — сумма всех групп должна совпасть с totalExpenses
+  // Если расхождение >1 ₽ — показываем предупреждение, чтобы я мог поправить
+  var sumGroups=0;
+  Object.keys(groups).forEach(function(k){if(groups[k].total>0)sumGroups+=groups[k].total;});
+  if(Math.abs(sumGroups-totalExpenses)>1){
+    html='<div style="background:#fff8e6;border:1px solid #f5c842;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Внутренняя ошибка: сумма групп ('+fmt(sumGroups)+') ≠ итог ('+fmt(totalExpenses)+'). Сообщите в поддержку.</div>'+html;
   }
 
   document.getElementById('detailGrid').innerHTML=html;
@@ -1920,49 +1910,11 @@ function applyBulkCost(mode){
 // Используется при изменении себестоимостей (вручную в строке или bulk-операцией).
 function recalcTotals(){
   if(!rows||!rows.length)return;
-  // 1) Подсчёт по товарам (rows)
-  var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0,tWbFin=0;
-  for(var j=0;j<rows.length;j++){
-    var x=rows[j];
-    tP+=x.ppvz; tD+=x.del; tS+=x.stor; tPn+=x.pen;
-    tSl+=x.sales; tRt+=x.ret; tAd+=x.adv;
-    if(x.cost>0)tCost+=x.cost*Math.max(x.sales-x.ret,0);
-  }
-  // 2) Подсчёт по строкам БЕЗ артикула (ВБ Финанс, общие штрафы, общая реклама, общая логистика)
+  // ЕДИНЫЙ источник правды — та же функция, что и в process
   var src=(typeof rawData!=='undefined'&&rawData)?rawData:[];
-  for(var ri=0;ri<src.length;ri++){
-    var rd=src[ri];
-    if(rd.nm_id||rd.sa_name) continue;
-    tP+=rd.ppvz_for_pay||0;
-    tD+=rd.delivery_rub||0;
-    tD+=rd.rebill_logistic_cost||0;
-    tS+=rd.storage_fee||0;
-    tPn+=rd.penalty||0;
-    var ded=Math.abs(rd.deduction||0);
-    if(isWbFin(rd.bonus_type_name,rd.supplier_oper_name)){
-      tWbFin+=ded;
-    } else if(isAdv(rd.bonus_type_name,rd.supplier_oper_name)){
-      tAd+=ded;
-    } else {
-      tPn+=ded;
-    }
-    tPn+=rd.acceptance||0;
-  }
-  // 3) Выручка и комиссия — пересчитываем заново по rawData (как в process)
-  var tRev=0,tComm=0;
-  for(var i=0;i<src.length;i++){
-    var rr=src[i];
-    var dt=(rr.doc_type_name||'').toLowerCase();
-    if(dt==='продажа'||dt==='возврат'){
-      var price=Number(rr.retail_amount||rr.retail_price_withdisc_rub||0);
-      var pct=Number(rr.commission_percent||0);
-      var sign=dt==='возврат'?-1:1;
-      tRev+=sign*price;
-      tComm+=sign*(price*pct/100);
-    }
-  }
-  var tp=tP-tD-tS-tAd-tPn-tWbFin-tCost;
-  // 4) Обновляем 12 плиток сверху
+  var fin=computeFinancials(src,rows);
+  var t=fin.t;
+  // Обновляем 12 плиток сверху
   var setCard=function(label,val,cls){
     var cards=document.querySelectorAll('#mg .m');
     if(!cards.length)return;
@@ -1975,24 +1927,24 @@ function recalcTotals(){
       }
     }
   };
-  setCard('Продажи',fmt(tSl)+' шт.','mv');
-  setCard('Возвраты',fmt(tRt)+' шт.','mv red');
-  setCard('Выручка',fmt(tRev)+' ₽','mv');
-  setCard('Комиссия WB','−'+fmt(tComm)+' ₽','mv red');
-  setCard('Выплата WB',fmt(tP)+' ₽','mv');
-  setCard('Логистика','−'+fmt(tD)+' ₽','mv red');
-  setCard('Хранение','−'+fmt(tS)+' ₽','mv red');
-  setCard('Реклама WB','−'+fmt(tAd)+' ₽','mv red');
-  setCard('Штрафы','−'+fmt(tPn)+' ₽','mv red');
-  setCard('Себестоимость','−'+fmt(tCost)+' ₽','mv red');
-  setCard('Чистая прибыль',(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽','mv '+(tp>=0?'green':'red'));
-  if(tWbFin>0)setCard('ВБ Финанс (кредит)','−'+fmt(tWbFin)+' ₽','mv red');
-  // 5) Футер таблицы
+  setCard('Продажи',fmt(t.salesCount)+' шт.','mv');
+  setCard('Возвраты',fmt(t.returnsCount)+' шт.','mv red');
+  setCard('Выручка',fmt(t.revenue)+' ₽','mv');
+  setCard('Комиссия WB','−'+fmt(t.commission)+' ₽','mv red');
+  setCard('Выплата WB',fmt(t.ppvz)+' ₽','mv');
+  setCard('Логистика','−'+fmt(t.delivery)+' ₽','mv red');
+  setCard('Хранение','−'+fmt(t.storage)+' ₽','mv red');
+  setCard('Реклама WB','−'+fmt(t.ads)+' ₽','mv red');
+  setCard('Штрафы','−'+fmt(t.penalty)+' ₽','mv red');
+  setCard('Себестоимость','−'+fmt(t.cost)+' ₽','mv red');
+  setCard('Чистая прибыль',(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽','mv '+(t.profit>=0?'green':'red'));
+  if(t.wbFinance>0)setCard('ВБ Финанс (кредит)','−'+fmt(t.wbFinance)+' ₽','mv red');
+  // Футер таблицы
   var tfCost=document.getElementById('tfCost');
   var tfProfit=document.getElementById('tfProfit');
-  if(tfCost)tfCost.innerHTML='−'+fmt(tCost)+' ₽';
-  if(tfProfit){tfProfit.className=tp>=0?'green':'red';tfProfit.innerHTML=(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽';}
-  // 7) Запускаем auto-save со снапшотами в БД (debounced)
+  if(tfCost)tfCost.innerHTML='−'+fmt(t.cost)+' ₽';
+  if(tfProfit){tfProfit.className=t.profit>=0?'green':'red';tfProfit.innerHTML=(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽';}
+  // Запускаем auto-save со снапшотами в БД (debounced)
   scheduleAutoSave();
 }
 
@@ -2170,6 +2122,8 @@ function aggregateRowsByDay(rows,costMap){
     s.payout+=Number(r.ppvz_for_pay||0);
     s.logistics+=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
     s.storage+=Number(r.storage_fee||0);
+    // Штрафы — собираем как в computeFinancials: penalty + acceptance + deduction (вне ads/wbf)
+    s.penalties+=Number(r.penalty||0)+Number(r.acceptance||0);
     if(isAdv(r.bonus_type_name,r.supplier_oper_name))s.ads+=Math.abs(r.deduction||0);
     else if(isWbFin(r.bonus_type_name,r.supplier_oper_name))s.wb_finance+=Math.abs(r.deduction||0);
     else s.penalties+=Math.abs(r.deduction||0);
