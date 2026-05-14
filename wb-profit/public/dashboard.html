@@ -1927,7 +1927,8 @@ function applyBulkCost(mode){
 // Учитывает: товарные строки (rows) + операционные строки без артикула (из rawData).
 // Используется при изменении себестоимостей (вручную в строке или bulk-операцией).
 function recalcTotals(){
-  if(!rows||!rows.length)return;
+  console.log('[recalc] called, rows='+(rows?rows.length:'no'));
+  if(!rows||!rows.length){console.warn('[recalc] no rows, skip');return;}
   // 1) Подсчёт по товарам (rows)
   var tP=0,tD=0,tS=0,tPn=0,tSl=0,tRt=0,tAd=0,tCost=0,tWbFin=0;
   for(var j=0;j<rows.length;j++){
@@ -1973,6 +1974,7 @@ function recalcTotals(){
   // 4) Обновляем 12 плиток сверху
   var setCard=function(label,val,cls){
     var cards=document.querySelectorAll('#mg .m');
+    if(!cards.length){console.warn('[recalc] no #mg .m cards in DOM');return;}
     for(var k=0;k<cards.length;k++){
       var lbl=cards[k].querySelector('.ml');
       if(lbl&&lbl.textContent.trim()===label){
@@ -1981,6 +1983,7 @@ function recalcTotals(){
         return;
       }
     }
+    console.warn('[recalc] card not found:',label);
   };
   setCard('Продажи',fmt(tSl)+' шт.','mv');
   setCard('Возвраты',fmt(tRt)+' шт.','mv red');
@@ -2069,6 +2072,7 @@ function showSaveStatus(state){
 }
 
 function upd(i,val){
+  console.log('[upd] called, i='+i+' val='+val);
   if(!rows[i])return;
   rows[i].cost=parseFloat(val)||0;
   var a=rows[i];
