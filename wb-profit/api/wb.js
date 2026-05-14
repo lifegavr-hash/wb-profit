@@ -132,7 +132,7 @@ export default async function handler(req, res) {
   await markRequest(tokenHash);
 
   // 4) Запрос к WB
-  const url = `https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}&limit=100000`;
+  const url = `https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}&period=daily&limit=100000`;
 
   try {
     const response = await fetch(url, { headers: { Authorization: token } });
