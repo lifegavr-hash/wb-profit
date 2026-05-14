@@ -257,6 +257,10 @@ tr.loss td{background:#fff5f5}
 @media(max-width:900px){.an-grid{grid-template-columns:1fr}}
 .an-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
 .an-card-title{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);margin-bottom:14px;text-transform:uppercase}
+.month-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.month-tab{background:#f5f5f4;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;transition:all .15s}
+.month-tab:hover{background:#ecebe7}
+.month-tab.active{background:#1a0f3c;color:#fff;border-color:#1a0f3c}
 .an-chart{position:relative;height:240px}
 .an-chart-svg{width:100%;height:100%}
 .an-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;margin-bottom:10px;color:var(--muted)}
@@ -538,20 +542,6 @@ tr.loss td{background:#fff5f5}
       <div id="results" style="display:none">
         <div class="metrics" id="mg"></div>
         <div class="card">
-          <div class="chart-header">
-            <span class="ct" style="margin:0">Динамика по месяцам</span>
-            <div class="chart-tabs">
-              <button class="tab active" onclick="switchTab('profit',event)">Прибыль</button>
-              <button class="tab" onclick="switchTab('revenue',event)">Выручка</button>
-              <button class="tab" onclick="switchTab('logistics',event)">Логистика</button>
-              <button class="tab" onclick="switchTab('adv',event)">Реклама</button>
-            </div>
-          </div>
-          <div style="position:relative;width:100%;height:240px">
-            <canvas id="chart" role="img" aria-label="График по месяцам"></canvas>
-          </div>
-        </div>
-        <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
             <span class="ct" style="margin:0">Разбивка по товарам</span>
             <span style="font-size:12px;color:var(--hint)" id="cnt"></span>
@@ -744,12 +734,11 @@ tr.loss td{background:#fff5f5}
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 var sb=null, currentUser=null, currentProfile=null;
-var rows=[], byMonthData={}, myChart=null, curTab='profit';
+var rows=[], byMonthData={};
 var rawData=[];
 var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
 var moNames=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
@@ -1322,7 +1311,6 @@ async function process(raw){
     '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(tp>=0?'green':'red')+'" id="profitCard">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
   renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm);
-  renderChart(byMonthData,'profit');
   document.getElementById('results').style.display='block';
   // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
   try{
@@ -1841,26 +1829,6 @@ async function deleteUnitCalc(id){
 }
 function escapeHtml(s){return String(s||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
 
-
-function switchTab(tab,e){
-  curTab=tab;
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
-  e.target.classList.add('active');
-  renderChart(byMonthData,tab);
-}
-
-function renderChart(data,tab){
-  var months=Object.keys(data).sort();if(!months.length) return;
-  var labels=months.map(function(m){var p=m.split('-');return moNames[parseInt(p[1])-1]+' '+p[0];});
-  var vals,color,label;
-  if(tab==='profit'){vals=months.map(function(m){var d=data[m];return Math.round(d.ppvz-d.del-d.stor-d.adv-d.pen);});color=vals.map(function(v){return v>=0?'rgba(26,122,74,0.8)':'rgba(192,57,43,0.8)';});label='Прибыль ₽';}
-  else if(tab==='revenue'){vals=months.map(function(m){return Math.round(data[m].ppvz);});color='rgba(84,51,198,0.75)';label='Выручка ₽';}
-  else if(tab==='logistics'){vals=months.map(function(m){return Math.round(data[m].del+data[m].stor);});color='rgba(180,100,26,0.75)';label='Логистика ₽';}
-  else{vals=months.map(function(m){return Math.round(data[m].adv);});color='rgba(140,26,180,0.75)';label='Реклама ₽';}
-  if(myChart) myChart.destroy();
-  var ctx=document.getElementById('chart').getContext('2d');
-  myChart=new Chart(ctx,{type:'bar',data:{labels:labels,datasets:[{label:label,data:vals,backgroundColor:color,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmt(c.raw)+' ₽';}}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:function(v){return fmt(v)+' ₽';}}}}}});
-}
 
 function toggleAllCheckboxes(checked){
   document.querySelectorAll('.cb-row').forEach(function(c){c.checked=checked;});
@@ -2472,11 +2440,19 @@ function renderAnalytics(snaps){
   var el=document.getElementById('analyticsContent');
   if(!el)return;
   var h='';
-  // Виджет 1: график за период
+  // Виджет 1: график за период (по дням)
   h+='<div class="an-card">';
   h+='<div class="an-card-title">📈 ПРИБЫЛЬ ЗА '+snaps.length+' ДНЕЙ</div>';
   h+=renderTimelineChart(snaps);
   h+='</div>';
+  // Виджет 1.5: динамика по месяцам (если охватываем >=2 месяцев)
+  var monthlyHtml=renderMonthlyDynamics(snaps);
+  if(monthlyHtml){
+    h+='<div class="an-card">';
+    h+='<div class="an-card-title">📅 ДИНАМИКА ПО МЕСЯЦАМ</div>';
+    h+=monthlyHtml;
+    h+='</div>';
+  }
   // Виджеты 2 и 3 в сетке
   h+='<div class="an-grid">';
   h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ</div>';
@@ -2493,6 +2469,92 @@ function renderAnalytics(snaps){
   h+='</div>';
   el.innerHTML=h;
 }
+
+// === ВИДЖЕТ «По месяцам»: суммирует снапшоты по году-месяцу ===
+// Показывается только если охватили хотя бы 2 разных месяца.
+window._monthlyMetric=window._monthlyMetric||'profit';
+function renderMonthlyDynamics(snaps){
+  // Группируем по 'YYYY-MM'
+  var byMo={};
+  snaps.forEach(function(s){
+    var ym=String(s.day||'').slice(0,7);
+    if(!ym)return;
+    if(!byMo[ym])byMo[ym]={revenue:0,profit:0,ads:0,commission:0,logistics:0,storage:0,penalties:0,cost:0,sales:0};
+    byMo[ym].revenue+=Number(s.revenue||0);
+    byMo[ym].profit+=Number(s.profit||0);
+    byMo[ym].ads+=Number(s.ads||0);
+    byMo[ym].commission+=Number(s.commission||0);
+    byMo[ym].logistics+=Number(s.logistics||0);
+    byMo[ym].storage+=Number(s.storage||0);
+    byMo[ym].penalties+=Number(s.penalties||0);
+    byMo[ym].cost+=Number(s.cost||0);
+    byMo[ym].sales+=Number(s.sales_count||0);
+  });
+  var months=Object.keys(byMo).sort();
+  if(months.length<2)return ''; // Нет смысла рисовать график для одного месяца
+  var metric=window._monthlyMetric;
+  // Готовим значения
+  var moNames=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var data=months.map(function(ym){
+    var m=byMo[ym];
+    var p=ym.split('-');
+    var label=moNames[parseInt(p[1])-1]+' '+p[0].slice(2);
+    var val;
+    if(metric==='profit')val=m.profit;
+    else if(metric==='revenue')val=m.revenue;
+    else if(metric==='ads')val=m.ads;
+    else /* expenses */ val=m.commission+m.logistics+m.storage+m.ads+m.penalties+m.cost;
+    return {label:label,val:val,sales:m.sales};
+  });
+  // Переключатель
+  var tabs=[
+    {k:'profit',l:'Прибыль'},
+    {k:'revenue',l:'Выручка'},
+    {k:'expenses',l:'Расходы'},
+    {k:'ads',l:'Реклама'},
+  ];
+  var tabsHtml='<div class="month-tabs">'+tabs.map(function(t){
+    return '<button class="month-tab'+(t.k===metric?' active':'')+'" onclick="setMonthlyMetric(\''+t.k+'\')">'+t.l+'</button>';
+  }).join('')+'</div>';
+  // SVG-столбики
+  var W=900,H=240,pad={l:60,r:20,t:20,b:40};
+  var iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+  var maxV=Math.max.apply(null,data.map(function(d){return Math.abs(d.val);}));
+  if(maxV===0)maxV=1;
+  var barW=iw/data.length*0.65;
+  var step=iw/data.length;
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto">';
+  // Y-grid 4 линии
+  for(var i=0;i<=4;i++){
+    var y=pad.t+ih*i/4;
+    var v=Math.round(maxV*(1-i/4));
+    svg+='<line x1="'+pad.l+'" y1="'+y+'" x2="'+(pad.l+iw)+'" y2="'+y+'" stroke="#eee" stroke-width="1"/>';
+    svg+='<text x="'+(pad.l-6)+'" y="'+(y+4)+'" font-size="10" fill="#94a3b8" text-anchor="end">'+fmtR(v)+'</text>';
+  }
+  // Bars
+  data.forEach(function(d,idx){
+    var cx=pad.l+step*idx+(step-barW)/2;
+    var h=Math.abs(d.val)/maxV*ih;
+    var cy=pad.t+ih-h;
+    var color=d.val>=0?'#16a34a':'#dc2626';
+    if(metric==='ads')color='#a855f7';
+    else if(metric==='expenses')color='#f59e0b';
+    else if(metric==='revenue')color='#5433c6';
+    svg+='<rect x="'+cx+'" y="'+cy+'" width="'+barW+'" height="'+h+'" rx="4" fill="'+color+'" opacity="0.85"/>';
+    // value above bar
+    svg+='<text x="'+(cx+barW/2)+'" y="'+(cy-6)+'" font-size="11" fill="#1a1a18" text-anchor="middle" font-weight="600">'+(d.val>=0?'+':'−')+fmtR(d.val)+'</text>';
+    // month label
+    svg+='<text x="'+(cx+barW/2)+'" y="'+(pad.t+ih+18)+'" font-size="11" fill="#6b6b68" text-anchor="middle">'+d.label+'</text>';
+  });
+  svg+='</svg>';
+  return tabsHtml+'<div style="margin-top:10px">'+svg+'</div>';
+}
+function setMonthlyMetric(k){
+  window._monthlyMetric=k;
+  // Перерисуем аналитику
+  loadAnalytics();
+}
+
 // === ВИДЖЕТ 1: Линейный график ===
 function renderTimelineChart(snaps){
   if(!snaps.length)return '<div class="home-empty-mini">Нет данных</div>';
