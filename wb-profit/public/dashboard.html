@@ -1238,22 +1238,32 @@ async function loadStocks(tok){
   return null;
 }
 function buildStocksMap(stocks){
-  // По nmId агрегируем:
-  //   avail   — quantity (доступно к продаже)
-  //   total   — quantityFull + inWayToClient + inWayFromClient (всё в системе на складах + в пути)
-  //   inWay   — inWayToClient (для подсветки)
+  // По nmId агрегируем остатки.
+  // Поля WB API supplier/stocks:
+  //   quantity        — доступно к продаже на складе (без резерва)
+  //   quantityFull    — quantity + резерв (товары забронированные под заказы) + в пути
+  //                     ВНИМАНИЕ: WB документация подтверждает что inWayToClient/FromClient
+  //                     УЖЕ ВХОДЯТ в quantityFull. Не складываем дважды!
+  //   inWayToClient   — едет к покупателю (для подсветки «в пути»)
+  //   inWayFromClient — возвращается от покупателя
+  //
+  // Возвращаем:
+  //   avail — quantity (что можно купить прямо сейчас, без резерва)
+  //   total — quantityFull (всё что есть в системе: склад + резерв + в пути)
+  //   inWay — inWayToClient (для подсветки)
   var m={};
   if(!Array.isArray(stocks))return m;
   for(var i=0;i<stocks.length;i++){
     var s=stocks[i];
     var nm=s.nmId;if(!nm)continue;
     if(!m[nm])m[nm]={avail:0,total:0,inWay:0};
-    var qFull=Number(s.quantityFull||s.quantity||0);
+    var qFull=Number(s.quantityFull||0);
     var qAvail=Number(s.quantity||0);
+    // fallback: если quantityFull = 0 а quantity > 0, берём quantity
+    if(qFull===0&&qAvail>0)qFull=qAvail;
     var inTo=Number(s.inWayToClient||0);
-    var inFrom=Number(s.inWayFromClient||0);
     m[nm].avail+=qAvail;
-    m[nm].total+=qFull+inTo+inFrom;
+    m[nm].total+=qFull;
     m[nm].inWay+=inTo;
   }
   return m;

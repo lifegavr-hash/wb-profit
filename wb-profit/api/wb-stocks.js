@@ -7,7 +7,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const HAS_DB = Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY);
 
-const CACHE_TTL_SEC = 60 * 60; // 1 час
+const CACHE_TTL_SEC = 15 * 60; // 15 минут (остатки меняются с каждой продажей)
 const MIN_INTERVAL_MS = 65 * 1000; // тот же rate limit, что и в /api/wb
 
 function hashToken(token) {
@@ -106,7 +106,11 @@ export default async function handler(req, res) {
   const url = `https://statistics-api.wildberries.ru/api/v1/supplier/stocks?dateFrom=${yesterday}`;
 
   try {
-    const response = await fetch(url, { headers: { Authorization: token } });
+    // Таймаут 9 секунд (на Vercel Hobby лимит выполнения 10 сек)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const response = await fetch(url, { headers: { Authorization: token }, signal: controller.signal });
+    clearTimeout(timeoutId);
 
     if (response.status === 429) {
       res.setHeader('Retry-After', '60');
@@ -132,6 +136,9 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json');
     res.status(200).send(text);
   } catch (e) {
+    if (e.name === 'AbortError') {
+      return res.status(504).json({ error: 'WB не ответил за 9 секунд' });
+    }
     res.status(500).json({ error: e.message });
   }
 }
