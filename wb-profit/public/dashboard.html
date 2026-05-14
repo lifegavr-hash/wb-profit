@@ -893,17 +893,23 @@ function onbFinish(){
 }
 
 // === ТАРИФЫ ===
-// Проверяет есть ли у пользователя активный PRO (с учётом срока истечения)
+// Проверяет есть ли у пользователя активный PRO (с учётом срока истечения).
+// Админ — ВСЕГДА hasPRO, независимо от plan/expires_at.
 function hasPRO(){
   if(!currentProfile)return false;
+  // Админ — собственник, никаких ограничений
+  if(currentProfile.is_admin)return true;
   var plan=currentProfile.plan;
   if(plan!=='pro'&&plan!=='business')return false;
-  if(!currentProfile.plan_expires_at)return true; // бессрочный (например, админ)
+  if(!currentProfile.plan_expires_at)return true; // бессрочный
   return new Date(currentProfile.plan_expires_at).getTime()>Date.now();
 }
-// Сколько дней осталось PRO (для подсветки «триал заканчивается»)
+// Сколько дней осталось PRO (для подсветки «триал заканчивается»).
+// Для админа возвращает null (никогда не истекает).
 function daysUntilPlanExpires(){
-  if(!currentProfile||!currentProfile.plan_expires_at)return null;
+  if(!currentProfile)return null;
+  if(currentProfile.is_admin)return null; // бессрочно для админа
+  if(!currentProfile.plan_expires_at)return null;
   var ms=new Date(currentProfile.plan_expires_at).getTime()-Date.now();
   if(ms<=0)return 0;
   return Math.ceil(ms/(24*60*60*1000));
