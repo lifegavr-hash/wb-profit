@@ -2022,7 +2022,7 @@ function renderDashboard(snapshots){
   }
   h+='</div>';
   h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ</div>';
-  var weekAlerts=collectWeekAlerts(week);
+  var weekAlerts=collectWeekAlerts(chartDays);
   if(weekAlerts.length){
     weekAlerts.slice(0,3).forEach(function(a){
       h+='<div class="home-alert"><div class="alert-name">'+a.name+'</div><div class="alert-msg">'+a.msg+'</div></div>';
@@ -2034,7 +2034,7 @@ function renderDashboard(snapshots){
   h+='</div>';
   // Block 6: Что сделать
   h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
-  var actions=buildActions(week,weekAlerts);
+  var actions=buildActions(chartDays,weekAlerts);
   if(actions.length){
     actions.forEach(function(a,i){h+='<div class="home-action">'+(i+1)+'. '+a+'</div>';});
   } else {
