@@ -99,6 +99,14 @@ tr.loss td{background:#fff5f5}
 /* Детализация */
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:1rem}
 .detail-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+/* P&L формула — показываем арифметику расчёта прибыли */
+.detail-formula{background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.detail-formula-title{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:12px}
+.detail-formula-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:14px;border-bottom:1px dashed #f0f0f0}
+.detail-formula-row:last-child{border-bottom:0}
+.detail-formula-row.total{margin-top:6px;padding-top:12px;border-top:2px solid var(--text);border-bottom:0;font-weight:700;font-size:15px}
+.detail-formula-row .green{color:#16a34a}
+.detail-formula-row .red{color:#dc2626}
 .detail-card-header{padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg)}
 .detail-card-title{font-size:13px;font-weight:500;color:var(--text)}
 .detail-card-total{font-size:14px;font-weight:600;color:var(--red)}
@@ -1267,13 +1275,14 @@ function setLoadStatus(text){
 function computeFinancials(rawData, rows){
   var t={
     revenue:0, commission:0, ppvz:0, delivery:0, storage:0,
-    ads:0, penalty:0, wbFinance:0, cost:0, profit:0,
+    ads:0, penalty:0, wbFinance:0, cost:0,
+    wbAdjust:0,   // корректировка WB = ppvz - (revenue - commission). +доплата / −удержание
+    profit:0,
+    totalExpenses:0,
     salesCount:0, returnsCount:0
   };
   // Карта категория → список операций; для Детализации расходов.
-  // Каждая операция учитывается в той категории, к которой она относится по СУММЕ
-  // (rebill, deduction, penalty, acceptance — всё суммируется в одну строку группы).
-  var byOper={}; // ключ = supplier_oper_name; { count, delivery, storage, penalty, ads, wbFinance, deduction, total }
+  var byOper={};
   function getOper(name){
     if(!byOper[name]){
       byOper[name]={count:0, delivery:0, storage:0, penalty:0, ads:0, wbFinance:0, deduction:0, acceptance:0, rebill:0, total:0};
@@ -1347,8 +1356,20 @@ function computeFinancials(rawData, rows){
     }
   }
 
-  // 3) Чистая прибыль
-  t.profit=t.ppvz-t.delivery-t.storage-t.ads-t.penalty-t.wbFinance-t.cost;
+  // 3) Корректировки WB — расхождение между «выплата WB» и тем что должно быть (выручка − комиссия)
+  //    Положительные = WB доплатил (премии/компенсации СПП), отрицательные = удержал больше
+  //    Это делает арифметику прозрачной: складывая статьи, селлер получит точно ту же прибыль.
+  t.wbAdjust = t.ppvz - (t.revenue - t.commission);
+
+  // 4) Все расходы (для отображения «Все расходы» в Детализации и сверки):
+  //    Сюда включаем ВСЁ что уменьшает прибыль. Если корректировка WB отрицательная — она тоже расход.
+  t.totalExpenses = t.commission + t.delivery + t.storage + t.ads + t.penalty + t.wbFinance + t.cost
+                  - (t.wbAdjust < 0 ? t.wbAdjust : 0); // вычитаем отрицательную корректировку (она увеличивает расходы)
+
+  // 5) Чистая прибыль — ЧЕСТНАЯ P&L-формула, проверяется на калькуляторе:
+  //    Прибыль = Выручка − Комиссия − Логистика − Хранение − Реклама − Штрафы − ВБФ − Себестоимость + Корректировка
+  //    Если wbAdjust > 0 — это поступление (увеличивает прибыль). Если < 0 — это удержание.
+  t.profit = t.revenue - t.commission - t.delivery - t.storage - t.ads - t.penalty - t.wbFinance - t.cost + t.wbAdjust;
 
   return {t:t, byOper:byOper};
 }
@@ -1404,18 +1425,29 @@ async function process(raw){
   var fin=computeFinancials(raw,rows);
   var t=fin.t;
   var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
+  // Корректировка WB — показываем только если значимая (>=50 ₽). Положительная = плюс, отрицательная = минус.
+  var adjHtml='';
+  if(Math.abs(t.wbAdjust)>=50){
+    var adjPos=t.wbAdjust>0;
+    var adjTitle=adjPos?'Доплаты WB':'Удержано WB';
+    var adjHint=adjPos?'Премии, СПП-компенсации, корректировки':'Дополнительные удержания WB';
+    adjHtml='<div class="m" title="'+adjHint+'"><div class="ml">'+adjTitle+'</div><div class="mv '+(adjPos?'green':'red')+'">'+(adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div></div>';
+  }
   document.getElementById('mg').innerHTML=
+    // Доходные
     '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(t.salesCount)+' шт.</div></div>'+
     '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
-    '<div class="m"><div class="ml">Выручка</div><div class="mv">'+fmt(t.revenue)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Выручка</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
+    // Расходы (вычитаются)
     '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(t.commission)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Выплата WB</div><div class="mv">'+fmt(t.ppvz)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(t.delivery)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
     wbFinHtml+
     '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
+    adjHtml+
+    // Итог
     '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
   renderTable(t.ppvz,t.delivery,t.storage,t.ads,t.penalty,t.salesCount,t.returnsCount,t.cost,t.profit,t.commission);
@@ -1464,7 +1496,6 @@ function renderDetail(){
   var byOper=fin.byOper;
 
   // Группируем операции в категории расходов
-  // Каждая operation (supplier_oper_name) попадает в ОДНУ группу, где её основная сумма
   var groups={
     'Логистика и доставка':   {icon:'🚚', total:t.delivery,  ops:[]},
     'Хранение':                {icon:'📦', total:t.storage,   ops:[]},
@@ -1477,33 +1508,56 @@ function renderDetail(){
   // Раскидываем операции по группам — по доминирующей сумме
   Object.keys(byOper).forEach(function(name){
     var o=byOper[name];
-    // Сумма по операции отдельно для каждой статьи — добавляется в свою группу
     if(o.delivery>0) groups['Логистика и доставка'].ops.push({name:name, count:o.count, amount:o.delivery, source:'delivery'});
     if(o.storage>0)  groups['Хранение'].ops.push({name:name, count:o.count, amount:o.storage, source:'storage'});
     if(o.ads>0)      groups['Реклама и продвижение'].ops.push({name:name, count:o.count, amount:o.ads, source:'ads'});
-    // Штрафы = penalty (поле) + acceptance + deduction (вне рекламы/ВБФ)
     var penAmount=o.penalty+o.acceptance+o.deduction;
     if(penAmount>0) groups['Штрафы и удержания'].ops.push({name:name, count:o.count, amount:penAmount, source:'penalty'});
     if(o.wbFinance>0) groups['ВБ Финанс (кредит)'].ops.push({name:name, count:o.count, amount:o.wbFinance, source:'wbFinance'});
   });
-  // Комиссия — одной строкой
   if(t.commission>0){
     groups['Комиссия WB'].ops.push({name:'Комиссия маркетплейса', count:t.salesCount+t.returnsCount, amount:t.commission, source:'commission'});
   }
-  // Себестоимость — одной строкой
   if(t.cost>0){
     groups['Себестоимость товаров'].ops.push({name:'Закупочная стоимость проданных товаров', count:t.salesCount, amount:t.cost, source:'cost'});
   }
 
-  // Сводка сверху
+  // Сводка сверху — арифметически точная.
+  // Прибыль = Выручка − Все расходы + Доплаты WB (если есть)
   var totalExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost;
+  var adjBlock='';
+  if(Math.abs(t.wbAdjust)>=50){
+    var pos=t.wbAdjust>0;
+    var lbl=pos?'Доплаты WB':'Удержано WB';
+    adjBlock='<div class="m"><div class="ml">'+lbl+'</div><div class="mv '+(pos?'green':'red')+'">'+(pos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div></div>';
+  }
   document.getElementById('detailMetrics').innerHTML=
-    '<div class="m"><div class="ml">Выручка</div><div class="mv">'+fmt(t.revenue)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Выручка</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Все расходы</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
+    adjBlock+
     '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
 
+  // Объяснение P&L формулы, чтобы пользователь мог проверить на калькуляторе
+  var formulaHtml='<div class="detail-formula">';
+  formulaHtml+='<div class="detail-formula-title">Как считается прибыль</div>';
+  formulaHtml+='<div class="detail-formula-row"><span>Выручка</span><span class="green">+'+fmt(t.revenue)+' ₽</span></div>';
+  formulaHtml+='<div class="detail-formula-row"><span>− Комиссия WB</span><span class="red">−'+fmt(t.commission)+' ₽</span></div>';
+  if(t.delivery>0)formulaHtml+='<div class="detail-formula-row"><span>− Логистика</span><span class="red">−'+fmt(t.delivery)+' ₽</span></div>';
+  if(t.storage>0)formulaHtml+='<div class="detail-formula-row"><span>− Хранение</span><span class="red">−'+fmt(t.storage)+' ₽</span></div>';
+  if(t.ads>0)formulaHtml+='<div class="detail-formula-row"><span>− Реклама</span><span class="red">−'+fmt(t.ads)+' ₽</span></div>';
+  if(t.penalty>0)formulaHtml+='<div class="detail-formula-row"><span>− Штрафы и удержания</span><span class="red">−'+fmt(t.penalty)+' ₽</span></div>';
+  if(t.wbFinance>0)formulaHtml+='<div class="detail-formula-row"><span>− ВБ Финанс (кредит)</span><span class="red">−'+fmt(t.wbFinance)+' ₽</span></div>';
+  if(t.cost>0)formulaHtml+='<div class="detail-formula-row"><span>− Себестоимость</span><span class="red">−'+fmt(t.cost)+' ₽</span></div>';
+  if(Math.abs(t.wbAdjust)>=50){
+    var pos2=t.wbAdjust>0;
+    var lbl2=pos2?'+ Доплаты WB (премии, корректировки)':'− Удержано WB (доп. удержания)';
+    formulaHtml+='<div class="detail-formula-row"><span>'+lbl2+'</span><span class="'+(pos2?'green':'red')+'">'+(pos2?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</span></div>';
+  }
+  formulaHtml+='<div class="detail-formula-row total"><span>= Чистая прибыль</span><span class="'+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'+':'−')+fmt(Math.abs(t.profit))+' ₽</span></div>';
+  formulaHtml+='</div>';
+
   // Рендер групп
-  var html='';
+  var html=formulaHtml;
   var groupKeys=Object.keys(groups);
   for(var g=0;g<groupKeys.length;g++){
     var groupName=groupKeys[g];
@@ -1542,6 +1596,11 @@ function renderDetail(){
   Object.keys(groups).forEach(function(k){if(groups[k].total>0)sumGroups+=groups[k].total;});
   if(Math.abs(sumGroups-totalExpenses)>1){
     html='<div style="background:#fff8e6;border:1px solid #f5c842;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Внутренняя ошибка: сумма групп ('+fmt(sumGroups)+') ≠ итог ('+fmt(totalExpenses)+'). Сообщите в поддержку.</div>'+html;
+  }
+  // Проверка арифметики P&L: Выручка − Расходы + Корректировка = Прибыль
+  var expected=t.revenue - totalExpenses + t.wbAdjust;
+  if(Math.abs(expected-t.profit)>1){
+    html='<div style="background:#fee2e2;border:1px solid #ef4444;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Арифметика не сходится: '+fmt(t.revenue)+' − '+fmt(totalExpenses)+' '+(t.wbAdjust>=0?'+':'')+fmt(t.wbAdjust)+' = '+fmt(expected)+' ≠ '+fmt(t.profit)+'. Сообщите в поддержку.</div>'+html;
   }
 
   document.getElementById('detailGrid').innerHTML=html;
@@ -1946,9 +2005,8 @@ function recalcTotals(){
   };
   setCard('Продажи',fmt(t.salesCount)+' шт.','mv');
   setCard('Возвраты',fmt(t.returnsCount)+' шт.','mv red');
-  setCard('Выручка',fmt(t.revenue)+' ₽','mv');
+  setCard('Выручка',fmt(t.revenue)+' ₽','mv green');
   setCard('Комиссия WB','−'+fmt(t.commission)+' ₽','mv red');
-  setCard('Выплата WB',fmt(t.ppvz)+' ₽','mv');
   setCard('Логистика','−'+fmt(t.delivery)+' ₽','mv red');
   setCard('Хранение','−'+fmt(t.storage)+' ₽','mv red');
   setCard('Реклама WB','−'+fmt(t.ads)+' ₽','mv red');
@@ -1956,6 +2014,13 @@ function recalcTotals(){
   setCard('Себестоимость','−'+fmt(t.cost)+' ₽','mv red');
   setCard('Чистая прибыль',(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽','mv '+(t.profit>=0?'green':'red'));
   if(t.wbFinance>0)setCard('ВБ Финанс (кредит)','−'+fmt(t.wbFinance)+' ₽','mv red');
+  // Корректировка может быть и плюсом и минусом — подбираем нужный лейбл
+  if(Math.abs(t.wbAdjust)>=50){
+    var adjPos=t.wbAdjust>0;
+    setCard(adjPos?'Доплаты WB':'Удержано WB',
+            (adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽',
+            'mv '+(adjPos?'green':'red'));
+  }
   // Футер таблицы
   var tfCost=document.getElementById('tfCost');
   var tfProfit=document.getElementById('tfProfit');
@@ -2163,7 +2228,13 @@ function aggregateRowsByDay(rows,costMap){
   var out=[];
   Object.keys(byDay).forEach(function(k){
     var s=byDay[k];
-    s.profit=s.payout-s.logistics-s.storage-s.ads-s.penalties-s.wb_finance-s.cost;
+    // Прибыль — та же P&L формула что в Калькуляторе:
+    // Выручка − Комиссия − Логистика − Хранение − Реклама − Штрафы − ВБФ − Себестоимость
+    // + Корректировки WB (поступления сверх ожидаемого: премии/компенсации СПП)
+    // Корректировка = payout - (revenue - commission)
+    var adj=s.payout - (s.revenue - s.commission);
+    s.wb_adjust=adj;
+    s.profit=s.revenue - s.commission - s.logistics - s.storage - s.ads - s.penalties - s.wb_finance - s.cost + adj;
     var items=Object.keys(s._items).map(function(nm){
       var it=s._items[nm];
       it.drr=it.revenue>0?Math.round(it.ad/it.revenue*100):0;
