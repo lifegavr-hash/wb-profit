@@ -2304,31 +2304,31 @@ function renderHeroBlock(last,prev){
     var prevDay=fmtRusDate(prev.day);
     if(Math.abs(prevP)<100){
       // прошлая прибыль маленькая → говорим в рублях
-      if(diff>0)compareLine='Это на '+fmtR(Math.abs(diff))+' ₽ больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+' ₽).';
-      else if(diff<0)compareLine='Это на '+fmtR(Math.abs(diff))+' ₽ меньше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+' ₽).';
+      if(diff>0)compareLine='Это на '+fmtR(Math.abs(diff))+' больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
+      else if(diff<0)compareLine='Это на '+fmtR(Math.abs(diff))+' меньше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
       else compareLine='Столько же, сколько '+prevDay+'.';
     } else {
       var ratio=profit/prevP;
       if(prevP>0&&profit>prevP){
         var times=ratio.toFixed(1);
-        if(times>=2)compareLine='Это в '+times+' раза больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+' ₽).';
+        if(times>=2)compareLine='Это в '+times+' раза больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
         else {
           var pct=Math.round((diff/Math.abs(prevP))*100);
-          compareLine='Это на '+pct+'% больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+' ₽).';
+          compareLine='Это на '+pct+'% больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
         }
       } else if(prevP>0&&profit<=prevP){
         var pct2=Math.round((diff/Math.abs(prevP))*100);
-        compareLine='Это на '+Math.abs(pct2)+'% меньше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+' ₽).';
+        compareLine='Это на '+Math.abs(pct2)+'% меньше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
       } else {
         // prev был в минусе
-        if(profit>=0)compareLine=prevDay+' был в минусе ('+fmtR(Math.abs(prevP))+' ₽), а '+dayName+' уже в плюсе.';
+        if(profit>=0)compareLine=prevDay+' был в минусе ('+fmtR(Math.abs(prevP))+'), а '+dayName+' уже в плюсе.';
         else compareLine='И '+prevDay+', и '+dayName+' в минусе — пора разобраться с расходами.';
       }
     }
   }
   var headline=profit>=0
-    ? 'Вы заработали <strong class="hero-num green">+'+fmtR(profit)+' ₽</strong> на <strong>'+sales+'</strong> '+plural(sales,'продаже','продажах','продажах')+' за '+dayName+'.'
-    : 'За '+dayName+' получился убыток <strong class="hero-num red">−'+fmtR(Math.abs(profit))+' ₽</strong> при '+sales+' '+plural(sales,'продаже','продажах','продажах')+'.';
+    ? 'Вы заработали <strong class="hero-num green">+'+fmtR(profit)+'</strong> на <strong>'+sales+'</strong> '+plural(sales,'продаже','продажах','продажах')+' за '+dayName+'.'
+    : 'За '+dayName+' получился убыток <strong class="hero-num red">−'+fmtR(Math.abs(profit))+'</strong> при '+sales+' '+plural(sales,'продаже','продажах','продажах')+'.';
   return '<div class="story-block">'+
     '<div class="story-icon">🎯</div>'+
     '<div class="story-body">'+
@@ -2361,18 +2361,18 @@ function renderBestSellerBlock(last){
   var nameStr='<strong>'+escHtml(first.name)+'</strong>';
   var marginLine='';
   if(sales>1&&perUnit>0){
-    marginLine=' Каждая продажа приносит примерно <strong>+'+fmtR(perUnit)+' ₽</strong> чистыми.';
+    marginLine=' Каждая продажа приносит примерно <strong>+'+fmtR(perUnit)+'</strong> чистыми.';
   }
   var secondLine='';
   if(top.length>1){
     var second=top[1];
-    secondLine=' На втором месте — <strong>'+escHtml(second.name)+'</strong> (+'+fmtR(second.profit)+' ₽).';
+    secondLine=' На втором месте — <strong>'+escHtml(second.name)+'</strong> (+'+fmtR(second.profit)+').';
   }
   return '<div class="story-block">'+
     '<div class="story-icon">🏆</div>'+
     '<div class="story-body">'+
       '<div class="story-title">ЛУЧШИЙ ТОВАР</div>'+
-      '<div class="story-text">'+nameStr+' — продали '+sales+' '+plural(sales,'штуку','штуки','штук')+', принёс <strong class="green">+'+fmtR(profit)+' ₽</strong> чистыми.'+marginLine+secondLine+'</div>'+
+      '<div class="story-text">'+nameStr+' — продали '+sales+' '+plural(sales,'штуку','штуки','штук')+', принёс <strong class="green">+'+fmtR(profit)+'</strong> чистыми.'+marginLine+secondLine+'</div>'+
     '</div>'+
   '</div>';
 }
@@ -2393,9 +2393,9 @@ function renderAttentionBlock(last,prev,chartDays){
     var p=Number(worst.profit||0);
     var msg;
     if(sales>0){
-      msg='<strong>'+escHtml(worst.name)+'</strong> — продали '+sales+' '+plural(sales,'штуку','штуки','штук')+', но в убыток на <strong class="red">'+fmtR(Math.abs(p))+' ₽</strong>. Похоже, цена ниже себестоимости. Проверьте в Калькуляторе.';
+      msg='<strong>'+escHtml(worst.name)+'</strong> — продали '+sales+' '+plural(sales,'штуку','штуки','штук')+', но в убыток на <strong class="red">'+fmtR(Math.abs(p))+'</strong>. Похоже, цена ниже себестоимости. Проверьте в Калькуляторе.';
     } else {
-      msg='<strong>'+escHtml(worst.name)+'</strong> — нет продаж, но списания на <strong class="red">'+fmtR(Math.abs(p))+' ₽</strong> (логистика возвратов / хранение). Проверьте остатки.';
+      msg='<strong>'+escHtml(worst.name)+'</strong> — нет продаж, но списания на <strong class="red">'+fmtR(Math.abs(p))+'</strong> (логистика возвратов / хранение). Проверьте остатки.';
     }
     return attentionBox(msg);
   }
@@ -2412,7 +2412,7 @@ function renderAttentionBlock(last,prev,chartDays){
   var ads=Number(last.ads||0);
   if(rev>500&&ads/rev>0.3){
     var pct=Math.round(ads/rev*100);
-    return attentionBox('За '+fmtRusDate(last.day)+' реклама съела <strong>'+pct+'%</strong> выручки ('+fmtR(ads)+' ₽). Это много — нормой считается до 20–25%. Проверьте кампании в WB.');
+    return attentionBox('За '+fmtRusDate(last.day)+' реклама съела <strong>'+pct+'%</strong> выручки ('+fmtR(ads)+'). Это много — нормой считается до 20–25%. Проверьте кампании в WB.');
   }
   // Если в неделе есть убыточные дни
   var lossDays=chartDays.filter(function(d){return Number(d.profit||0)<0;});
@@ -2456,7 +2456,7 @@ function renderWeekBlock(weekDays,prevWeekDays){
     '<div class="story-icon">💰</div>'+
     '<div class="story-body">'+
       '<div class="story-title">ИТОГИ '+rangeRus(from,to).toUpperCase()+'</div>'+
-      '<div class="story-text">Выручка <strong>'+fmtR(s.revenue)+' ₽</strong>, чистая прибыль <strong class="'+profCls+'">'+(s.profit>=0?'+':'−')+fmtR(Math.abs(s.profit))+' ₽</strong> с '+s.sales+' '+plural(s.sales,'продажи','продаж','продаж')+'.'+compareLine+'</div>'+
+      '<div class="story-text">Выручка <strong>'+fmtR(s.revenue)+'</strong>, чистая прибыль <strong class="'+profCls+'">'+(s.profit>=0?'+':'−')+fmtR(Math.abs(s.profit))+'</strong> с '+s.sales+' '+plural(s.sales,'продажи','продаж','продаж')+'.'+compareLine+'</div>'+
     '</div>'+
   '</div>';
 }
