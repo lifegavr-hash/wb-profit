@@ -2153,6 +2153,35 @@ async function loadHomeData(){
     return;
   }
   renderDashboard(snapshots);
+  // Авто-обновление: если последний снапшот старше 24 часов — фоном дёргаем вчера
+  maybeAutoRefresh(snapshots);
+}
+function maybeAutoRefresh(snapshots){
+  if(window._autoRefreshing)return;
+  if(!localStorage.getItem('wb_token'))return;
+  // Берём самый свежий день из снапшотов
+  var maxDay=snapshots.reduce(function(m,s){return s.day>m?s.day:m;},'');
+  if(!maxDay)return;
+  // Сравниваем со "вчера" по МСК
+  var msk=new Date();msk.setHours(msk.getHours()+(3-msk.getTimezoneOffset()/60));
+  var yesterday=new Date(msk);yesterday.setDate(yesterday.getDate()-1);
+  var yIso=yesterday.toISOString().slice(0,10);
+  if(maxDay>=yIso)return; // данные уже свежие
+  // Не чаще раза в 30 минут
+  var lastTry=parseInt(localStorage.getItem('auto_refresh_last')||'0',10);
+  if(Date.now()-lastTry<30*60*1000)return;
+  localStorage.setItem('auto_refresh_last',Date.now().toString());
+  window._autoRefreshing=true;
+  // Показываем мини-подсказку
+  var info=document.getElementById('lastSyncInfo');
+  if(info){
+    var orig=info.textContent;
+    info.textContent='🔄 Обновляем данные за вчера... (фоном)';
+    setTimeout(function(){if(info.textContent.indexOf('Обновляем')===0)info.textContent=orig;},20000);
+  }
+  console.log('[auto-refresh] starting, latest snap='+maxDay+', need '+yIso);
+  setPeriod(7); // 7 дней, чтобы быстро (1 запрос обычно покрывает)
+  goFromHome().finally(function(){window._autoRefreshing=false;});
 }
 function renderDashboard(snapshots){
   var el=document.getElementById('homeContent');
@@ -2217,7 +2246,7 @@ function renderDashboard(snapshots){
     h+='<div class="home-empty-mini">Нет данных по товарам</div>';
   }
   h+='</div>';
-  h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ</div>';
+  h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ ЗА '+chartDays.length+' ДН.</div>';
   var weekAlerts=collectWeekAlerts(chartDays);
   if(weekAlerts.length){
     weekAlerts.slice(0,3).forEach(function(a){
@@ -2299,16 +2328,18 @@ function collectWeekAlerts(week){
   var byName={};
   week.forEach(function(s){
     (s.alerts||[]).forEach(function(a){
-      if(!byName[a.name])byName[a.name]={name:a.name,count:0,last:a.msg,type:a.type};
+      if(!byName[a.name])byName[a.name]={name:a.name,count:0,last:a.msg,type:a.type,lastDay:s.day};
       byName[a.name].count++;
       byName[a.name].last=a.msg;
+      byName[a.name].lastDay=s.day;
     });
   });
   var arr=Object.keys(byName).map(function(k){return byName[k];});
   arr.sort(function(a,b){return b.count-a.count;});
   return arr.map(function(a){
-    var msg=a.last+(a.count>1?' (уже '+a.count+' дн. подряд)':'');
-    return {name:a.name,msg:msg,type:a.type};
+    var dateStr=a.lastDay?' · '+shortDate(a.lastDay):'';
+    var streak=a.count>1?' (уже '+a.count+' дн. подряд)':'';
+    return {name:a.name,msg:a.last+streak+dateStr,type:a.type};
   });
 }
 function buildActions(week,alerts){
