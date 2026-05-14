@@ -101,6 +101,23 @@ export default async function handler(req, res) {
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: 'Токен не передан' });
 
+  // === action=seller — вернуть инфу о селлере (имя/бренд) ===
+  // Используем в Главной для приветствия «Здравствуйте, Чиркова А. В.»
+  if (req.query.action === 'seller') {
+    try {
+      const r = await fetch('https://common-api.wildberries.ru/api/v1/seller-info', {
+        headers: { Authorization: token },
+      });
+      const text = await r.text();
+      let body;
+      try { body = JSON.parse(text); } catch { body = text; }
+      res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate'); // 1 day
+      return res.status(r.status).json(body);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   const { dateFrom, dateTo, rrdid = 0 } = req.query;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
 

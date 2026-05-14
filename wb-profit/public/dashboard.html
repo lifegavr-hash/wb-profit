@@ -290,31 +290,17 @@ tr.loss td{background:#fff5f5}
 .an-insight{background:rgba(124,58,237,.06);border-left:3px solid #7c3aed;padding:10px 14px;border-radius:0 8px 8px 0;margin-top:14px;font-size:12px;line-height:1.5}
 .an-insight strong{color:#7c3aed}
 /* === HOME DASHBOARD v2 === */
-/* === STORY-STYLE HOME (text-based dashboard) === */
-.hello-line{font-size:22px;font-weight:600;color:var(--text);margin-bottom:24px;line-height:1.3}
-.story-block{display:flex;gap:16px;padding:20px 22px;background:#fff;border:1px solid var(--border);border-radius:14px;margin-bottom:14px;transition:all .15s}
-.story-block:hover{border-color:rgba(124,58,237,.3);box-shadow:0 4px 16px rgba(0,0,0,.04)}
-.story-block.positive{background:linear-gradient(135deg,#f0fdf4,#fff);border-color:rgba(34,197,94,.2)}
-.story-icon{font-size:28px;flex-shrink:0;line-height:1}
-.story-body{flex:1;min-width:0}
-.story-title{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;text-transform:uppercase}
-.story-text{font-size:16px;color:var(--text);line-height:1.55}
-.story-text strong{font-weight:700}
-.story-text .hero-num{font-size:24px;font-weight:700;display:inline-block;vertical-align:baseline}
-.story-text .green{color:#16a34a}
-.story-text .red{color:#dc2626}
-.story-sub{font-size:14px;color:var(--muted);margin-top:8px;line-height:1.5}
-.home-explore{margin-top:24px;padding:20px;background:#fafafa;border:1px solid var(--border);border-radius:14px}
-.home-explore-title{font-size:13px;color:var(--muted);margin-bottom:12px}
-.home-explore-btns{display:flex;gap:10px;flex-wrap:wrap}
-.explore-btn{background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text);transition:all .15s}
-.explore-btn:hover{border-color:#7c3aed;color:#7c3aed;transform:translateY(-1px)}
+/* === Текстовое приветствие над виджетами Главной === */
+.home-intro{padding:16px 20px;background:linear-gradient(135deg,#faf5ff,#fff);border:1px solid rgba(124,58,237,.15);border-radius:14px;margin-bottom:18px}
+.home-intro-hi{font-size:18px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:4px}
+.home-intro-text{font-size:15px;color:var(--text);line-height:1.5}
+.home-intro-text strong{font-weight:700}
+.home-intro-text .green{color:#16a34a}
+.home-intro-text .red{color:#dc2626}
 @media(max-width:600px){
-  .hello-line{font-size:18px;margin-bottom:18px}
-  .story-block{padding:16px 18px;gap:12px}
-  .story-icon{font-size:24px}
-  .story-text{font-size:15px}
-  .story-text .hero-num{font-size:20px}
+  .home-intro{padding:14px 16px}
+  .home-intro-hi{font-size:16px}
+  .home-intro-text{font-size:14px}
 }
 .home-greet{font-size:14px;color:var(--muted);margin-bottom:14px}
 .home-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -510,15 +496,6 @@ tr.loss td{background:#fff5f5}
     <!-- Настройки -->
     <div class="section" id="sectionSettings">
       <div class="card">
-        <div class="ct">Профиль</div>
-        <div style="margin-bottom:12px">
-          <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Как к вам обращаться?</label>
-          <input type="text" id="firstNameInput" placeholder="Например, Анна">
-          <p class="hint">Имя используется только в приветствии на Главной. Можно оставить пустым.</p>
-        </div>
-        <button class="btn-primary" id="saveNameBtn" onclick="saveFirstName()">Сохранить имя</button>
-      </div>
-      <div class="card" style="margin-top:14px">
         <div class="ct">Подключение к Wildberries</div>
         <div style="margin-bottom:12px">
           <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">API токен WB</label>
@@ -786,12 +763,13 @@ async function init(){
   currentUser=session.user;
   var {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   currentProfile=profile;
-  window._firstName=(profile&&profile.first_name)?String(profile.first_name).trim():'';
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
   // Сначала подтягиваем себестоимости с сервера (фоном, не блокирует UI)
   loadCostsFromServer();
+  // Подгружаем имя селлера из WB API (для приветствия на Главной)
+  loadSellerName();
   // Показываем сводку из Supabase. Если нет — отрендерится idle с подсказкой.
   loadHomeData();
   // Если у пользователя нет токена и онбординг ещё не закрывали — показываем wizard
@@ -946,27 +924,8 @@ function initCalc(){
     var rt=document.getElementById('rememberTok');if(rt)rt.checked=true;
     var sh=document.getElementById('savedHint');if(sh)sh.style.display='block';
   }
-  // Заполняем имя в Настройках
-  var ni=document.getElementById('firstNameInput');
-  if(ni&&window._firstName)ni.value=window._firstName;
   // Подсказка о последней синхронизации на главной
   refreshLastSync();
-}
-async function saveFirstName(){
-  var ni=document.getElementById('firstNameInput');
-  if(!ni)return;
-  var name=ni.value.trim().slice(0,50);
-  try{
-    var {error}=await sb.from('profiles').update({first_name:name||null}).eq('id',currentUser.id);
-    if(error)throw error;
-    window._firstName=name;
-    var btn=document.getElementById('saveNameBtn');
-    if(btn){var orig=btn.textContent;btn.textContent='✓ Сохранено';setTimeout(function(){btn.textContent=orig;},1500);}
-    // Перерисуем Главную если она открыта
-    if(document.getElementById('sectionHome').classList.contains('active')){
-      loadHomeData();
-    }
-  }catch(e){alert('Не удалось сохранить: '+e.message);}
 }
 function refreshLastSync(rangeFrom,rangeTo){
   var info=document.getElementById('lastSyncInfo');if(!info)return;
@@ -1084,6 +1043,35 @@ async function syncCostsNow(){
   }catch(e){console.warn('costs sync failed',e);}
 }
 // При входе — подтягиваем серверные себестоимости и сливаем с localStorage
+// Подгружает имя селлера из WB seller-info, кеширует в localStorage.
+// Имя используется в приветствии на Главной: «Здравствуйте, Чиркова А. В.»
+async function loadSellerName(){
+  // Сначала используем кеш — мгновенно показываем
+  var cached=localStorage.getItem('wb_seller_name');
+  if(cached){window._sellerName=cached;}
+  var tok=localStorage.getItem('wb_token');
+  if(!tok)return;
+  // Не дёргаем чаще раза в сутки
+  var lastFetch=parseInt(localStorage.getItem('wb_seller_name_at')||'0',10);
+  if(Date.now()-lastFetch<24*60*60*1000 && cached)return;
+  try{
+    var r=await fetch('/api/wb?action=seller',{headers:{'Authorization':tok}});
+    if(!r.ok)return;
+    var d=await r.json();
+    var name=(d&&d.name)?String(d.name):'';
+    if(name){
+      localStorage.setItem('wb_seller_name',name);
+      localStorage.setItem('wb_seller_name_at',Date.now().toString());
+      window._sellerName=name;
+      // Перерисуем главную если она открыта (для свежего приветствия)
+      var homeSection=document.getElementById('sectionHome');
+      if(homeSection&&homeSection.classList.contains('active')){
+        loadHomeData();
+      }
+    }
+  }catch(e){/* молча — не критично */}
+}
+
 async function loadCostsFromServer(){
   try{
     var session=await sb.auth.getSession();
@@ -2190,22 +2178,18 @@ function renderHomeIdle(reason){
   el.dataset.rendered='1';
   var hasToken=!!localStorage.getItem('wb_token');
   var hour=new Date().getHours();
-  var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Добрый день':'Добрый вечер';
-  var name=(window._firstName||'').trim();
-  var hi=greet+(name?', '+name+'.':'!');
+  var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Здравствуйте':'Добрый вечер';
+  var seller=(window._sellerName||'').trim();
+  var hi=seller?(greet+', '+escHtml(seller)+'.'):(greet+'!');
   var msg=reason||(hasToken
-    ? 'Чтобы начать, нажмите <strong>«Загрузить»</strong> в фиолетовой панели сверху. Я подтяну данные с Wildberries и покажу, как у вас дела.'
-    : 'Чтобы я мог показать данные, нужно подключить ваш кабинет Wildberries. Это занимает минуту — перейдите в <strong>Настройки</strong> и вставьте API-токен.');
+    ? 'Чтобы начать, нажмите «Загрузить» в фиолетовой панели сверху. Мы подтянем данные с Wildberries и покажем, как у вас дела.'
+    : 'Чтобы мы могли показать данные, нужно подключить ваш кабинет Wildberries. Это занимает минуту — перейдите в Настройки и вставьте API-токен.');
   el.innerHTML=
-    '<div class="hello-line">'+hi+'</div>'+
-    '<div class="story-block">'+
-      '<div class="story-icon">👋</div>'+
-      '<div class="story-body">'+
-        '<div class="story-title">'+(hasToken?'ПОЧТИ ГОТОВО':'ДАВАЙТЕ НАЧНЁМ')+'</div>'+
-        '<div class="story-text">'+msg+'</div>'+
-        (hasToken?'':'<div style="margin-top:14px"><button class="explore-btn" onclick="showSection(\'settings\',document.getElementById(\'nav-settings\'))">⚙️ Открыть Настройки</button></div>')+
-      '</div>'+
-    '</div>';
+    '<div class="home-intro">'+
+      '<div class="home-intro-hi">'+hi+'</div>'+
+      '<div class="home-intro-text">'+msg+'</div>'+
+    '</div>'+
+    (hasToken?'':'<button class="btn-week" style="margin-top:8px" onclick="showSection(\'settings\',document.getElementById(\'nav-settings\'))">⚙️ Открыть Настройки</button>');
 }
 // Спиннер при первой загрузке отдельным методом, не съедает homeContent
 async function loadHomeData(){
@@ -2257,220 +2241,122 @@ function renderDashboard(snapshots){
   snapshots.sort(function(a,b){return a.day<b.day?-1:1;});
   var last=snapshots[snapshots.length-1];
   var prev=snapshots.length>1?snapshots[snapshots.length-2]:null;
-  // Берём последние 7 дней для контекста-недели
-  var weekDays=snapshots.slice(-7);
-  var prevWeekDays=snapshots.slice(-14,-7);
-  var chartDays=snapshots.slice(-14);
-  // === Сборка ===
+  // === HTML ===
   var h='';
-  // 1) Приветствие
+  // Greeting
   var hour=new Date().getHours();
   var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Добрый день':'Добрый вечер';
-  var name=(window._firstName||'').trim();
-  var hi=greet+(name?', '+name+'.':'!');
-  h+='<div class="hello-line">'+hi+'</div>';
-  // 2) Главная новость — вчера
-  h+=renderHeroBlock(last,prev);
-  // 3) Что продаётся лучше всего
-  h+=renderBestSellerBlock(last);
-  // 4) На что обратить внимание (всегда)
-  h+=renderAttentionBlock(last,prev,chartDays);
-  // 5) Итоги за неделю
-  h+=renderWeekBlock(weekDays,prevWeekDays);
-  // 6) Подробнее — ссылки на разделы
-  h+='<div class="home-explore">'+
-       '<div class="home-explore-title">Хотите копнуть глубже?</div>'+
-       '<div class="home-explore-btns">'+
-         '<button class="explore-btn" onclick="showSection(\'calc\',document.getElementById(\'nav-calc\'))">📊 Калькулятор товаров</button>'+
-         '<button class="explore-btn" onclick="showSection(\'analytics\',document.getElementById(\'nav-analytics\'))">📈 Аналитика</button>'+
-         '<button class="explore-btn" onclick="showSection(\'unit\',document.getElementById(\'nav-unit\'))">💰 Подбор товара</button>'+
-       '</div>'+
-     '</div>';
-  el.innerHTML=h;
-}
-
-// === Hero — главная цифра дня ===
-function renderHeroBlock(last,prev){
+  // Текстовый блок «Здравствуйте, Чиркова А. В. Вы заработали...»
+  h+=renderHomeIntro(last,prev);
+  h+='<div class="home-grid-2">';
+  h+='<div class="home-card"><div class="home-card-title">🔥 '+fmtRusDate(last.day).toUpperCase()+'</div>';
   var profit=Number(last.profit||0);
-  var sales=Number(last.sales_count||0);
-  var profCls=profit>=0?'green':'red';
-  var profSign=profit>=0?'+':'−';
-  var dayName=fmtRusDate(last.day);
-  // Сравнение
-  var compareLine='';
+  h+='<div class="home-big '+(profit>=0?'green':'red')+'">'+(profit>=0?'+':'−')+fmtR(Math.abs(profit))+'</div>';
+  h+='<div class="home-sub">чистая прибыль за день</div>';
   if(prev){
     var prevP=Number(prev.profit||0);
     var diff=profit-prevP;
-    var prevDay=fmtRusDate(prev.day);
-    if(Math.abs(prevP)<100){
-      // прошлая прибыль маленькая → говорим в рублях
-      if(diff>0)compareLine='Это на '+fmtR(Math.abs(diff))+' больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
-      else if(diff<0)compareLine='Это на '+fmtR(Math.abs(diff))+' меньше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
-      else compareLine='Столько же, сколько '+prevDay+'.';
+    var pctTxt='';
+    // Защита от ложного 2748%: показываем процент только если предыдущая прибыль значимая (>=100 ₽)
+    if(Math.abs(prevP)>=100){
+      var pct=Math.round(diff/Math.abs(prevP)*100);
+      if(Math.abs(pct)>999)pctTxt=(pct>0?'+':'−')+'>999%';
+      else pctTxt=(pct>0?'+':'')+pct+'%';
     } else {
-      var ratio=profit/prevP;
-      if(prevP>0&&profit>prevP){
-        var times=ratio.toFixed(1);
-        if(times>=2)compareLine='Это в '+times+' раза больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
-        else {
-          var pct=Math.round((diff/Math.abs(prevP))*100);
-          compareLine='Это на '+pct+'% больше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
-        }
-      } else if(prevP>0&&profit<=prevP){
-        var pct2=Math.round((diff/Math.abs(prevP))*100);
-        compareLine='Это на '+Math.abs(pct2)+'% меньше, чем '+prevDay+' ('+(prevP>=0?'+':'−')+fmtR(Math.abs(prevP))+').';
-      } else {
-        // prev был в минусе
-        if(profit>=0)compareLine=prevDay+' был в минусе ('+fmtR(Math.abs(prevP))+'), а '+dayName+' уже в плюсе.';
-        else compareLine='И '+prevDay+', и '+dayName+' в минусе — пора разобраться с расходами.';
-      }
+      pctTxt=(diff>=0?'+':'−')+fmtR(Math.abs(diff))+' ₽';
     }
+    h+='<div class="home-delta '+(diff>=0?'green':'red')+'">'+(diff>=0?'↑':'↓')+' '+pctTxt+' vs '+fmtRusDate(prev.day)+'</div>';
   }
-  var headline=profit>=0
-    ? 'Вы заработали <strong class="hero-num green">+'+fmtR(profit)+'</strong> на <strong>'+sales+'</strong> '+plural(sales,'продаже','продажах','продажах')+' за '+dayName+'.'
-    : 'За '+dayName+' получился убыток <strong class="hero-num red">−'+fmtR(Math.abs(profit))+'</strong> при '+sales+' '+plural(sales,'продаже','продажах','продажах')+'.';
-  return '<div class="story-block">'+
-    '<div class="story-icon">🎯</div>'+
-    '<div class="story-body">'+
-      '<div class="story-title">ГЛАВНОЕ ЗА '+dayName.toUpperCase()+'</div>'+
-      '<div class="story-text">'+headline+'</div>'+
-      (compareLine?'<div class="story-sub">'+compareLine+'</div>':'')+
-    '</div>'+
-  '</div>';
-}
-
-// === Топ-1 товар словами ===
-function renderBestSellerBlock(last){
-  var top=Array.isArray(last.top_items)?last.top_items.slice():[];
-  // Фильтруем — только прибыльные
-  top=top.filter(function(it){return Number(it.profit||0)>0;});
-  if(!top.length){
-    return '<div class="story-block">'+
-      '<div class="story-icon">🏆</div>'+
-      '<div class="story-body">'+
-        '<div class="story-title">ЛУЧШИЙ ТОВАР</div>'+
-        '<div class="story-text">За этот день не было прибыльных товаров.</div>'+
-      '</div>'+
-    '</div>';
+  h+='<div class="home-meta">Продано: '+(last.sales_count||0)+' шт · Возвратов: '+(last.returns_count||0)+'</div>';
+  h+='</div>';
+  // График
+  var chartDays=snapshots.slice(-14);
+  h+='<div class="home-card"><div class="home-card-title">📈 ПОСЛЕДНИЕ '+chartDays.length+' ДНЕЙ</div>';
+  h+=renderMiniChart(chartDays);
+  if(chartDays.length){
+    var best=chartDays.reduce(function(a,b){return Number(a.profit||0)>Number(b.profit||0)?a:b;});
+    var worst=chartDays.reduce(function(a,b){return Number(a.profit||0)<Number(b.profit||0)?a:b;});
+    h+='<div class="home-meta" style="margin-top:8px">Лучший день: '+shortDate(best.day)+' ('+fmtRSign(best.profit)+') · Худший: '+shortDate(worst.day)+' ('+fmtRSign(worst.profit)+')</div>';
   }
-  top.sort(function(a,b){return Number(b.profit||0)-Number(a.profit||0);});
-  var first=top[0];
-  var sales=Number(first.sales||0);
-  var profit=Number(first.profit||0);
-  var perUnit=sales>0?profit/sales:0;
-  var nameStr='<strong>'+escHtml(first.name)+'</strong>';
-  var marginLine='';
-  if(sales>1&&perUnit>0){
-    marginLine=' Каждая продажа приносит примерно <strong>+'+fmtR(perUnit)+'</strong> чистыми.';
-  }
-  var secondLine='';
-  if(top.length>1){
-    var second=top[1];
-    secondLine=' На втором месте — <strong>'+escHtml(second.name)+'</strong> (+'+fmtR(second.profit)+').';
-  }
-  return '<div class="story-block">'+
-    '<div class="story-icon">🏆</div>'+
-    '<div class="story-body">'+
-      '<div class="story-title">ЛУЧШИЙ ТОВАР</div>'+
-      '<div class="story-text">'+nameStr+' — продали '+sales+' '+plural(sales,'штуку','штуки','штук')+', принёс <strong class="green">+'+fmtR(profit)+'</strong> чистыми.'+marginLine+secondLine+'</div>'+
-    '</div>'+
-  '</div>';
-}
-
-// === На что обратить внимание ===
-function renderAttentionBlock(last,prev,chartDays){
-  // Приоритеты:
-  // 1) Убыточный товар (loss)
-  // 2) Падение прибыли в 2+ раза vs прошлый день
-  // 3) Высокая доля рекламы за день
-  // 4) Если всё хорошо — позитивный совет
+  h+='</div>';
+  h+='</div>';
+  // Block 3: Куда ушли деньги — за день
+  h+='<div class="home-card"><div class="home-card-title">⚖️ КУДА УШЛИ ДЕНЬГИ '+fmtRusDate(last.day).toUpperCase()+'</div>';
+  h+=renderMoneyFlow(last);
+  h+='</div>';
+  // Block 4+5: Топ + Тревоги
+  h+='<div class="home-grid-2">';
+  h+='<div class="home-card"><div class="home-card-title">🏆 ТОП-3 '+fmtRusDate(last.day).toUpperCase()+'</div>';
   var top=Array.isArray(last.top_items)?last.top_items:[];
-  var lossItems=top.filter(function(it){return Number(it.profit||0)<0;});
-  if(lossItems.length){
-    lossItems.sort(function(a,b){return Number(a.profit||0)-Number(b.profit||0);}); // самый убыточный первым
-    var worst=lossItems[0];
-    var sales=Number(worst.sales||0);
-    var p=Number(worst.profit||0);
-    var msg;
-    if(sales>0){
-      msg='<strong>'+escHtml(worst.name)+'</strong> — продали '+sales+' '+plural(sales,'штуку','штуки','штук')+', но в убыток на <strong class="red">'+fmtR(Math.abs(p))+'</strong>. Похоже, цена ниже себестоимости. Проверьте в Калькуляторе.';
-    } else {
-      msg='<strong>'+escHtml(worst.name)+'</strong> — нет продаж, но списания на <strong class="red">'+fmtR(Math.abs(p))+'</strong> (логистика возвратов / хранение). Проверьте остатки.';
-    }
-    return attentionBox(msg);
+  if(top.length){
+    top.slice(0,3).forEach(function(it,i){
+      var p=Number(it.profit||0);
+      h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+(i+1)+'. '+it.name+'</div><div class="top-meta">'+(it.sales||0)+' шт</div></div>';
+      h+='<div class="top-profit"><div class="top-profit-val '+(p>=0?'g':'r')+'">'+(p>=0?'+':'−')+fmtR(Math.abs(p))+'</div></div></div>';
+    });
+  } else {
+    h+='<div class="home-empty-mini">Нет данных по товарам</div>';
   }
-  // Падение прибыли
+  h+='</div>';
+  h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ ЗА '+chartDays.length+' ДН.</div>';
+  var weekAlerts=collectWeekAlerts(chartDays);
+  if(weekAlerts.length){
+    weekAlerts.slice(0,3).forEach(function(a){
+      h+='<div class="home-alert"><div class="alert-name">'+a.name+'</div><div class="alert-msg">'+a.msg+'</div></div>';
+    });
+  } else {
+    h+='<div class="home-empty-mini">Всё спокойно</div>';
+  }
+  h+='</div>';
+  h+='</div>';
+  // Block 6: Что сделать
+  h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
+  var actions=buildActions(chartDays,weekAlerts);
+  if(actions.length){
+    actions.forEach(function(a,i){h+='<div class="home-action">'+(i+1)+'. '+a+'</div>';});
+  } else {
+    h+='<div class="home-empty-mini">Конкретных рекомендаций нет — продолжайте в том же духе!</div>';
+  }
+  h+='<div style="margin-top:14px;text-align:right"><a href="#" onclick="showSection(\'calc\',document.getElementById(\'nav-calc\'));return false;" class="home-link">Открыть детали в Калькуляторе →</a></div>';
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+// Текстовый блок над виджетами Главной: «Здравствуйте, Чиркова А. В. Вы заработали +124 ₽ за 13 мая, это на 79% меньше вчера.»
+function renderHomeIntro(last,prev){
+  var hour=new Date().getHours();
+  var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Здравствуйте':'Добрый вечер';
+  var seller=(window._sellerName||'').trim();
+  var greeting=seller?(greet+', '+escHtml(seller)+'.'):(greet+'!');
+  var profit=Number(last.profit||0);
+  var dayName=fmtRusDate(last.day);
+  var profCls=profit>=0?'green':'red';
+  var profSign=profit>=0?'+':'−';
+  var profStr='<strong class="'+profCls+'">'+profSign+fmtR(Math.abs(profit))+'</strong>';
+  var sentence;
+  if(profit>=0){
+    sentence='Вы заработали '+profStr+' за '+dayName+'.';
+  } else {
+    sentence='За '+dayName+' получился убыток '+profStr+'.';
+  }
+  // сравнение со вчера
   if(prev){
-    var pp=Number(prev.profit||0);
-    var cp=Number(last.profit||0);
-    if(pp>=300&&cp<pp/2){
-      return attentionBox('Прибыль упала более чем в 2 раза по сравнению с '+fmtRusDate(prev.day)+'. Стоит посмотреть, что изменилось — возможно вырос расход на рекламу или появились возвраты.');
+    var prevP=Number(prev.profit||0);
+    var prevDay=fmtRusDate(prev.day);
+    if(Math.abs(prevP)>=100){
+      var diff=profit-prevP;
+      var pct=Math.round(diff/Math.abs(prevP)*100);
+      if(pct>=10)sentence+=' Это на <strong class="green">'+pct+'%</strong> больше, чем '+prevDay+'.';
+      else if(pct<=-10)sentence+=' Это на <strong class="red">'+Math.abs(pct)+'%</strong> меньше, чем '+prevDay+'.';
+      else if(Math.abs(diff)>=50)sentence+=' Примерно столько же, сколько '+prevDay+'.';
     }
   }
-  // Реклама съедает много
-  var rev=Number(last.revenue||0);
-  var ads=Number(last.ads||0);
-  if(rev>500&&ads/rev>0.3){
-    var pct=Math.round(ads/rev*100);
-    return attentionBox('За '+fmtRusDate(last.day)+' реклама съела <strong>'+pct+'%</strong> выручки ('+fmtR(ads)+'). Это много — нормой считается до 20–25%. Проверьте кампании в WB.');
-  }
-  // Если в неделе есть убыточные дни
-  var lossDays=chartDays.filter(function(d){return Number(d.profit||0)<0;});
-  if(lossDays.length>=2){
-    return attentionBox('За последние 2 недели было <strong>'+lossDays.length+'</strong> '+plural(lossDays.length,'убыточный день','убыточных дня','убыточных дней')+'. Стабильность под вопросом — посмотрите Аналитику, чтобы найти тренд.');
-  }
-  // Всё хорошо
-  return attentionBox('Сегодня всё в порядке — серьёзных проблем нет. Хороший момент проверить остатки на складе и подумать о новых поставках. Если есть свободный бюджет, можно усилить рекламу на топовых товарах.', true);
-}
-function attentionBox(msg,positive){
-  var icon=positive?'✨':'⚠️';
-  var title=positive?'СЕГОДНЯ ВСЁ СПОКОЙНО':'ОБРАТИТЕ ВНИМАНИЕ';
-  return '<div class="story-block '+(positive?'positive':'')+'">'+
-    '<div class="story-icon">'+icon+'</div>'+
-    '<div class="story-body">'+
-      '<div class="story-title">'+title+'</div>'+
-      '<div class="story-text">'+msg+'</div>'+
-    '</div>'+
+  return '<div class="home-intro">'+
+    '<div class="home-intro-hi">'+greeting+'</div>'+
+    '<div class="home-intro-text">'+sentence+'</div>'+
   '</div>';
 }
-
-// === Итоги за неделю ===
-function renderWeekBlock(weekDays,prevWeekDays){
-  if(!weekDays.length)return '';
-  var s={profit:0,revenue:0,sales:0,days:0};
-  weekDays.forEach(function(d){s.profit+=Number(d.profit||0);s.revenue+=Number(d.revenue||0);s.sales+=Number(d.sales_count||0);s.days++;});
-  var from=weekDays[0].day;
-  var to=weekDays[weekDays.length-1].day;
-  var profCls=s.profit>=0?'green':'red';
-  var compareLine='';
-  if(prevWeekDays.length){
-    var pp=0;prevWeekDays.forEach(function(d){pp+=Number(d.profit||0);});
-    if(Math.abs(pp)>=300){
-      var diff=s.profit-pp;
-      var pct=Math.round(diff/Math.abs(pp)*100);
-      if(diff>0)compareLine=' Это на <strong class="green">'+pct+'%</strong> больше прошлой недели.';
-      else if(diff<0)compareLine=' Это на <strong class="red">'+Math.abs(pct)+'%</strong> меньше прошлой недели.';
-    }
-  }
-  return '<div class="story-block">'+
-    '<div class="story-icon">💰</div>'+
-    '<div class="story-body">'+
-      '<div class="story-title">ИТОГИ '+rangeRus(from,to).toUpperCase()+'</div>'+
-      '<div class="story-text">Выручка <strong>'+fmtR(s.revenue)+'</strong>, чистая прибыль <strong class="'+profCls+'">'+(s.profit>=0?'+':'−')+fmtR(Math.abs(s.profit))+'</strong> с '+s.sales+' '+plural(s.sales,'продажи','продаж','продаж')+'.'+compareLine+'</div>'+
-    '</div>'+
-  '</div>';
-}
-
-// === Утилиты ===
 function escHtml(s){return String(s||'').replace(/[<>&"']/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c];});}
-function plural(n,one,few,many){
-  n=Math.abs(n)%100;
-  var n1=n%10;
-  if(n>10&&n<20)return many;
-  if(n1>1&&n1<5)return few;
-  if(n1===1)return one;
-  return many;
-}
 function sumSnaps(arr){
   var s={profit:0,revenue:0,ads:0,sales_count:0};
   arr.forEach(function(x){s.profit+=Number(x.profit||0);s.revenue+=Number(x.revenue||0);s.ads+=Number(x.ads||0);s.sales_count+=Number(x.sales_count||0);});
