@@ -1,4 +1,4 @@
-// /api/calcs — CRUD истории подборов товаров v0.4
+// /api/calcs — CRUD истории подборов товаров v0.4.1
 // GET    — список всех подборов пользователя (с фильтрами/сортировкой)
 // POST   — создать или обновить (если есть id)
 // DELETE — удалить (нужен ?id=...)
@@ -24,24 +24,23 @@ export default async function handler(req, res) {
 
   // ───── GET — список подборов ─────
   if (req.method === 'GET') {
-    const { sort = 'created_desc', q = '', minMargin } = req.query;
+    const { sort = 'created_desc', q = '', minMargin, model, source } = req.query;
     let query = supabase
       .from('unit_calc_history')
       .select('*')
       .eq('user_id', user.id)
       .limit(200);
 
-    if (q) {
-      query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%`);
-    }
-    if (minMargin && !isNaN(Number(minMargin))) {
-      query = query.gte('margin_pct', Number(minMargin));
-    }
+    if (q) query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%,subject_name.ilike.%${q}%,notes.ilike.%${q}%`);
+    if (minMargin && !isNaN(Number(minMargin))) query = query.gte('margin_pct', Number(minMargin));
+    if (model && ['fbo','fbs','dbs'].includes(model)) query = query.eq('model', model);
+    if (source) query = query.eq('source', source);
 
     switch (sort) {
       case 'profit_desc':  query = query.order('profit', { ascending: false }); break;
       case 'profit_asc':   query = query.order('profit', { ascending: true });  break;
       case 'margin_desc':  query = query.order('margin_pct', { ascending: false }); break;
+      case 'margin_asc':   query = query.order('margin_pct', { ascending: true }); break;
       case 'roi_desc':     query = query.order('roi_pct', { ascending: false }); break;
       case 'created_asc':  query = query.order('created_at', { ascending: true }); break;
       case 'created_desc':
@@ -57,7 +56,6 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const b = req.body || {};
 
-    // Лимит для FREE — 5 подборов
     if (!b.id) {
       const planResult = await getUserPlan(token);
       if (!planResult.hasPro) {
@@ -94,6 +92,17 @@ export default async function handler(req, res) {
       profit: Number(b.profit) || 0,
       margin_pct: Number(b.margin_pct) || 0,
       roi_pct: Number(b.roi_pct) || 0,
+      // 🆕 v0.4
+      subject_id: b.subject_id ? Number(b.subject_id) : null,
+      subject_name: b.subject_name || null,
+      model: ['fbo','fbs','dbs'].includes(b.model) ? b.model : 'fbo',
+      warehouse_name: b.warehouse_name || null,
+      retail_price_seen: b.retail_price_seen != null ? Number(b.retail_price_seen) : null,
+      retail_price_basic_set: b.retail_price_basic_set !== false,
+      nm_id: b.nm_id ? Number(b.nm_id) : null,
+      notes: b.notes ? String(b.notes).slice(0, 500) : null,
+      all_models: b.all_models || null,
+      source: b.source || 'manual',
       updated_at: new Date().toISOString(),
     };
 
