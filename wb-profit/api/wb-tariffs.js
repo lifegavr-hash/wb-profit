@@ -1,14 +1,11 @@
-// /api/wb-tariffs v0.3.3 — публичные тарифы WB для виджета.
+// /api/wb-tariffs v0.3.7 — публичные тарифы WB для виджета.
 // Кэш 1 час на CDN.
 //
-// GET /api/wb-tariffs?
-//   subject_id=<int>     ← основной (от WB Card API v4)
-//   subject=<name>       ← fallback
-//   parent=<name>        ← fallback
-//   volume=<L>           ← объём литры
-//   model=<fbo|fbs|dbs>  ← модель продаж
-//   warehouse=<name>     ← конкретный склад (опционально)
-//                          если не указан — медиана по ЦФО для FBO
+// v0.3.7 ИЗМЕНЕНИЯ:
+// - Базовая логистика берётся из wb_warehouse_tariffs (актуальная WB Box API)
+//   а не из старой таблицы wb_logistics_tariffs
+// - Добавлен флаг fbs_unavailable когда склад не принимает FBS-товары
+// - Возврат остался по упрощённой формуле (будет улучшен в v0.4)
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -16,23 +13,6 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-
-function computeLogisticsCost(tariffRows, volumeL) {
-  if (!Number.isFinite(volumeL) || volumeL <= 0) return 0;
-  const v = Math.max(0.001, volumeL);
-  const row = tariffRows.find(r => v >= Number(r.volume_min_l) && v <= Number(r.volume_max_l));
-  if (!row) return 0;
-  if (row.flat_per_liter_rub != null) {
-    return Math.round(Number(row.flat_per_liter_rub) * v * 100) / 100;
-  }
-  if (row.first_liter_rub != null && row.extra_liter_rub != null) {
-    const extraL = Math.max(0, v - 1);
-    return Math.round(
-      (Number(row.first_liter_rub) + Number(row.extra_liter_rub) * extraL) * 100
-    ) / 100;
-  }
-  return 0;
-}
 
 function normalize(s) {
   if (!s) return null;
@@ -44,6 +24,31 @@ function pickPct(row, model) {
   if (model === 'fbs') return Number(row.fbs_pct);
   if (model === 'dbs') return Number(row.dbs_pct);
   return Number(row.fbo_pct);
+}
+
+// 🆕 v0.3.7: Расчёт логистики напрямую из тарифов склада WB
+// Формула WB: первый литр = base, каждый следующий = liter ₽
+function computeLogisticsFromWarehouse(volumeL, base, perLiter) {
+  if (!Number.isFinite(volumeL) || volumeL <= 0) return 0;
+  if (!Number.isFinite(base) || !Number.isFinite(perLiter)) return 0;
+  // Первый литр включён в base; следующие литры считаются дополнительно
+  const extraL = Math.max(0, volumeL - 1);
+  return Math.round((Number(base) + Number(perLiter) * extraL) * 100) / 100;
+}
+
+// Старая логика для return_to_pvz (пока в БД, потом обновим в v0.4)
+function computeReturnPvz(tariffRows, volumeL) {
+  if (!Number.isFinite(volumeL) || volumeL <= 0) return 0;
+  const row = tariffRows.find(r => volumeL >= Number(r.volume_min_l) && volumeL <= Number(r.volume_max_l));
+  if (!row) return 0;
+  if (row.first_liter_rub != null && row.extra_liter_rub != null) {
+    const extraL = Math.max(0, volumeL - 1);
+    return Math.round((Number(row.first_liter_rub) + Number(row.extra_liter_rub) * extraL) * 100) / 100;
+  }
+  if (row.flat_per_liter_rub != null) {
+    return Math.round(Number(row.flat_per_liter_rub) * volumeL * 100) / 100;
+  }
+  return 0;
 }
 
 export default async function handler(req, res) {
@@ -63,9 +68,8 @@ export default async function handler(req, res) {
     const model = ['fbo', 'fbs', 'dbs'].includes(modelRaw) ? modelRaw : 'fbo';
     const warehouseName = req.query.warehouse ? String(req.query.warehouse).trim() : null;
 
-    // ── 1. Комиссия ──
+    // ── 1. КОМИССИЯ ──
     let commission = null;
-
     if (subjectId) {
       const { data } = await supabase
         .from('wb_commissions')
@@ -77,16 +81,11 @@ export default async function handler(req, res) {
         commission = {
           pct: pickPct(r, model),
           source: 'exact_id',
-          subject_id: r.subject_id,
-          subject_name: r.subject_name,
-          parent_id: r.parent_id,
-          parent_category: r.parent_category,
+          subject_id: r.subject_id, subject_name: r.subject_name,
+          parent_id: r.parent_id, parent_category: r.parent_category,
           all_models: {
-            fbo: Number(r.fbo_pct),
-            fbs: Number(r.fbs_pct),
-            dbs: Number(r.dbs_pct),
-            dbs_express: Number(r.dbs_express_pct),
-            storage: Number(r.paid_storage_pct),
+            fbo: Number(r.fbo_pct), fbs: Number(r.fbs_pct), dbs: Number(r.dbs_pct),
+            dbs_express: Number(r.dbs_express_pct), storage: Number(r.paid_storage_pct),
           },
         };
       }
@@ -100,12 +99,9 @@ export default async function handler(req, res) {
       if (data && data[0]) {
         const r = data[0];
         commission = {
-          pct: pickPct(r, model),
-          source: 'exact_name',
-          subject_id: r.subject_id,
-          subject_name: r.subject_name,
-          parent_id: r.parent_id,
-          parent_category: r.parent_category,
+          pct: pickPct(r, model), source: 'exact_name',
+          subject_id: r.subject_id, subject_name: r.subject_name,
+          parent_id: r.parent_id, parent_category: r.parent_category,
           all_models: {
             fbo: Number(r.fbo_pct), fbs: Number(r.fbs_pct), dbs: Number(r.dbs_pct),
             dbs_express: Number(r.dbs_express_pct), storage: Number(r.paid_storage_pct),
@@ -117,8 +113,7 @@ export default async function handler(req, res) {
       const { data } = await supabase
         .from('wb_commissions')
         .select('fbo_pct, fbs_pct, dbs_pct, parent_category')
-        .ilike('parent_category', parent)
-        .limit(50);
+        .ilike('parent_category', parent).limit(50);
       if (data && data.length) {
         const avg = key => Math.round((data.reduce((s, r) => s + Number(r[key] || 0), 0) / data.length) * 100) / 100;
         const fbo = avg('fbo_pct'), fbs = avg('fbs_pct'), dbs = avg('dbs_pct');
@@ -139,84 +134,118 @@ export default async function handler(req, res) {
       };
     }
 
-    // ── 2. Коэффициент склада (НОВОЕ в v0.3.3) ──
-    // Если warehouse указан — точный коэф этого склада.
-    // Если не указан — медианный коэф по ЦФО (самые популярные склады).
+    // ── 2. СКЛАД и КОЭФФИЦИЕНТ ──
+    let warehouseRow = null;
     let warehouseCoef = null;
+    let fbsUnavailable = false;
+    let coefSource = 'median_cfo';
+
     if (warehouseName) {
       const { data } = await supabase
         .from('wb_warehouse_tariffs')
-        .select('warehouse_name, geo_name, box_delivery_coef_pct, box_delivery_marketplace_coef_pct, valid_date')
+        .select('*')
         .ilike('warehouse_name', warehouseName)
         .order('valid_date', { ascending: false })
         .limit(1);
       if (data && data[0]) {
-        const r = data[0];
-        const coefPct = model === 'fbs'
-          ? r.box_delivery_marketplace_coef_pct
-          : r.box_delivery_coef_pct;
-        warehouseCoef = {
-          source: 'exact_warehouse',
-          warehouse_name: r.warehouse_name,
-          geo_name: r.geo_name,
-          coef: coefPct ? Math.round((Number(coefPct) / 100) * 100) / 100 : null,
-          valid_date: r.valid_date,
-        };
+        warehouseRow = data[0];
+        coefSource = 'exact_warehouse';
       }
     }
-    if (!warehouseCoef) {
-      // Медиана по ЦФО для авторежима
-      const colName = model === 'fbs' ? 'box_delivery_marketplace_coef_pct' : 'box_delivery_coef_pct';
+
+    if (!warehouseRow) {
+      // Медиана по ЦФО (только склады с непустым FBW)
       const { data } = await supabase
         .from('wb_warehouse_tariffs')
-        .select(colName + ', valid_date')
+        .select('*')
         .eq('geo_name', 'Центральный федеральный округ')
+        .not('box_delivery_coef_pct', 'is', null)
         .order('valid_date', { ascending: false })
         .limit(20);
       if (data && data.length) {
-        const values = data.map(r => Number(r[colName])).filter(v => v > 0).sort((a, b) => a - b);
-        const median = values.length
-          ? values[Math.floor(values.length / 2)]
-          : 170;
-        warehouseCoef = {
-          source: 'median_cfo',
-          warehouse_name: null,
-          geo_name: 'Центральный федеральный округ (медиана)',
-          coef: Math.round((median / 100) * 100) / 100,
-          valid_date: data[0].valid_date,
-        };
-      } else {
-        warehouseCoef = {
-          source: 'default',
-          warehouse_name: null, geo_name: null,
-          coef: 1.7, valid_date: null,
-        };
+        // Берём средний склад по медиане коэфа
+        const sorted = data.slice().sort((a, b) =>
+          Number(a.box_delivery_coef_pct) - Number(b.box_delivery_coef_pct)
+        );
+        warehouseRow = sorted[Math.floor(sorted.length / 2)];
+        coefSource = 'median_cfo';
       }
     }
 
-    // ── 3. Логистика (базовая сетка + коэф склада в виджете) ──
-    const kinds = [`forward_${model === 'dbs' ? 'fbs' : model}`, 'return_to_wh', 'return_to_pvz'];
-    const { data: tariffs } = await supabase
-      .from('wb_logistics_tariffs')
-      .select('kind, volume_min_l, volume_max_l, flat_per_liter_rub, first_liter_rub, extra_liter_rub')
-      .in('kind', kinds)
-      .is('valid_to', null);
+    // Определяем коэф и базу для выбранной модели
+    let baseRub = null, literRub = null, coefPct = null;
 
-    const byKind = {};
-    (tariffs || []).forEach(t => {
-      (byKind[t.kind] = byKind[t.kind] || []).push(t);
-    });
-    const fwdKey = `forward_${model === 'dbs' ? 'fbs' : model}`;
+    if (warehouseRow) {
+      if (model === 'fbs') {
+        // 🆕 v0.3.7: FBS-данные могут быть NULL — склад не принимает FBS-товары
+        if (warehouseRow.box_delivery_marketplace_coef_pct == null) {
+          fbsUnavailable = true;
+          // Fallback на FBW-данные с предупреждением
+          baseRub = Number(warehouseRow.box_delivery_base);
+          literRub = Number(warehouseRow.box_delivery_liter);
+          coefPct = Number(warehouseRow.box_delivery_coef_pct);
+        } else {
+          baseRub = Number(warehouseRow.box_delivery_marketplace_base);
+          literRub = Number(warehouseRow.box_delivery_marketplace_liter);
+          coefPct = Number(warehouseRow.box_delivery_marketplace_coef_pct);
+        }
+      } else {
+        // FBO/FBW (default) — используем box_delivery_*
+        baseRub = Number(warehouseRow.box_delivery_base);
+        literRub = Number(warehouseRow.box_delivery_liter);
+        coefPct = Number(warehouseRow.box_delivery_coef_pct);
+      }
+      warehouseCoef = {
+        source: coefSource,
+        warehouse_name: warehouseRow.warehouse_name,
+        geo_name: warehouseRow.geo_name,
+        coef: coefPct ? Math.round((coefPct / 100) * 100) / 100 : null,
+        base_rub: baseRub,
+        per_liter_rub: literRub,
+        valid_date: warehouseRow.valid_date,
+        fbs_unavailable: fbsUnavailable,
+      };
+    } else {
+      // Полный fallback — старые цифры
+      warehouseCoef = {
+        source: 'default', warehouse_name: null, geo_name: null,
+        coef: 1.7, base_rub: 46, per_liter_rub: 14, valid_date: null,
+        fbs_unavailable: false,
+      };
+      baseRub = 46;
+      literRub = 14;
+    }
+
+    // ── 3. ЛОГИСТИКА ──
+    // 🆕 v0.3.7: forward_rub теперь считается ИЗ WB Box API (base + per_liter * (volume-1))
+    // Это УЖЕ С УЧЁТОМ коэфа склада — поэтому в виджете НЕ умножать ещё раз!
+    const forwardRub = computeLogisticsFromWarehouse(volumeL, baseRub, literRub);
+
+    // Возврат на склад (FBO): используем те же base+liter (как у прямой доставки FBO)
+    const returnToWhRub = model === 'fbo' ? forwardRub : 0;
+
+    // Возврат в ПВЗ (FBS): пока берём из старой таблицы
+    const { data: pvzTariffs } = await supabase
+      .from('wb_logistics_tariffs')
+      .select('volume_min_l, volume_max_l, flat_per_liter_rub, first_liter_rub, extra_liter_rub')
+      .eq('kind', 'return_to_pvz')
+      .is('valid_to', null);
+    const returnToPvzRub = computeReturnPvz(pvzTariffs || [], volumeL);
+
     const logistics = {
-      forward_rub:       computeLogisticsCost(byKind[fwdKey]         || [], volumeL),
-      return_to_wh_rub:  computeLogisticsCost(byKind['return_to_wh']  || [], volumeL),
-      return_to_pvz_rub: computeLogisticsCost(byKind['return_to_pvz'] || [], volumeL),
-      volume_l:          volumeL,
+      forward_rub: forwardRub,
+      return_to_wh_rub: returnToWhRub,
+      return_to_pvz_rub: returnToPvzRub,
+      volume_l: volumeL,
       model,
-      warehouse_coef:    warehouseCoef,
+      warehouse_coef: warehouseCoef,
+      // 🆕 v0.3.7: флаг для виджета — показать предупреждение
+      fbs_unavailable: fbsUnavailable && model === 'fbs',
+      // 🆕 v0.3.7: forward_rub уже включает коэф склада, виджет НЕ должен умножать
+      forward_includes_coef: true,
     };
 
-    // ── 4. Версия оферты ──
+    // ── 4. ОФЕРТА ──
     const { data: offerRows } = await supabase
       .from('wb_offer_versions')
       .select('version_label, effective_from')
@@ -226,8 +255,6 @@ export default async function handler(req, res) {
       ? { version_label: offerRows[0].version_label, effective_from: offerRows[0].effective_from }
       : { version_label: 'wb_api_official', effective_from: new Date().toISOString().slice(0,10) };
 
-    // ── 5. Средняя СПП по площадке (НОВОЕ в v0.3.3) ──
-    // По наблюдениям рынка — 26-28% в среднем.
     const ktr = { min_pct: 0, max_pct: 2.5 };
     const spp = { avg_pct: 27 };
 
