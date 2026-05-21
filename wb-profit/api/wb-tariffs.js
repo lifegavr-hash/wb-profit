@@ -1,11 +1,15 @@
-// /api/wb-tariffs v0.3.7 — публичные тарифы WB для виджета.
+// /api/wb-tariffs v0.3.8 — публичные тарифы WB для виджета.
 // Кэш 1 час на CDN.
 //
-// v0.3.7 ИЗМЕНЕНИЯ:
-// - Базовая логистика берётся из wb_warehouse_tariffs (актуальная WB Box API)
-//   а не из старой таблицы wb_logistics_tariffs
-// - Добавлен флаг fbs_unavailable когда склад не принимает FBS-товары
-// - Возврат остался по упрощённой формуле (будет улучшен в v0.4)
+// v0.3.8 ИЗМЕНЕНИЯ:
+// - ЗОНАЛЬНАЯ сетка логистики WB по оферте от 15.09.2025:
+//   0.001-0.200 л → 23 ₽, 0.201-0.400 → 26 ₽, 0.401-0.600 → 29 ₽,
+//   0.601-0.800 → 30 ₽, 0.801-1.000 → 32 ₽
+//   > 1 литра → 46 + 14 × (V-1)
+// - Эти ставки умножаются на коэф склада (WB Box API)
+// - Раньше использовалась неверная пропорция base × volume — это занижало
+//   логистику для мелких товаров в 2 раза
+// - forward_includes_coef=true — виджет НЕ умножает повторно
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -26,20 +30,33 @@ function pickPct(row, model) {
   return Number(row.fbo_pct);
 }
 
-// 🆕 v0.3.7: Расчёт логистики напрямую из тарифов склада WB
-// Формула WB: первый литр = base, каждый следующий = liter ₽
-function computeLogisticsFromWarehouse(volumeL, base, perLiter) {
+// 🆕 v0.3.8: ЗОНАЛЬНАЯ сетка WB для логистики
+// Источник: оферта WB от 15.09.2025
+// Для объёмов < 1л WB берёт фиксированную ставку зоны (НЕ пропорцию!)
+// Эти ставки умножаются на коэф склада
+const WB_BASE_ZONES = [
+  { min: 0.001, max: 0.200, rub: 23 },
+  { min: 0.201, max: 0.400, rub: 26 },
+  { min: 0.401, max: 0.600, rub: 29 },
+  { min: 0.601, max: 0.800, rub: 30 },
+  { min: 0.801, max: 1.000, rub: 32 },
+];
+const WB_BASE_OVER_1L_FIRST = 46;
+const WB_BASE_OVER_1L_EXTRA = 14;
+
+function getBaseRubForVolume(volumeL) {
   if (!Number.isFinite(volumeL) || volumeL <= 0) return 0;
-  if (!Number.isFinite(base) || !Number.isFinite(perLiter)) return 0;
-  // 🆕 v0.3.7 ФИКС: формула WB tariffs/box —
-  //   volume <= 1 л: base * volume (пропорционально)
-  //   volume > 1 л:  base + perLiter * (volume - 1)
-  // base и perLiter УЖЕ включают коэф склада (WB сразу отдаёт умноженные).
   if (volumeL <= 1) {
-    return Math.round(Number(base) * volumeL * 100) / 100;
+    const zone = WB_BASE_ZONES.find(z => volumeL <= z.max);
+    return zone ? zone.rub : 32;
   }
-  const extraL = volumeL - 1;
-  return Math.round((Number(base) + Number(perLiter) * extraL) * 100) / 100;
+  return WB_BASE_OVER_1L_FIRST + WB_BASE_OVER_1L_EXTRA * (volumeL - 1);
+}
+
+function computeLogisticsZonal(volumeL, warehouseCoef) {
+  const base = getBaseRubForVolume(volumeL);
+  const coef = Number.isFinite(warehouseCoef) && warehouseCoef > 0 ? warehouseCoef : 1.0;
+  return Math.round(base * coef * 100) / 100;
 }
 
 // Старая логика для return_to_pvz (пока в БД, потом обновим в v0.4)
@@ -255,6 +272,9 @@ export default async function handler(req, res) {
         warehouse_name: warehouseRow.warehouse_name,
         geo_name: warehouseRow.geo_name,
         coef: coefPct ? Math.round((coefPct / 100) * 100) / 100 : null,
+        // 🆕 v0.3.8: реально применённая ставка из зональной сетки WB
+        base_rub_zonal: getBaseRubForVolume(volumeL),
+        // base_rub/per_liter — справочно из WB Box API (не используются для расчёта)
         base_rub: baseRub,
         per_liter_rub: literRub,
         valid_date: warehouseRow.valid_date,
@@ -274,10 +294,12 @@ export default async function handler(req, res) {
     // ── 3. ЛОГИСТИКА ──
     // 🆕 v0.3.7: forward_rub теперь считается ИЗ WB Box API (base + per_liter * (volume-1))
     // Это УЖЕ С УЧЁТОМ коэфа склада — поэтому в виджете НЕ умножать ещё раз!
-    const forwardRub = computeLogisticsFromWarehouse(volumeL, baseRub, literRub);
+    // 🆕 v0.3.8: зональная сетка WB × коэф склада из WB Box API
+    const whCoefValue = warehouseCoef?.coef ?? 1.0;
+    const forwardRub = computeLogisticsZonal(volumeL, whCoefValue);
 
     // Возврат на склад (FBO): используем те же base+liter (как у прямой доставки FBO)
-    const returnToWhRub = model === 'fbo' ? forwardRub : 0;
+    const returnToWhRub = model === 'fbo' ? computeLogisticsZonal(volumeL, whCoefValue) : 0;
 
     // Возврат в ПВЗ (FBS): пока берём из старой таблицы
     const { data: pvzTariffs } = await supabase
