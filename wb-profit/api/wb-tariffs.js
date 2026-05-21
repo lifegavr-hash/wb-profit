@@ -31,8 +31,14 @@ function pickPct(row, model) {
 function computeLogisticsFromWarehouse(volumeL, base, perLiter) {
   if (!Number.isFinite(volumeL) || volumeL <= 0) return 0;
   if (!Number.isFinite(base) || !Number.isFinite(perLiter)) return 0;
-  // Первый литр включён в base; следующие литры считаются дополнительно
-  const extraL = Math.max(0, volumeL - 1);
+  // 🆕 v0.3.7 ФИКС: формула WB tariffs/box —
+  //   volume <= 1 л: base * volume (пропорционально)
+  //   volume > 1 л:  base + perLiter * (volume - 1)
+  // base и perLiter УЖЕ включают коэф склада (WB сразу отдаёт умноженные).
+  if (volumeL <= 1) {
+    return Math.round(Number(base) * volumeL * 100) / 100;
+  }
+  const extraL = volumeL - 1;
   return Math.round((Number(base) + Number(perLiter) * extraL) * 100) / 100;
 }
 
