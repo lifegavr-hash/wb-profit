@@ -494,6 +494,105 @@ tr.loss td{background:#fff5f5}
   .home-card{padding:14px}
 }
 .home-spinner{text-align:center;padding:48px;color:var(--muted);font-size:13px}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   🆕 v0.4.2 МОБИЛЬНАЯ АДАПТАЦИЯ
+   ═══════════════════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+  /* Общие */
+  body{overflow-x:hidden}
+  .main{padding:60px 12px 20px 12px!important}
+  .section{padding:0!important}
+  .card{padding:12px!important;border-radius:10px!important;margin-bottom:10px}
+  .ct{font-size:15px!important}
+  h1,h2{font-size:20px!important}
+  h3{font-size:16px!important}
+
+  /* Подбор товара — форма */
+  .unit-grid{gap:10px!important}
+  .unit-col{gap:6px!important}
+  .unit-col input,.unit-col select{padding:10px 12px!important;font-size:14px!important}
+  .unit-label{font-size:12px!important;margin-top:4px!important}
+
+  /* Габариты Д×Ш×В на одной строке: на mobile делаем компактно */
+  #unitDimL,#unitDimW,#unitDimH{width:48px!important;font-size:13px!important;padding:8px 6px!important}
+
+  /* Цена + валюта (на мобиле слегка ужать) */
+  #unitCostCurrency{width:64px!important;font-size:12px!important}
+
+  /* Параметры расходов — внутри details */
+  details summary{font-size:13px!important;padding:10px 12px!important}
+
+  /* Переключатель FBW/FBS/DBS */
+  .unit-model-toggle{padding:3px!important}
+  .unit-model-btn{padding:8px 4px!important;gap:1px!important}
+  .unit-model-btn .um-name{font-size:12px!important}
+  .unit-model-btn .um-sub{font-size:9px!important;letter-spacing:.2px!important}
+
+  /* Результаты — карточки прибыль/маржа/ROI на мобиле в стек */
+  .unit-result{padding:12px!important;margin-top:14px!important}
+  .unit-result-grid{grid-template-columns:1fr 1fr 1fr!important;gap:8px!important}
+  .unit-result-item{padding:8px 6px!important}
+  .unit-result-lbl{font-size:9px!important}
+  .unit-result-val{font-size:14px!important}
+
+  /* Breakdown — больше воздуха */
+  .unit-breakdown-row{font-size:12px!important;padding:4px 0!important}
+
+  /* Сравнение моделей FBW/FBS/DBS — на мобиле в столбик */
+  #unitComparison > div{padding:12px!important}
+  #unitComparison > div > div:last-child{grid-template-columns:1fr 1fr 1fr!important;gap:8px!important}
+
+  /* Кнопки действий */
+  #sectionUnit .btn-primary,#sectionUnit .bulk-btn{font-size:13px!important;padding:10px 14px!important;flex:1}
+
+  /* ─── ИСТОРИЯ ─── */
+  /* Туллбар с фильтрами на мобиле в столбик и full-width */
+  #sectionUnit .card > div:first-child{flex-direction:column!important;align-items:stretch!important}
+  #histSearch,#histSort,#histModel{width:100%!important;font-size:13px!important}
+
+  /* Таблица истории — горизонтальный скролл вместо ломки */
+  #unitHistory{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .hist-table{min-width:560px;font-size:12px!important}
+  .hist-table th,.hist-table td{padding:6px 8px!important;white-space:nowrap}
+  .hist-table td:first-child{white-space:normal;min-width:140px}
+
+  /* ─── ГЛАВНАЯ ─── */
+  /* «Куда ушли деньги» — крупный grid */
+  .home-big{font-size:22px!important}
+  .home-card{padding:12px!important}
+  .home-grid-2,.home-grid-3{grid-template-columns:1fr!important}
+
+  /* Calc/детализация расходов */
+  .flow-row,.flow-total{grid-template-columns:90px 1fr 70px!important;font-size:10px!important;gap:4px!important}
+
+  /* Кнопки периода */
+  .analytics-tabs{flex-wrap:wrap}
+  .atab{flex:1;min-width:80px;font-size:12px}
+
+  /* Sensitivity-блок (что если изменить цену) */
+  .unit-sensitivity{padding:10px!important;margin-top:12px!important}
+  .unit-sensitivity-row{font-size:11px!important}
+
+  /* Подсветки PRO */
+  .pro-badge{font-size:9px!important;padding:1px 5px!important}
+
+  /* Логин-инфо в sidebar */
+  .sidebar{width:240px!important}
+  .sidebar-item{font-size:13px!important;padding:9px 14px!important}
+}
+
+/* Очень узкие экраны (iPhone SE и др.) */
+@media(max-width:420px){
+  .main{padding:60px 8px 16px 8px!important}
+  .card{padding:10px!important}
+  #unitDimL,#unitDimW,#unitDimH{width:42px!important;padding:7px 4px!important}
+  .unit-result-grid{grid-template-columns:1fr!important}
+  .unit-result-val{font-size:18px!important}
+  #unitComparison > div > div:last-child{grid-template-columns:1fr!important;gap:6px!important}
+}
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 </style>
 </head>
 <body>
@@ -806,16 +905,15 @@ tr.loss td{background:#fff5f5}
             </div>
             <div id="unitCategoryChosen" style="margin-top:6px;font-size:12px;color:#2e7d32;display:none"></div>
 
-            <label class="unit-label">Объём упаковки, литров <span style="color:#888;font-weight:400">— или введи Д×Ш×В см</span></label>
-            <div style="display:flex;gap:6px;align-items:center">
-              <input type="number" id="unitVolume" min="0" step="0.001" value="1" oninput="calcUnitV2()" style="flex:1">
-              <span style="color:#888">или</span>
+            <label class="unit-label">Объём упаковки, литров</label>
+            <input type="number" id="unitVolume" min="0" step="0.001" value="1" oninput="calcUnitV2()">
+            <div class="dim-row" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px">
+              <span style="color:#888;font-size:11px">или введи Д×Ш×В см:</span>
               <input type="number" id="unitDimL" placeholder="Д" min="0" step="0.1" oninput="onDimsChange()" style="width:55px">
               <span>×</span>
               <input type="number" id="unitDimW" placeholder="Ш" min="0" step="0.1" oninput="onDimsChange()" style="width:55px">
               <span>×</span>
               <input type="number" id="unitDimH" placeholder="В" min="0" step="0.1" oninput="onDimsChange()" style="width:55px">
-              <span style="color:#888;font-size:11px">см</span>
             </div>
 
             <label class="unit-label">Вес, кг</label>
