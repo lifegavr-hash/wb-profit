@@ -1,25 +1,14 @@
-// /api/wb-tariffs — публичные тарифы WB для виджета v0.3.0.
-// БЕЗ авторизации, данные публичные (источник: WB Tariffs API через ежедневный pg_cron).
+// /api/wb-tariffs v0.3.3 — публичные тарифы WB для виджета.
 // Кэш 1 час на CDN.
 //
 // GET /api/wb-tariffs?
-//   subject_id=<int>     ← основной способ (от WB Card API v4)
-//   subject=<name>       ← fallback по имени если нет id
-//   parent=<name>        ← fallback по корневой категории
+//   subject_id=<int>     ← основной (от WB Card API v4)
+//   subject=<name>       ← fallback
+//   parent=<name>        ← fallback
 //   volume=<L>           ← объём литры
 //   model=<fbo|fbs|dbs>  ← модель продаж
-//
-// Возвращает:
-//   {
-//     commission: { 
-//       pct, source: 'exact_id' | 'exact_name' | 'fallback_parent' | 'default',
-//       subject_id, subject_name, parent_id, parent_category,
-//       all_models: { fbo, fbs, dbs, dbs_express, storage }  ← все ставки сразу
-//     },
-//     logistics:  { forward_rub, return_to_wh_rub, return_to_pvz_rub, volume_l },
-//     ktr:        { min_pct: 0, max_pct: 2.5 },
-//     offer:      { version_label, effective_from, summary_url }
-//   }
+//   warehouse=<name>     ← конкретный склад (опционально)
+//                          если не указан — медиана по ЦФО для FBO
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -28,7 +17,6 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// ─── Подсчёт логистики по сетке тарифов и объёму ───
 function computeLogisticsCost(tariffRows, volumeL) {
   if (!Number.isFinite(volumeL) || volumeL <= 0) return 0;
   const v = Math.max(0.001, volumeL);
@@ -51,8 +39,6 @@ function normalize(s) {
   return String(s).trim().toLowerCase();
 }
 
-// Извлекает ставку для нужной модели из строки wb_commissions.
-// model: 'fbo' | 'fbs' | 'dbs'
 function pickPct(row, model) {
   if (!row) return null;
   if (model === 'fbs') return Number(row.fbs_pct);
@@ -75,11 +61,11 @@ export default async function handler(req, res) {
     const volumeL = Number(req.query.volume) || 0;
     const modelRaw = String(req.query.model || 'fbo').toLowerCase();
     const model = ['fbo', 'fbs', 'dbs'].includes(modelRaw) ? modelRaw : 'fbo';
+    const warehouseName = req.query.warehouse ? String(req.query.warehouse).trim() : null;
 
-    // ─── 1. Комиссия: пробуем 3 уровня точности ───
+    // ── 1. Комиссия ──
     let commission = null;
 
-    // 1a. ТОЧНЫЙ поиск по subject_id (главный путь, данные из WB API)
     if (subjectId) {
       const { data } = await supabase
         .from('wb_commissions')
@@ -105,8 +91,6 @@ export default async function handler(req, res) {
         };
       }
     }
-
-    // 1b. По имени subject (если не нашли по id)
     if (!commission && subject) {
       const { data } = await supabase
         .from('wb_commissions')
@@ -123,17 +107,12 @@ export default async function handler(req, res) {
           parent_id: r.parent_id,
           parent_category: r.parent_category,
           all_models: {
-            fbo: Number(r.fbo_pct),
-            fbs: Number(r.fbs_pct),
-            dbs: Number(r.dbs_pct),
-            dbs_express: Number(r.dbs_express_pct),
-            storage: Number(r.paid_storage_pct),
+            fbo: Number(r.fbo_pct), fbs: Number(r.fbs_pct), dbs: Number(r.dbs_pct),
+            dbs_express: Number(r.dbs_express_pct), storage: Number(r.paid_storage_pct),
           },
         };
       }
     }
-
-    // 1c. Fallback по корневой категории (среднее всех subject в parent)
     if (!commission && parent) {
       const { data } = await supabase
         .from('wb_commissions')
@@ -141,40 +120,81 @@ export default async function handler(req, res) {
         .ilike('parent_category', parent)
         .limit(50);
       if (data && data.length) {
-        const avg = (key) =>
-          Math.round(
-            (data.reduce((s, r) => s + Number(r[key] || 0), 0) / data.length) * 100
-          ) / 100;
-        const fbo = avg('fbo_pct');
-        const fbs = avg('fbs_pct');
-        const dbs = avg('dbs_pct');
+        const avg = key => Math.round((data.reduce((s, r) => s + Number(r[key] || 0), 0) / data.length) * 100) / 100;
+        const fbo = avg('fbo_pct'), fbs = avg('fbs_pct'), dbs = avg('dbs_pct');
         commission = {
           pct: model === 'fbs' ? fbs : (model === 'dbs' ? dbs : fbo),
-          source: 'fallback_parent',
-          subject_id: null,
-          subject_name: null,
-          parent_id: null,
-          parent_category: data[0].parent_category,
+          source: 'fallback_parent', subject_id: null, subject_name: null,
+          parent_id: null, parent_category: data[0].parent_category,
           all_models: { fbo, fbs, dbs, dbs_express: 3, storage: 25 },
         };
       }
     }
-
-    // 1d. Дефолт — средняя по всему маркетплейсу (avg_fbo ≈ 30%, avg_fbs ≈ 22%)
     if (!commission) {
       commission = {
         pct: model === 'fbs' ? 22 : (model === 'dbs' ? 17 : 30),
-        source: 'default',
-        subject_id: null,
-        subject_name: null,
-        parent_id: null,
-        parent_category: null,
+        source: 'default', subject_id: null, subject_name: null,
+        parent_id: null, parent_category: null,
         all_models: { fbo: 30, fbs: 22, dbs: 17, dbs_express: 3, storage: 25 },
       };
     }
 
-    // ─── 2. Логистика ───
-    // Для FBO/DBS возврат на склад, для FBS возврат в ПВЗ
+    // ── 2. Коэффициент склада (НОВОЕ в v0.3.3) ──
+    // Если warehouse указан — точный коэф этого склада.
+    // Если не указан — медианный коэф по ЦФО (самые популярные склады).
+    let warehouseCoef = null;
+    if (warehouseName) {
+      const { data } = await supabase
+        .from('wb_warehouse_tariffs')
+        .select('warehouse_name, geo_name, box_delivery_coef_pct, box_delivery_marketplace_coef_pct, valid_date')
+        .ilike('warehouse_name', warehouseName)
+        .order('valid_date', { ascending: false })
+        .limit(1);
+      if (data && data[0]) {
+        const r = data[0];
+        const coefPct = model === 'fbs'
+          ? r.box_delivery_marketplace_coef_pct
+          : r.box_delivery_coef_pct;
+        warehouseCoef = {
+          source: 'exact_warehouse',
+          warehouse_name: r.warehouse_name,
+          geo_name: r.geo_name,
+          coef: coefPct ? Math.round((Number(coefPct) / 100) * 100) / 100 : null,
+          valid_date: r.valid_date,
+        };
+      }
+    }
+    if (!warehouseCoef) {
+      // Медиана по ЦФО для авторежима
+      const colName = model === 'fbs' ? 'box_delivery_marketplace_coef_pct' : 'box_delivery_coef_pct';
+      const { data } = await supabase
+        .from('wb_warehouse_tariffs')
+        .select(colName + ', valid_date')
+        .eq('geo_name', 'Центральный федеральный округ')
+        .order('valid_date', { ascending: false })
+        .limit(20);
+      if (data && data.length) {
+        const values = data.map(r => Number(r[colName])).filter(v => v > 0).sort((a, b) => a - b);
+        const median = values.length
+          ? values[Math.floor(values.length / 2)]
+          : 170;
+        warehouseCoef = {
+          source: 'median_cfo',
+          warehouse_name: null,
+          geo_name: 'Центральный федеральный округ (медиана)',
+          coef: Math.round((median / 100) * 100) / 100,
+          valid_date: data[0].valid_date,
+        };
+      } else {
+        warehouseCoef = {
+          source: 'default',
+          warehouse_name: null, geo_name: null,
+          coef: 1.7, valid_date: null,
+        };
+      }
+    }
+
+    // ── 3. Логистика (базовая сетка + коэф склада в виджете) ──
     const kinds = [`forward_${model === 'dbs' ? 'fbs' : model}`, 'return_to_wh', 'return_to_pvz'];
     const { data: tariffs } = await supabase
       .from('wb_logistics_tariffs')
@@ -186,7 +206,6 @@ export default async function handler(req, res) {
     (tariffs || []).forEach(t => {
       (byKind[t.kind] = byKind[t.kind] || []).push(t);
     });
-
     const fwdKey = `forward_${model === 'dbs' ? 'fbs' : model}`;
     const logistics = {
       forward_rub:       computeLogisticsCost(byKind[fwdKey]         || [], volumeL),
@@ -194,26 +213,25 @@ export default async function handler(req, res) {
       return_to_pvz_rub: computeLogisticsCost(byKind['return_to_pvz'] || [], volumeL),
       volume_l:          volumeL,
       model,
+      warehouse_coef:    warehouseCoef,
     };
 
-    // ─── 3. Версия оферты ───
+    // ── 4. Версия оферты ──
     const { data: offerRows } = await supabase
       .from('wb_offer_versions')
       .select('version_label, effective_from')
       .eq('is_current', true)
       .limit(1);
     const offer = offerRows && offerRows[0]
-      ? {
-          version_label: offerRows[0].version_label,
-          effective_from: offerRows[0].effective_from,
-          summary_url: 'https://wb-profit.vercel.app/api/wb-tariffs?summary=1',
-        }
+      ? { version_label: offerRows[0].version_label, effective_from: offerRows[0].effective_from }
       : { version_label: 'wb_api_official', effective_from: new Date().toISOString().slice(0,10) };
 
-    // ─── 4. КТР ───
+    // ── 5. Средняя СПП по площадке (НОВОЕ в v0.3.3) ──
+    // По наблюдениям рынка — 26-28% в среднем.
     const ktr = { min_pct: 0, max_pct: 2.5 };
+    const spp = { avg_pct: 27 };
 
-    return res.status(200).json({ commission, logistics, ktr, offer });
+    return res.status(200).json({ commission, logistics, ktr, offer, spp });
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) });
   }
