@@ -66,6 +66,55 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    // 🆕 v0.4: режим поиска категорий
+    if (req.query.search) {
+      const q = String(req.query.search).trim();
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 15, 1), 50);
+      if (q.length < 2) {
+        return res.status(200).json({ matches: [] });
+      }
+      const { data, error } = await supabase
+        .from('wb_commissions')
+        .select('subject_id, subject_name, parent_id, parent_category, fbo_pct, fbs_pct, dbs_pct, dbs_express_pct, paid_storage_pct')
+        .eq('source', 'wb_api_official')
+        .or(`subject_name.ilike.%${q}%,parent_category.ilike.%${q}%`)
+        .order('subject_name', { ascending: true })
+        .limit(limit);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ matches: data || [], query: q });
+    }
+
+    // 🆕 v0.4: список популярных складов (для dropdown в подборе)
+    if (req.query.list_warehouses) {
+      const { data, error } = await supabase
+        .from('wb_warehouse_tariffs')
+        .select('warehouse_name, geo_name, box_delivery_coef_pct')
+        .order('valid_date', { ascending: false })
+        .limit(200);
+      if (error) return res.status(500).json({ error: error.message });
+      // Дедупликация: только последняя запись по каждому складу
+      const seen = new Set();
+      const warehouses = [];
+      for (const row of (data || [])) {
+        if (seen.has(row.warehouse_name)) continue;
+        seen.add(row.warehouse_name);
+        if (!row.box_delivery_coef_pct) continue;
+        warehouses.push({
+          name: row.warehouse_name,
+          geo: row.geo_name,
+          coef: Math.round((Number(row.box_delivery_coef_pct) / 100) * 100) / 100,
+        });
+      }
+      // Сортируем по геозоне+коэффициенту для удобства
+      warehouses.sort((a, b) => {
+        const aIsCfo = (a.geo || '').includes('Центральный') ? 0 : 1;
+        const bIsCfo = (b.geo || '').includes('Центральный') ? 0 : 1;
+        if (aIsCfo !== bIsCfo) return aIsCfo - bIsCfo;
+        return a.coef - b.coef;
+      });
+      return res.status(200).json({ warehouses });
+    }
+
     const subjectId = Number(req.query.subject_id) || null;
     const subject = normalize(req.query.subject);
     const parent  = normalize(req.query.parent);
