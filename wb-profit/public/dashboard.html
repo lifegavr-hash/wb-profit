@@ -228,6 +228,39 @@ tr.loss td{background:#fff5f5}
 .unit-history-action{padding:4px 10px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer}
 .unit-history-action:hover{border-color:#7c3aed;color:#7c3aed}
 .unit-history-action.danger:hover{border-color:#ef4444;color:#ef4444}
+/* === MODEL TOGGLE BUTTONS (FBW / FBS / DBS) === */
+.unit-model-toggle{display:flex;gap:0;background:#f5f5f7;border-radius:10px;padding:4px;width:100%}
+.unit-model-btn{
+  flex:1;
+  border:none;
+  background:transparent;
+  padding:10px 12px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:600;
+  color:#555;
+  cursor:pointer;
+  transition:all .18s ease;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  line-height:1.2;
+}
+.unit-model-btn .um-name{font-size:13px;font-weight:700}
+.unit-model-btn .um-sub{font-size:10px;font-weight:400;color:#888;text-transform:uppercase;letter-spacing:.3px}
+.unit-model-btn:hover:not(.active){background:rgba(124,58,237,.06);color:#5b3aff}
+.unit-model-btn.active{
+  background:#fff;
+  color:#5b3aff;
+  box-shadow:0 2px 8px rgba(124,58,237,.12), 0 0 0 1px rgba(124,58,237,.18);
+}
+.unit-model-btn.active .um-sub{color:#7c3aed}
+@media(max-width:520px){
+  .unit-model-btn{padding:8px 6px}
+  .unit-model-btn .um-name{font-size:12px}
+  .unit-model-btn .um-sub{font-size:9px}
+}
 /* === COLUMN SETTINGS === */
 .col-settings{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px}
 .col-settings summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);outline:none}
@@ -790,9 +823,9 @@ tr.loss td{background:#fff5f5}
           </div>
 
           <div class="unit-col">
-            <label class="unit-label">Цена продажи на WB <span style="color:#888;font-weight:400">— цена с витрины (с СПП)</span></label>
-            <input type="number" id="unitRetailPriceSeen" min="0" step="0.01" placeholder="168" oninput="calcUnitV2()">
-            <div id="unitPriceBasicHint" style="font-size:11px;color:#888;margin-top:4px;font-style:italic">Цена продавца (priceBasic) ≈ — ₽ — будет вычислена автоматически по средней СПП 27%</div>
+            <label class="unit-label">Цена продавца (priceBasic) <span style="color:#888;font-weight:400">— полная цена без СПП, как в ЛК WB</span></label>
+            <input type="number" id="unitRetailPriceSeen" min="0" step="0.01" placeholder="230" oninput="calcUnitV2()">
+            <div id="unitPriceBasicHint" style="font-size:11px;color:#888;margin-top:4px;font-style:italic">Цена для покупателя на витрине ≈ — ₽ (после средней СПП 27%)</div>
 
             <label class="unit-label">Себестоимость закупки</label>
             <div style="display:flex;gap:6px">
@@ -837,10 +870,19 @@ tr.loss td{background:#fff5f5}
         <!-- Блок 3: переключатель модели -->
         <div style="margin-top:14px">
           <label class="unit-label" style="margin-bottom:6px">Модель продаж</label>
-          <div id="unitModelToggle" style="display:flex;gap:4px;background:#f5f5f7;border-radius:8px;padding:3px">
-            <button type="button" class="unit-model-btn active" data-model="fbo" onclick="setUnitModel('fbo')">FBW (Склад WB)</button>
-            <button type="button" class="unit-model-btn" data-model="fbs" onclick="setUnitModel('fbs')">FBS (Маркетплейс)</button>
-            <button type="button" class="unit-model-btn" data-model="dbs" onclick="setUnitModel('dbs')">DBS (Витрина)</button>
+          <div id="unitModelToggle" class="unit-model-toggle">
+            <button type="button" class="unit-model-btn active" data-model="fbo" onclick="setUnitModel('fbo')">
+              <span class="um-name">FBW</span>
+              <span class="um-sub">Склад WB</span>
+            </button>
+            <button type="button" class="unit-model-btn" data-model="fbs" onclick="setUnitModel('fbs')">
+              <span class="um-name">FBS</span>
+              <span class="um-sub">Маркетплейс</span>
+            </button>
+            <button type="button" class="unit-model-btn" data-model="dbs" onclick="setUnitModel('dbs')">
+              <span class="um-name">DBS</span>
+              <span class="um-sub">Витрина</span>
+            </button>
           </div>
         </div>
 
@@ -2254,7 +2296,8 @@ async function loadWarehousesForPicker() {
 
 // ── Основной расчёт ──
 function calcUnitV2() {
-  const seenPrice = parseFloat(document.getElementById('unitRetailPriceSeen').value) || 0;
+  // 🆕 v0.4.1: поле теперь — priceBasic (полная цена продавца)
+  const priceBasic = parseFloat(document.getElementById('unitRetailPriceSeen').value) || 0;
   const costRaw = parseFloat(document.getElementById('unitCostPrice').value) || 0;
   const costCcy = document.getElementById('unitCostCurrency').value;
   const rate = parseFloat(document.getElementById('unitCostRate').value) || 1;
@@ -2268,11 +2311,12 @@ function calcUnitV2() {
   const warehouse = document.getElementById('unitWarehouse').value || 'auto';
   const model = window._unitState.model;
 
-  const priceBasic = seenPrice > 0 ? Math.round(seenPrice / (1 - SPP_AVG/100)) : 0;
+  // Цена для покупателя после СПП
+  const seenPrice = priceBasic > 0 ? Math.round(priceBasic * (1 - SPP_AVG/100)) : 0;
   const hint = document.getElementById('unitPriceBasicHint');
   if (hint) {
-    if (seenPrice > 0) hint.innerHTML = 'Цена продавца (priceBasic) ≈ <b>' + fmt(priceBasic) + ' ₽</b> (' + fmt(seenPrice) + ' ÷ 0.73). Эту цифру селлер видит в ЛК WB.';
-    else hint.innerHTML = 'Цена продавца (priceBasic) ≈ — ₽ — будет вычислена автоматически по средней СПП 27%';
+    if (priceBasic > 0) hint.innerHTML = 'Цена для покупателя на витрине ≈ <b>' + fmt(seenPrice) + ' ₽</b> (после средней СПП ' + SPP_AVG + '% от ' + fmt(priceBasic) + ' ₽)';
+    else hint.innerHTML = 'Цена для покупателя на витрине ≈ — ₽ (после средней СПП ' + SPP_AVG + '%)';
   }
 
   const commByModel = window._unitState.commissionByModel;
