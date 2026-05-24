@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.0</title>
+<title>WB Profit — Дашборд v0.5.2</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -3438,12 +3438,16 @@ function buildAlerts(items){
   var alerts=[];
   for(var i=0;i<items.length&&alerts.length<3;i++){
     var it=items[i];
+    // 🔥 v0.5.2: nm — это артикул WB, нужен для уникальной идентификации
+    // карточек с одинаковыми названиями
     if(it.drr>50&&it.sales>0){
-      alerts.push({type:'high_drr',name:it.name,
-        msg:'реклама съедает '+it.drr+'% выручки'});
+      alerts.push({type:'high_drr',name:it.name,nm:it.nm||null,
+        msg:'реклама съедает '+it.drr+'% выручки',
+        profit:Number(it.profit)||0});
     } else if(it.profit<0&&it.sales>0){
-      alerts.push({type:'loss',name:it.name,
-        msg:'убыток '+Math.round(Math.abs(it.profit)).toLocaleString('ru-RU')+' ₽'});
+      alerts.push({type:'loss',name:it.name,nm:it.nm||null,
+        msg:'убыток '+Math.round(Math.abs(it.profit)).toLocaleString('ru-RU')+' ₽',
+        profit:Number(it.profit)||0});
     }
   }
   return alerts;
@@ -3569,7 +3573,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
       alerts.push({
         severity:'critical', type:'drr_over_margin', icon:'🔴',
         title:'Реклама в минус',
-        name:it.name,
+        name:it.name+(it.nm?' (арт. '+it.nm+')':''),
         msg:'ДРР '+it.drr.toFixed(1)+'% > маржинальности '+it.marginPct.toFixed(1)+'%. Каждый рекламный рубль приносит убыток. На рекламу потрачено: '+fmtRub(it.ad)+' ₽.',
         loss:lossEst>0?lossEst:null,
         hint:'Снизьте ставки или отключите рекламу этого товара до пересмотра цены/себестоимости.'
@@ -3586,7 +3590,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
         alerts.push({
           severity:'critical', type:'logistics_anomaly', icon:'🔴',
           title:'Аномальная логистика',
-          name:it.name,
+          name:it.name+(it.nm?' (арт. '+it.nm+')':''),
           msg:'Логистика на единицу: '+Math.round(it.logPerUnit)+' ₽ (медиана по магазину: '+Math.round(median)+' ₽). Возможно занижены габариты в карточке.',
           loss:Math.round((it.logPerUnit-median)*it.sales),
           hint:'Проверьте указанные ВxДxГ в карточке. WB штрафует ×25 за занижение габаритов.'
@@ -3604,7 +3608,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
       alerts.push({
         severity:'critical', type:'out_of_stock', icon:'🔴',
         title:'Out-of-stock',
-        name:it.name,
+        name:it.name+(it.nm?' (арт. '+it.nm+')':''),
         msg:'Остаток на складах WB: 0 шт. Скорость продаж: ~'+dailySales.toFixed(1)+' шт/день. После 14 дней WB снизит позиции, после 10 недель карточка станет «мёртвой».',
         loss:weeklyLoss,
         hint:'Срочно сделайте поставку. Если задерживается — поднимите цену чтобы притормозить остаточные продажи.'
@@ -3624,7 +3628,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
         alerts.push({
           severity:'warning', type:'overstocked', icon:'🟠',
           title:'Затоваривание',
-          name:it.name,
+          name:it.name+(it.nm?' (арт. '+it.nm+')':''),
           msg:'Оборачиваемость ~'+Math.round(daysOfStock)+' дней (норма WB: 60-80). Остаток '+it.stockTotal+' шт при продажах '+dailySales.toFixed(1)+' шт/день.'+
               (frozen?' Заморожен капитал: ~'+fmtRub(frozen)+' ₽.':''),
           loss:storageMonth,
@@ -3641,7 +3645,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
         alerts.push({
           severity:'critical', type:'item_loss', icon:'🔴',
           title:'Товар в убытке',
-          name:it.name,
+          name:it.name+(it.nm?' (арт. '+it.nm+')':''),
           msg:'Маржинальность '+it.marginPct.toFixed(1)+'% (убыток '+fmtRub(it.profit)+' ₽ за период). Цена не покрывает расходы.',
           loss:Math.round(Math.abs(it.profit)),
           hint:'Проверьте: правильно ли учтена себестоимость? Возможно стоит поднять цену или снять товар.'
@@ -3650,7 +3654,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
         alerts.push({
           severity:'warning', type:'low_margin', icon:'🟡',
           title:'Опасно низкая маржа',
-          name:it.name,
+          name:it.name+(it.nm?' (арт. '+it.nm+')':''),
           msg:'Маржинальность '+it.marginPct.toFixed(1)+'% — любая реклама или всплеск возвратов сделают товар убыточным.',
           loss:null,
           hint:'Безопасный порог — 15-20%. Подумайте о повышении цены или снижении себестоимости.'
@@ -3671,7 +3675,105 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
 }
 
 // Рендер блока «Защита от потерь» на Главной — топ-5 алертов
+
+// 🔥 v0.5.2: Упрощённая защита от потерь — работает без window.rows
+// Использует top_items из snapshots для агрегации по nm/name за весь период
+function buildSimpleProtectAlerts(snapshots){
+  if(!Array.isArray(snapshots)||snapshots.length===0)return [];
+  var alerts=[];
+  var periodDays=snapshots.length;
+  
+  // Агрегаты за весь период
+  var totalRev=0, totalProfit=0;
+  var byItem={}; // ключ — nm (если есть) или name
+  snapshots.forEach(function(s){
+    totalRev    += Number(s.revenue||0);
+    totalProfit += Number(s.profit||0);
+    (s.top_items||[]).forEach(function(it){
+      var key=it.nm?('nm:'+it.nm):('name:'+it.name);
+      if(!byItem[key]){
+        byItem[key]={name:it.name,nm:it.nm||null,sales:0,revenue:0,profit:0,logistics:0,days:0};
+      }
+      byItem[key].sales    += Number(it.sales||0);
+      byItem[key].revenue  += Number(it.revenue||0);
+      byItem[key].profit   += Number(it.profit||0);
+      byItem[key].logistics+= Number(it.logistics_amount||0);
+      byItem[key].days++;
+    });
+  });
+  
+  // 1) МАГАЗИН В УБЫТКЕ
+  if(totalProfit<0 && totalRev>1000){
+    var lossPct=Math.round(Math.abs(totalProfit)/Math.max(totalRev,1)*100);
+    alerts.push({
+      severity:'critical', type:'shop_loss', icon:'🔴',
+      title:'Магазин в убытке',
+      name:'Весь магазин',
+      msg:'За период '+periodDays+' дн.: выручка '+fmtRub(totalRev)+' ₽, чистый убыток '+fmtRub(totalProfit)+' ₽ ('+lossPct+'% от выручки)',
+      loss:Math.abs(totalProfit),
+      hint:'Проверьте товары с отрицательной маржой и расходы на рекламу.'
+    });
+  }
+  
+  // 2) РИСК КАССОВОГО РАЗРЫВА
+  if(totalProfit>0 && totalRev>10000){
+    var marginPct=totalProfit/totalRev*100;
+    if(marginPct<15){
+      alerts.push({
+        severity:'warning', type:'cashflow_risk', icon:'🟠',
+        title:'Риск кассового разрыва',
+        name:'Весь магазин',
+        msg:'Маржинальность магазина '+marginPct.toFixed(1)+'%. WB задерживает выплаты до 30 дней — при марже <15% это часто приводит к разрыву.',
+        loss:null,
+        hint:'Закладывайте 30 дней между поступлениями. Не масштабируйтесь пока маржа не вырастет до 20%+.'
+      });
+    }
+  }
+  
+  // 3) ТОВАРЫ В УБЫТКЕ за период (агрегированно)
+  Object.keys(byItem).forEach(function(k){
+    var it=byItem[k];
+    if(it.sales>=3 && it.profit<0){
+      var marginPct=it.revenue>0?(it.profit/it.revenue*100):0;
+      alerts.push({
+        severity:'critical', type:'item_loss', icon:'🔴',
+        title:'Товар в убытке',
+        name:it.name+(it.nm?' (арт. '+it.nm+')':''),
+        msg:'За период '+it.days+' дн.: продано '+it.sales+' шт, выручка '+fmtRub(it.revenue)+' ₽, убыток '+fmtRub(Math.abs(it.profit))+' ₽ (маржа '+marginPct.toFixed(1)+'%)',
+        loss:Math.round(Math.abs(it.profit)),
+        hint:'Откройте «Подбор товара» чтобы найти безубыточную цену, или снимите товар если он системно убыточный.'
+      });
+    } else if(it.sales>=3){
+      var marginPct2=it.revenue>0?(it.profit/it.revenue*100):0;
+      if(marginPct2>=0 && marginPct2<10){
+        alerts.push({
+          severity:'warning', type:'low_margin', icon:'🟡',
+          title:'Опасно низкая маржа',
+          name:it.name+(it.nm?' (арт. '+it.nm+')':''),
+          msg:'Маржинальность '+marginPct2.toFixed(1)+'% — любая реклама или возвраты сделают товар убыточным.',
+          loss:null,
+          hint:'Безопасный порог — 15-20%. Подумайте о повышении цены или снижении себестоимости.'
+        });
+      }
+    }
+  });
+  
+  // Сортировка
+  var sevOrder={critical:0, warning:1, info:2};
+  alerts.sort(function(a,b){
+    var d=sevOrder[a.severity]-sevOrder[b.severity];
+    if(d!==0)return d;
+    return (Number(b.loss)||0)-(Number(a.loss)||0);
+  });
+  return alerts;
+}
+
 function renderRichAlertsBlock(){
+  // 🔥 v0.5.2: Если rich-alerts не сгенерированы (нет данных из Калькулятора),
+  // строим упрощённую версию на основе top_items из snapshots
+  if(!window._richAlerts && window._lastSnapshots){
+    window._richAlerts = buildSimpleProtectAlerts(window._lastSnapshots);
+  }
   var alerts=window._richAlerts||[];
   var totalLoss=alerts.filter(function(a){return a.severity==='critical';})
     .reduce(function(sum,a){return sum+(Number(a.loss)||0);},0);
@@ -3847,6 +3949,9 @@ async function loadHomeData(){
     renderHomeIdle();
     return;
   }
+  // 🔥 v0.5.2: запоминаем snapshots для buildSimpleProtectAlerts
+  window._lastSnapshots = snapshots;
+  window._richAlerts = null;
   renderDashboard(snapshots);
   // Авто-обновление: если последний снапшот старше 24 часов — фоном дёргаем вчера
   maybeAutoRefresh(snapshots);
@@ -3942,8 +4047,13 @@ function renderDashboard(snapshots){
     h+='<div class="home-empty-mini">Нет данных по товарам</div>';
   }
   h+='</div>';
-  h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ ЗА '+chartDays.length+' ДН.</div>';
-  var weekAlerts=collectWeekAlerts(chartDays);
+  // 🔥 v0.5.1: тревоги считаем за ВЕСЬ выбранный период (а не фикс 14 дней)
+  // График остаётся за 14 дней — это удобная визуализация тренда
+  // Но логика «Низкая маржинальность», «Логистика выросла» должна работать
+  // на тех же данных что показывает сводка («куда ушли деньги») — за весь период
+  var alertDays=snapshots;
+  h+='<div class="home-card"><div class="home-card-title">⚠️ ТРЕВОГИ ЗА '+alertDays.length+' ДН.</div>';
+  var weekAlerts=collectWeekAlerts(alertDays);
   if(weekAlerts.length){
     weekAlerts.slice(0,3).forEach(function(a){
       h+='<div class="home-alert"><div class="alert-name">'+a.name+'</div><div class="alert-msg">'+a.msg+'</div></div>';
@@ -3957,7 +4067,7 @@ function renderDashboard(snapshots){
   h+=renderRichAlertsBlock();
   // Block 6: Что сделать
   h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
-  var actions=buildActions(chartDays,weekAlerts);
+  var actions=buildActions(alertDays,weekAlerts);
   if(actions.length){
     actions.forEach(function(a,i){h+='<div class="home-action">'+(i+1)+'. '+a+'</div>';});
   } else {
@@ -4096,17 +4206,45 @@ function renderMoneyFlow(s){
   return h;
 }
 function collectWeekAlerts(week){
-  // ─── 1) Алерты по товарам (high_drr, loss) — из daily snapshot.alerts ───
-  var byName={};
-  week.forEach(function(s){
+  // ─── 1) Алерты по товарам — группируем по nm (артикул) ───
+  // 🔥 v0.5.2: Раньше группировали по name (имени) — это давало баги когда
+  // у разных артикулов одинаковое имя. Теперь группируем по nm.
+  // Также считаем общий профит за период и реальные подряд-ные дни.
+  var byKey={};
+  week.forEach(function(s,idx){
     (s.alerts||[]).forEach(function(a){
-      if(!byName[a.name])byName[a.name]={name:a.name,count:0,last:a.msg,type:a.type,lastDay:s.day};
-      byName[a.name].count++;
-      byName[a.name].last=a.msg;
-      byName[a.name].lastDay=s.day;
+      // Ключ группировки: nm если есть, иначе name (для обратной совместимости)
+      var key=a.nm?('nm:'+a.nm):('name:'+a.name);
+      if(!byKey[key]){
+        byKey[key]={
+          name:a.name, nm:a.nm||null,
+          count:0,        // дней с алертом в периоде
+          totalProfit:0,  // сумма прибыли за все дни алертов
+          last:a.msg, type:a.type,
+          lastDay:s.day, lastDayIdx:idx,
+          dayIndexes:[]   // индексы дней с алертом — для проверки подряд-ности
+        };
+      }
+      byKey[key].count++;
+      byKey[key].totalProfit += (Number(a.profit)||0);
+      byKey[key].last=a.msg;
+      byKey[key].lastDay=s.day;
+      byKey[key].lastDayIdx=idx;
+      byKey[key].dayIndexes.push(idx);
     });
   });
-  var arr=Object.keys(byName).map(function(k){return byName[k];});
+  // Считаем реальный streak — сколько ПОДРЯД дней до lastDay был алерт
+  Object.keys(byKey).forEach(function(k){
+    var item=byKey[k];
+    var streak=1;
+    var idxs=item.dayIndexes.sort(function(a,b){return a-b;});
+    for(var i=idxs.length-1;i>0;i--){
+      if(idxs[i]-idxs[i-1]===1) streak++;
+      else break;
+    }
+    item.consecutiveDays=streak;
+  });
+  var arr=Object.keys(byKey).map(function(k){return byKey[k];});
 
   // ─── 2) Новые алерты на основе ТРЕНДОВ — сравнение последнего дня с историей ───
   // Берём последний день и считаем средние за предыдущие дни (без последнего)
@@ -4320,9 +4458,21 @@ function collectWeekAlerts(week){
     if(newTypes[a.type]){
       return {name:a.name,msg:a.msg,type:a.type};
     }
+    // 🔥 v0.5.2: Корректное форматирование с учётом артикула и реальной подряд-ности
     var dateStr=a.lastDay?' · '+shortDate(a.lastDay):'';
-    var streak=a.count>1?' (уже '+a.count+' дн. подряд)':'';
-    return {name:a.name,msg:a.last+streak+dateStr,type:a.type};
+    var nmStr=a.nm?' (арт. '+a.nm+')':'';
+    var streakStr='';
+    if(a.consecutiveDays>1){
+      streakStr=' (убыточен '+a.consecutiveDays+' дн. подряд)';
+    } else if(a.count>1){
+      streakStr=' ('+a.count+' дн. в периоде)';
+    }
+    // Если type=loss и за период было больше 1 убыточного дня — показываем суммарный убыток
+    var msg=a.last;
+    if(a.type==='loss' && a.count>1 && a.totalProfit<0){
+      msg='суммарный убыток '+Math.round(Math.abs(a.totalProfit)).toLocaleString('ru-RU')+' ₽';
+    }
+    return {name:a.name+nmStr,nm:a.nm,msg:msg+streakStr+dateStr,type:a.type};
   });
 }
 function buildActions(week,alerts){
