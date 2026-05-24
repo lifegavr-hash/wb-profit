@@ -2574,9 +2574,10 @@ async function saveUnitCalcV2() {
       tax_pct: Math.round(calc.taxPct * 100) / 100,
       redemption_pct: Math.round(calc.redemption * 100) / 100,
       ad_pct: Math.round(calc.adPct * 100) / 100,
-      profit: calc.main.profit || 0,
-      margin_pct: calc.main.margin || 0,
-      roi_pct: calc.main.roi || 0,
+      // 🆕 v0.4.4 FIX: округлим до 2 знаков чтобы убрать float-точность типа 11.7049999999999
+      profit: Math.round((calc.main.profit || 0) * 100) / 100,
+      margin_pct: Math.round((calc.main.margin || 0) * 100) / 100,
+      roi_pct: Math.round((calc.main.roi || 0) * 100) / 100,
       all_models: { fbo: calc.fbo, fbs: calc.fbs, dbs: calc.dbs },
       source: 'manual',
     };
