@@ -636,6 +636,165 @@ tr.loss td{background:#fff5f5}
 }
 /* ═══════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════════
+   🆕 v0.4.8 СИСТЕМНАЯ ПОЛИРОВКА ВСЕХ РАЗДЕЛОВ НА MOBILE
+   ═══════════════════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+  /* iOS не зумит при фокусе на input если font-size >= 16px */
+  input[type="text"],input[type="number"],input[type="email"],input[type="password"],
+  input[type="tel"],input[type="url"],input[type="date"],input[type="search"],
+  select,textarea{font-size:16px!important;padding:10px 12px!important;min-height:42px!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important}
+
+  /* Все кнопки — минимальная высота для удобного нажатия пальцем */
+  button,.btn-primary,.bulk-btn,.btn-week,.upgrade-btn{min-height:42px!important;padding:10px 14px!important;font-size:14px!important;box-sizing:border-box!important}
+
+  /* Кнопки внутри секций приложения — full-width на mobile (кроме маленьких в toolbar) */
+  .section .btn-primary,.section .bulk-btn{width:100%!important}
+
+  /* Если в ряду 2-3 кнопки в gap-контейнере — каждая flex:1 чтобы не вылезали */
+  .section div[style*="display:flex"][style*="gap"] > button,
+  .section div[style*="display: flex"][style*="gap"] > button{flex:1!important;min-width:0!important}
+
+  /* ─── ГЛАВНАЯ ─── */
+  /* «Куда ушли деньги», карточки 2-в-ряд → 1 колонка */
+  .home-grid-2,.home-grid-3{grid-template-columns:1fr!important;gap:10px!important}
+  /* Большие цифры (+1 398₽) — чуть меньше чтобы влезали */
+  .home-big{font-size:26px!important;line-height:1.1!important}
+  .home-card{padding:14px!important;border-radius:10px!important}
+  .home-card h3,.home-card .home-card-title{font-size:13px!important}
+  .home-empty{padding:30px 16px!important;font-size:12px!important}
+  /* Top-3 — в столбик */
+  .top3-grid{grid-template-columns:1fr!important;gap:8px!important}
+  /* Welcome-intro — мелкий шрифт */
+  .home-intro-hi{font-size:16px!important;line-height:1.3!important}
+  .home-intro-text{font-size:13px!important;line-height:1.45!important}
+  /* Bar-chart с 14 днями — уменьшить шкалу */
+  .home-bar{font-size:9px!important}
+
+  /* ─── ДЕТАЛИЗАЦИЯ РАСХОДОВ ─── */
+  /* Калькулятор: таблица товаров — горизонтальный скролл */
+  #results,#resultsTbl{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .pen-table{font-size:11px!important;min-width:520px}
+  .pen-table th,.pen-table td{padding:6px 6px!important;white-space:nowrap}
+  /* Bulk-actions toolbar */
+  .bulk-actions,.toolbar,.calc-toolbar{flex-wrap:wrap!important;gap:6px!important}
+  .calc-alerts{padding:10px!important;font-size:12px!important}
+
+  /* ─── НАСТРОЙКИ ─── */
+  /* Перебиваем все inline max-width на полях ввода */
+  #personalExpenses,#tok1,.wb-token-input{max-width:100%!important;width:100%!important}
+  /* Кнопки save/clear/получить токен — full-width */
+  #sectionSettings button,#saveTokBtn{width:100%!important}
+  /* Контроль кассового потока: отступ блока */
+  .ct{display:block!important;margin-bottom:6px!important}
+  /* (необязательно) - не растягивать в столбик */
+  .ct span{display:inline!important;margin-left:0!important;font-size:11px!important}
+
+  /* ─── ПОДБОР ТОВАРА ─── */
+  /* unit-grid 1fr уже есть в v0.4.2 */
+  .unit-col label{font-size:12px!important}
+  /* Кнопки модели больше места для текста */
+  .unit-model-btn{padding:9px 4px!important}
+  .unit-model-btn .um-name{font-size:13px!important}
+  .unit-model-btn .um-sub{font-size:9px!important;letter-spacing:.2px!important}
+  /* Результат — карточки на mobile в 1-3 колонки */
+  .unit-result-grid{grid-template-columns:repeat(3,1fr)!important;gap:6px!important}
+  .unit-result-item{padding:8px 4px!important}
+  .unit-result-lbl{font-size:9px!important;letter-spacing:.3px!important}
+  .unit-result-val{font-size:14px!important}
+  /* Сравнение моделей 3 колонки */
+  #unitComparison > div{padding:10px!important}
+  #unitComparison > div > div:last-child{gap:6px!important}
+  /* Габариты Д×Ш×В */
+  #unitDimL,#unitDimW,#unitDimH{width:48px!important;font-size:14px!important;padding:8px 6px!important;min-height:40px!important}
+  /* Cost currency */
+  #unitCostCurrency{width:72px!important;min-width:72px!important;font-size:13px!important}
+  /* Кнопки сохранить/очистить разворот */
+  #sectionUnit > .card > div[style*="display:flex"]:last-of-type{flex-direction:column!important;gap:8px!important}
+
+  /* ─── ПРОМОКОД ─── */
+  /* Промо input + кнопка — в столбик */
+  #sectionPromo > .card > div[style*="display:flex"]{flex-direction:column!important;gap:8px!important}
+  #promoCode{max-width:100%!important;width:100%!important}
+
+  /* ─── АНАЛИТИКА ─── */
+  .analytics-tabs,.atabs{flex-wrap:wrap!important;gap:4px!important}
+  .atab,.analytics-tabs button{flex:1 1 calc(50% - 4px)!important;min-width:0!important;font-size:12px!important;padding:8px 10px!important}
+  .an-grid{grid-template-columns:1fr!important;gap:10px!important}
+  /* Графики — растягивать на всю ширину */
+  canvas,.chart-container{max-width:100%!important;height:auto!important}
+
+  /* ─── ВЕРХНЯЯ ПАНЕЛЬ ЗАГРУЗКИ ─── */
+  /* Уже сделано в v0.4.5, дополним: */
+  .load-bar-title{font-size:13px!important;font-weight:600!important}
+  .period-picker{flex-wrap:wrap!important;justify-content:center!important;gap:4px!important}
+  .period-pill{flex:1 1 calc(33.333% - 4px)!important;min-width:0!important;font-size:11px!important;padding:7px 4px!important;text-align:center}
+  /* Кнопка "Загрузить" full-width */
+  #loadBtnHome,.load-bar-right .btn-primary{width:100%!important;padding:11px!important}
+
+  /* ─── ОНБОРДИНГ ─── */
+  .onb-card,.onb{padding:14px!important}
+  .onb-title{font-size:17px!important}
+  .onb-text{font-size:13px!important;line-height:1.45!important}
+  .onb-emoji{font-size:38px!important}
+  .onb-list li{font-size:13px!important;margin-bottom:6px!important}
+  .onb-actions{flex-direction:column!important;gap:8px!important}
+  .onb-actions button{width:100%!important}
+  .onb-input{font-size:13px!important;padding:10px!important}
+
+  /* ─── PRO-баннер ─── */
+  .upgrade-banner{flex-direction:column!important;text-align:center!important;gap:10px!important;padding:14px!important}
+  .upgrade-banner .upgrade-text h3{font-size:15px!important}
+  .upgrade-banner .upgrade-text p{font-size:12px!important}
+  .upgrade-btn{width:100%!important}
+
+  /* ─── ОБЩЕЕ ─── */
+  /* Карточки внутри секций */
+  .card{padding:14px!important;border-radius:10px!important;margin-bottom:10px!important}
+  /* Заголовки карточек */
+  .ct{font-size:15px!important;font-weight:600!important;margin-bottom:8px!important}
+  /* Хинты */
+  .hint{font-size:11px!important;line-height:1.4!important}
+  /* Ошибки */
+  .err{font-size:12px!important;padding:8px 10px!important}
+  /* Loading-spinner */
+  .ld{font-size:13px!important}
+
+  /* Plan-badge в topbar */
+  .plan-badge{font-size:10px!important;padding:3px 6px!important;border-radius:4px!important}
+
+  /* Promo */
+  #promoOk,#promoErr{font-size:12px!important;margin-top:8px!important}
+
+  /* Filter bar в Подборе товара (история) */
+  #sectionUnit .card > div:first-child{flex-direction:column!important;align-items:stretch!important;gap:6px!important}
+  #histSearch,#histSort,#histModel{width:100%!important;max-width:100%!important}
+
+  /* Кнопка Активировать промокод */
+  #sectionPromo .btn-primary{width:100%!important}
+
+  /* Details блоки */
+  details summary{font-size:13px!important;padding:10px 12px!important}
+
+  /* Sidebar заголовок WB Profit */
+  .sidebar h1,.sidebar .sidebar-title{font-size:18px!important}
+  .sidebar .sidebar-subtitle{font-size:11px!important}
+
+  /* Login-info в sidebar */
+  .user-email{font-size:12px!important;word-break:break-all!important}
+}
+
+/* Очень узкие — iPhone SE и др. */
+@media(max-width:420px){
+  .main{padding:50px 8px 16px 8px!important}
+  .card{padding:10px!important}
+  #unitDimL,#unitDimW,#unitDimH{width:42px!important}
+  .unit-result-grid{grid-template-columns:1fr 1fr!important}
+  #unitComparison > div > div:last-child{grid-template-columns:1fr!important}
+  .period-pill{font-size:10px!important;padding:6px 3px!important}
+}
+/* ═══════════════════════════════════════════════════════════════════════ */
+
 </style>
 </head>
 <body>
