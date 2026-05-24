@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.3</title>
+<title>WB Profit — Дашборд v0.5.4</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -946,6 +946,24 @@ tr.loss td{background:#fff5f5}
   }
 }
 /* ═══════════════════════════════════════════════════════════════════════ */
+
+
+/* 🔥 v0.5.4: Раскрываемые детали операций в Детализации */
+.detail-clickable{cursor:pointer;user-select:none;transition:background .15s}
+.detail-clickable:hover{background:#f8f9fb}
+.detail-expand{display:inline-block;width:14px;color:#94a3b8;font-size:10px;margin-left:6px;transition:transform .15s}
+.detail-expansion{padding:8px 12px 12px;background:#fafafa;border-radius:8px;margin-top:6px;margin-bottom:6px}
+.detail-expansion-empty{color:#94a3b8;font-size:12px;padding:8px;text-align:center}
+.detail-ops-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:8px;overflow:hidden}
+.detail-ops-table th{text-align:left;padding:8px 10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e2e8f0}
+.detail-ops-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9}
+.detail-ops-table tr:last-child td{border-bottom:0}
+.detail-ops-date{color:#64748b;font-size:11px;white-space:nowrap}
+.detail-ops-nm{color:#94a3b8;font-size:10px;font-weight:400}
+.detail-ops-count{color:#94a3b8;font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;margin-left:4px}
+.detail-ops-amount{text-align:right;color:#dc2626;font-weight:600;white-space:nowrap}
+.detail-ops-meta{color:#64748b;font-size:11px}
+.detail-ops-more{font-size:11px;color:#94a3b8;text-align:center;margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0}
 
 </style>
 </head>
@@ -2255,6 +2273,54 @@ async function process(raw){
   }
   rows=Object.values(bk);
   rows.forEach(function(x){x.commPct=x._n>0?Math.round(x._pctSum/x._n):0;delete x._pctSum;delete x._n;delete x._priceSum;});
+  
+  // 🔥 v0.5.4: Распределяем общие хранение/рекламу/штрафы (без nm_id)
+  // ПРОПОРЦИОНАЛЬНО выручке товара. Так делают все профессиональные
+  // аналитические сервисы (Селлер-АО, ЕвоТрекер, MPSTATS).
+  // Без этого товары в Калькуляторе показывают 0₽ хранения, хотя
+  // реально магазин платит за их хранение.
+  (function distributeOverheads(){
+    var totalRev = 0;
+    rows.forEach(function(r){ totalRev += Number(r.ppvz)||0; });
+    if(totalRev <= 0) return;
+    
+    // Собираем общие расходы без nm_id
+    var orphanStor = 0;  // хранение без товара
+    var orphanAdv  = 0;  // реклама без товара
+    var orphanPen  = 0;  // штрафы без товара
+    
+    for(var i=0;i<raw.length;i++){
+      var r = raw[i];
+      if(r.nm_id) continue; // пропускаем те что уже привязаны к товару
+      
+      orphanStor += Number(r.storage_fee||0);
+      orphanPen  += Number(r.penalty||0) + Number(r.acceptance||0);
+      
+      var ded = Math.abs(Number(r.deduction||0));
+      if(ded > 0){
+        if(isAdv(r.bonus_type_name, r.supplier_oper_name)){
+          orphanAdv += ded;
+        } else if(!isWbFin(r.bonus_type_name, r.supplier_oper_name)){
+          orphanPen += ded;
+        }
+      }
+    }
+    
+    // Распределяем по товарам пропорционально их доле в выручке
+    rows.forEach(function(r){
+      var share = (Number(r.ppvz)||0) / totalRev;
+      r.stor = (Number(r.stor)||0) + orphanStor * share;
+      r.adv  = (Number(r.adv)||0)  + orphanAdv  * share;
+      r.pen  = (Number(r.pen)||0)  + orphanPen  * share;
+      // Помечаем что часть — распределённая (для UI-индикации опционально)
+      r._distrib = {stor:orphanStor*share, adv:orphanAdv*share, pen:orphanPen*share};
+    });
+    
+    // Для дебага в консоль
+    if(orphanStor > 0 || orphanAdv > 0){
+      console.log('[v0.5.4 distribute] orphan storage:', orphanStor.toFixed(2), 'adv:', orphanAdv.toFixed(2), 'pen:', orphanPen.toFixed(2), 'distributed across', rows.length, 'rows by revenue share');
+    }
+  })();
   // Free: лимит 30 товаров. Оставляем самые продаваемые.
   window._freeLimitTriggered=false;
   if(!hasPRO()&&rows.length>30){
@@ -2461,15 +2527,18 @@ function renderDetail(){
     for(var k=0;k<grp.ops.length;k++){
       var op=grp.ops[k];
       var pct=maxAmt>0?Math.round(op.amount/maxAmt*100):0;
-      html+='<div>';
-      html+='<div class="detail-row">';
-      html+='<span class="detail-name">'+escHtml(op.name)+'</span>';
+      // 🔥 v0.5.4: кликабельная строка — раскрывает детали операций
+      var rowKey = 'detail-' + g + '-' + k;
+      html+='<div class="detail-op-block" data-key="'+rowKey+'">';
+      html+='<div class="detail-row detail-clickable" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.name)+'\')">';
+      html+='<span class="detail-name">'+escHtml(op.name)+' <span class="detail-expand" id="exp-'+rowKey+'">▶</span></span>';
       html+='<span class="detail-count">'+fmt(op.count)+' оп.</span>';
       html+='<span class="detail-amount">−'+fmt(op.amount)+' ₽</span>';
       html+='</div>';
       if(pct>0){
         html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
       }
+      html+='<div class="detail-expansion" id="body-'+rowKey+'" style="display:none"></div>';
       html+='</div>';
     }
     html+='</div>';
@@ -2488,7 +2557,172 @@ function renderDetail(){
     html='<div style="background:#fee2e2;border:1px solid #ef4444;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Арифметика не сходится: '+fmt(t.revenue)+' − '+fmt(totalExpenses)+' '+(t.wbAdjust>=0?'+':'')+fmt(t.wbAdjust)+' = '+fmt(expected)+' ≠ '+fmt(t.profit)+'. Сообщите в поддержку.</div>'+html;
   }
 
-  document.getElementById('detailGrid').innerHTML=html;
+  // 🔥 v0.5.4: Защита от потерь в Детализации (на основе rows из Калькулятора)
+  var protectHtml = '';
+  if(window._richAlerts && window._richAlerts.length){
+    var alerts = window._richAlerts;
+    var totalLoss = alerts.filter(function(a){return a.severity==='critical';})
+      .reduce(function(sum,a){return sum+(Number(a.loss)||0);},0);
+    protectHtml = '<div class="detail-card" style="border:2px solid rgba(220,38,38,.15);background:linear-gradient(135deg,rgba(220,38,38,.02),#fff)">';
+    protectHtml += '<div class="detail-card-header">';
+    protectHtml += '<span class="detail-card-title">🛡️ Защита от потерь</span>';
+    if(totalLoss >= 100){
+      protectHtml += '<span style="font-size:12px;color:#dc2626;font-weight:600;background:rgba(220,38,38,.1);padding:3px 8px;border-radius:99px">~'+fmt(totalLoss)+' ₽ потенциальных потерь</span>';
+    }
+    protectHtml += '</div>';
+    alerts.slice(0,5).forEach(function(a){
+      var sevColor = a.severity==='critical' ? '#dc2626' : (a.severity==='warning' ? '#f59e0b' : '#3b82f6');
+      protectHtml += '<div style="padding:10px 12px;border-left:3px solid '+sevColor+';background:rgba(0,0,0,.02);border-radius:6px;margin-bottom:8px">';
+      protectHtml += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">';
+      protectHtml += '<div style="font-weight:600;font-size:13px">'+a.icon+' '+escHtml(a.title)+'</div>';
+      if(a.loss && a.loss>=100){
+        protectHtml += '<div style="color:'+sevColor+';font-weight:600;font-size:12px;white-space:nowrap">~'+fmt(a.loss)+' ₽</div>';
+      }
+      protectHtml += '</div>';
+      protectHtml += '<div style="font-size:12px;color:#64748b;margin-top:2px">'+escHtml(a.name)+'</div>';
+      protectHtml += '<div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.45">'+escHtml(a.msg)+'</div>';
+      if(a.hint){
+        protectHtml += '<div style="font-size:11px;color:#7c3aed;margin-top:6px;padding-top:6px;border-top:1px dashed #e5e7eb">💡 '+escHtml(a.hint)+'</div>';
+      }
+      protectHtml += '</div>';
+    });
+    protectHtml += '</div>';
+  }
+  
+  document.getElementById('detailGrid').innerHTML = protectHtml + html;
+}
+
+// 🔥 v0.5.4: Раскрытие/свёртка деталей операции в Детализации
+function toggleDetailOp(rowKey, source, opName){
+  var body = document.getElementById('body-' + rowKey);
+  var exp  = document.getElementById('exp-' + rowKey);
+  if(!body || !exp) return;
+  
+  if(body.style.display !== 'none'){
+    body.style.display = 'none';
+    exp.textContent = '▶';
+    return;
+  }
+  
+  // Уже отрендерили один раз
+  if(body.dataset.rendered === '1'){
+    body.style.display = 'block';
+    exp.textContent = '▼';
+    return;
+  }
+  
+  // Собираем все строки rawData относящиеся к этой операции
+  var matches = [];
+  if(window.rawData && window.rawData.length){
+    var ITEMS_LIMIT = 200;
+    for(var i=0;i<window.rawData.length && matches.length<ITEMS_LIMIT;i++){
+      var r = window.rawData[i];
+      var operMatch = (r.supplier_oper_name === opName) || (r.bonus_type_name === opName);
+      if(!operMatch) continue;
+      
+      var amount = 0;
+      if(source==='delivery'){
+        amount = Number(r.delivery_rub||0) + Number(r.rebill_logistic_cost||0);
+      } else if(source==='storage'){
+        amount = Number(r.storage_fee||0);
+      } else if(source==='ads' || source==='penalty'){
+        amount = Math.abs(Number(r.deduction||0)) + Number(r.penalty||0) + Number(r.acceptance||0);
+      } else if(source==='wbFinance'){
+        amount = Math.abs(Number(r.deduction||0));
+      }
+      if(amount > 0){
+        matches.push({
+          date: r.order_dt || r.sale_dt || r.create_dt || '',
+          nm: r.nm_id || null,
+          sa: r.sa_name || '',
+          warehouse: r.office_name || '',
+          amount: amount,
+          srid: r.srid || r.gi_id || ''
+        });
+      }
+    }
+  }
+  
+  // Также для commission и cost — спецлогика
+  if(source==='commission'){
+    // Топ-10 товаров по комиссии
+    if(window.rows && window.rows.length){
+      window.rows.slice().sort(function(a,b){return Number(b.commRub||0)-Number(a.commRub||0);}).slice(0,10).forEach(function(r){
+        if(Number(r.commRub||0)>0){
+          matches.push({date:'', nm:r.nm_id, sa:r.sa||'', amount:Number(r.commRub)||0, srid:'', meta:fmt(r.sales)+' шт × '+(r.commPct||0)+'%'});
+        }
+      });
+    }
+  } else if(source==='cost'){
+    if(window.rows && window.rows.length){
+      window.rows.slice().sort(function(a,b){
+        return (Number(b.cost||0)*Number(b.sales||0)) - (Number(a.cost||0)*Number(a.sales||0));
+      }).slice(0,10).forEach(function(r){
+        var sumCost = Number(r.cost||0)*Number(r.sales||0);
+        if(sumCost>0){
+          matches.push({date:'', nm:r.nm_id, sa:r.sa||'', amount:sumCost, srid:'', meta:fmt(r.sales)+' шт × '+fmt(r.cost)+' ₽'});
+        }
+      });
+    }
+  }
+  
+  // Сортируем по убыванию суммы
+  matches.sort(function(a,b){return b.amount - a.amount;});
+  
+  // Группируем по дате и nm_id для компактности (только для не-commission/cost)
+  if(source !== 'commission' && source !== 'cost' && matches.length > 0){
+    var groupedByNm = {};
+    matches.forEach(function(m){
+      var k = (m.nm || 'no_nm') + '|' + (m.date||'').slice(0,10);
+      if(!groupedByNm[k]) groupedByNm[k] = {nm:m.nm, sa:m.sa, date:(m.date||'').slice(0,10), warehouse:m.warehouse, amount:0, count:0};
+      groupedByNm[k].amount += m.amount;
+      groupedByNm[k].count++;
+    });
+    matches = Object.values(groupedByNm).sort(function(a,b){return b.amount-a.amount;});
+  }
+  
+  // Рендерим
+  var html = '';
+  if(matches.length === 0){
+    html = '<div class="detail-expansion-empty">Нет данных по этой операции</div>';
+  } else {
+    html += '<table class="detail-ops-table">';
+    html += '<thead><tr>';
+    if(source==='commission' || source==='cost'){
+      html += '<th>Товар</th><th>Детали</th><th style="text-align:right">Сумма</th>';
+    } else {
+      html += '<th>Дата</th><th>Товар</th><th style="text-align:right">Сумма</th>';
+    }
+    html += '</tr></thead><tbody>';
+    var maxRows = 50;
+    var shown = matches.slice(0, maxRows);
+    shown.forEach(function(m){
+      html += '<tr>';
+      if(source==='commission' || source==='cost'){
+        var nmLabel = m.nm ? '<span class="detail-ops-nm">арт. '+m.nm+'</span>' : '';
+        html += '<td>'+escHtml(m.sa||'?')+' '+nmLabel+'</td>';
+        html += '<td class="detail-ops-meta">'+(m.meta||'')+'</td>';
+      } else {
+        var dateStr = m.date ? m.date.split('-').reverse().slice(0,2).join('.') : '—';
+        var nmLabel2 = m.nm ? ' <span class="detail-ops-nm">арт. '+m.nm+'</span>' : '';
+        var saLbl = m.sa ? escHtml(m.sa) + nmLabel2 : '<span style="color:#94a3b8">(без товара)</span>';
+        if(m.count > 1) saLbl += ' <span class="detail-ops-count">×'+m.count+'</span>';
+        html += '<td class="detail-ops-date">'+dateStr+'</td>';
+        html += '<td>'+saLbl+'</td>';
+      }
+      html += '<td class="detail-ops-amount">−'+fmt(m.amount)+' ₽</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    if(matches.length > maxRows){
+      html += '<div class="detail-ops-more">Показано '+maxRows+' из '+matches.length+'. Топ по сумме.</div>';
+    }
+  }
+  
+  body.innerHTML = html;
+  body.dataset.rendered = '1';
+  body.style.display = 'block';
+  exp.textContent = '▼';
 }
 
 function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
