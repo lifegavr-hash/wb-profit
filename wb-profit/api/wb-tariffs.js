@@ -102,14 +102,14 @@ export default async function handler(req, res) {
     }
 
     // 🆕 v0.4: список популярных складов (для dropdown в подборе)
+    // v0.4.3: добавлен флаг fbs_unavailable
     if (req.query.list_warehouses) {
       const { data, error } = await supabase
         .from('wb_warehouse_tariffs')
-        .select('warehouse_name, geo_name, box_delivery_coef_pct')
+        .select('warehouse_name, geo_name, box_delivery_coef_pct, box_delivery_marketplace_coef_pct')
         .order('valid_date', { ascending: false })
         .limit(200);
       if (error) return res.status(500).json({ error: error.message });
-      // Дедупликация: только последняя запись по каждому складу
       const seen = new Set();
       const warehouses = [];
       for (const row of (data || [])) {
@@ -120,9 +120,9 @@ export default async function handler(req, res) {
           name: row.warehouse_name,
           geo: row.geo_name,
           coef: Math.round((Number(row.box_delivery_coef_pct) / 100) * 100) / 100,
+          fbs_unavailable: row.box_delivery_marketplace_coef_pct == null,
         });
       }
-      // Сортируем по геозоне+коэффициенту для удобства
       warehouses.sort((a, b) => {
         const aIsCfo = (a.geo || '').includes('Центральный') ? 0 : 1;
         const bIsCfo = (b.geo || '').includes('Центральный') ? 0 : 1;
