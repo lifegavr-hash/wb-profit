@@ -309,6 +309,50 @@ export default async function handler(req, res) {
       .is('valid_to', null);
     const returnToPvzRub = computeReturnPvz(pvzTariffs || [], volumeL);
 
+    // 🆕 v0.4.5: посчитаем логистику для ВСЕХ моделей одновременно
+    // (виджет сможет переключать модели локально без повторного запроса)
+    const allModelsLogistics = {};
+    if (warehouseRow) {
+      ['fbo', 'fbs', 'dbs'].forEach(m => {
+        let mBase = baseRub, mLiter = literRub, mCoefPct = coefPct, mUnavail = false;
+        if (m === 'fbs') {
+          if (warehouseRow.box_delivery_marketplace_coef_pct == null) {
+            mUnavail = true;
+          } else {
+            mBase = Number(warehouseRow.box_delivery_marketplace_base);
+            mLiter = Number(warehouseRow.box_delivery_marketplace_liter);
+            mCoefPct = Number(warehouseRow.box_delivery_marketplace_coef_pct);
+          }
+        } else if (m === 'dbs') {
+          // DBS: продавец сам доставляет, коэф WB не применяется
+          allModelsLogistics[m] = {
+            forward_rub: 0,
+            return_to_wh_rub: 0,
+            return_to_pvz_rub: 0,
+            coef: 1.0,
+            fbs_unavailable: false,
+          };
+          return;
+        }
+        const mCoef = mCoefPct ? Math.round((mCoefPct / 100) * 100) / 100 : 1.0;
+        const mFwd = computeLogisticsZonal(volumeL, mCoef);
+        allModelsLogistics[m] = {
+          forward_rub: mFwd,
+          return_to_wh_rub: m === 'fbo' ? mFwd : 0,
+          return_to_pvz_rub: m === 'fbs' ? returnToPvzRub : 0,
+          coef: mCoef,
+          fbs_unavailable: mUnavail,
+        };
+      });
+    } else {
+      // Полный fallback
+      const fbBase = getBaseRubForVolume(volumeL);
+      const fbFwd = Math.round(fbBase * 1.6 * 100) / 100;
+      allModelsLogistics.fbo = { forward_rub: fbFwd, return_to_wh_rub: fbFwd, return_to_pvz_rub: 0, coef: 1.6, fbs_unavailable: false };
+      allModelsLogistics.fbs = { forward_rub: fbFwd, return_to_wh_rub: 0, return_to_pvz_rub: returnToPvzRub, coef: 1.6, fbs_unavailable: false };
+      allModelsLogistics.dbs = { forward_rub: 0, return_to_wh_rub: 0, return_to_pvz_rub: 0, coef: 1.0, fbs_unavailable: false };
+    }
+
     const logistics = {
       forward_rub: forwardRub,
       return_to_wh_rub: returnToWhRub,
@@ -316,10 +360,10 @@ export default async function handler(req, res) {
       volume_l: volumeL,
       model,
       warehouse_coef: warehouseCoef,
-      // 🆕 v0.3.7: флаг для виджета — показать предупреждение
       fbs_unavailable: fbsUnavailable && model === 'fbs',
-      // 🆕 v0.3.7: forward_rub уже включает коэф склада, виджет НЕ должен умножать
       forward_includes_coef: true,
+      // 🆕 v0.4.5: данные для всех моделей сразу
+      all_models: allModelsLogistics,
     };
 
     // ── 4. ОФЕРТА ──
