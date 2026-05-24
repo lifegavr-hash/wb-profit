@@ -725,14 +725,14 @@ tr.loss td{background:#fff5f5}
 
 <div class="main">
   <div class="topbar">
-    <span class="topbar-title" id="topbarTitle">Калькулятор прибыли</span>
+    <span class="topbar-title" id="topbarTitle">Главная</span>
     <span class="plan-badge free" id="planBadge">Free</span>
   </div>
 
   <div class="content">
 
-    <!-- Общая панель загрузки данных - видна на всех разделах с данными -->
-    <div class="load-bar" id="globalLoadBar">
+    <!-- 🆕 v0.4.6: Панель показывается только если есть токен -->
+    <div class="load-bar" id="globalLoadBar" style="display:none">
       <div class="load-bar-left">
         <div class="load-bar-title">📥 Загрузка данных</div>
         <div class="load-bar-sub" id="lastSyncInfo">Нажмите «Загрузить», чтобы получить свежие данные с Wildberries</div>
@@ -774,17 +774,8 @@ tr.loss td{background:#fff5f5}
 
     <!-- Дашборд -->
     <div class="section active" id="sectionHome">
-      <div id="homeContent">
-        <div class="card" style="text-align:center;padding:32px 20px;background:linear-gradient(135deg,#f6f3ff,#fff);border:1px solid rgba(124,58,237,.15)">
-          <div style="font-size:42px;margin-bottom:8px">📊</div>
-          <div style="font-size:18px;font-weight:600;margin-bottom:6px;color:#1a0f3c">Добро пожаловать в WB Profit</div>
-          <div style="font-size:13px;color:#666;max-width:520px;margin:0 auto 14px">Подключите API токен WB и нажмите «Загрузить» сверху — сервис покажет вашу реальную прибыль, маржу и убыточные товары.</div>
-          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">
-            <button class="btn-primary" onclick="openOnboarding()">📖 Как начать</button>
-            <button class="bulk-btn" onclick="showSection('settings',document.getElementById('nav-settings'))">⚙️ Перейти в Настройки</button>
-          </div>
-        </div>
-      </div>
+      <!-- 🆕 v0.4.6: контент рендерится через renderHomeIdle() ниже -->
+      <div id="homeContent"></div>
     </div>
 
     <!-- Настройки -->
@@ -1002,6 +993,8 @@ tr.loss td{background:#fff5f5}
                 <input type="number" id="unitRedemption" min="0" max="100" step="1" value="80" oninput="calcUnitV2()">
                 <label class="unit-label">Доля рекламы от выручки, %</label>
                 <input type="number" id="unitAdPct" min="0" max="100" step="0.1" value="5" oninput="calcUnitV2()">
+                <label class="unit-label">Время отгрузки (FBS), часов <span style="color:#888;font-weight:400">— надбавка +0.1% за час свыше 30</span></label>
+                <input type="number" id="unitFbsShipHours" min="0" max="200" step="1" value="24" oninput="calcUnitV2()">
               </div>
               <div class="unit-col">
                 <label class="unit-label">Налог, % (УСН доходы)</label>
@@ -1414,6 +1407,7 @@ function refreshLastSync(rangeFrom,rangeTo){
 function saveTokenManual(){
   var tk=document.getElementById('tok1');
   if(!tk||!tk.value.trim()){alert('Введите токен');return;}
+  var lb=document.getElementById('globalLoadBar'); if(lb)lb.style.display='';
   localStorage.setItem('wb_token',tk.value.trim());
   var btn=document.getElementById('saveTokBtn');
   if(btn){var orig=btn.textContent;btn.textContent='✓ Сохранено';setTimeout(function(){btn.textContent=orig;},1500);}
@@ -2479,7 +2473,14 @@ function calcUnitV2() {
   const fbsUnavailable = whEntry && whEntry.fbs_unavailable === true;
 
   function calcForModel(m) {
-    const commPct = commByModel[m];
+    let commPct = commByModel[m];
+    // 🆕 v0.4.6: FBS доплата за время отгрузки свыше 30 часов (+0.1% за каждый час)
+    if (m === 'fbs') {
+      const shipHours = parseFloat(document.getElementById('unitFbsShipHours')?.value) || 24;
+      if (shipHours > 30) {
+        commPct = Math.round((commPct + 0.1 * (shipHours - 30)) * 100) / 100;
+      }
+    }
     const commission = priceBasic * commPct / 100;
     const baseRub = getWbBaseRub(volume);
     const fwdLog = baseRub * coef;
@@ -2564,6 +2565,7 @@ function resetUnitFormV2() {
   document.getElementById('unitAdPct').value = 5;
   document.getElementById('unitTaxPct').value = 7;
   document.getElementById('unitAcquiringPct').value = 1.5;
+  const fbsH = document.getElementById('unitFbsShipHours'); if (fbsH) fbsH.value = 24;
   document.getElementById('unitWarehouse').value = 'auto';
   document.getElementById('unitCategoryChosen').style.display = 'none';
   document.getElementById('unitCategoryDropdown').style.display = 'none';
@@ -3462,20 +3464,42 @@ function renderHomeIdle(reason){
   var greet=hour<5?'Доброй ночи':hour<12?'Доброе утро':hour<18?'Здравствуйте':'Добрый вечер';
   var seller=(window._sellerName||'').trim();
   var hi=seller?(greet+', '+escHtml(seller)+'.'):(greet+'!');
-  var msg=reason||(hasToken
-    ? 'Чтобы начать, нажмите «Загрузить» в фиолетовой панели сверху. Мы подтянем данные с Wildberries и покажем, как у вас дела.'
-    : 'Чтобы мы могли показать данные, нужно подключить ваш кабинет Wildberries. Это занимает минуту — перейдите в Настройки и вставьте API-токен.');
-  el.innerHTML=
-    '<div class="home-intro">'+
-      '<div class="home-intro-hi">'+hi+'</div>'+
-      '<div class="home-intro-text">'+msg+'</div>'+
-    '</div>'+
-    (hasToken?'':'<button class="btn-week" style="margin-top:8px" onclick="showSection(\'settings\',document.getElementById(\'nav-settings\'))">⚙️ Открыть Настройки</button>');
+  
+  // 🆕 v0.4.6: Большая welcome-карточка которая заметна на mobile
+  if(!hasToken){
+    el.innerHTML=
+      '<div class="welcome-hero" style="text-align:center;padding:32px 20px;background:linear-gradient(135deg,#f6f3ff,#fff);border:1px solid rgba(124,58,237,.18);border-radius:14px;box-shadow:0 4px 16px rgba(124,58,237,.05)">'+
+        '<div style="font-size:54px;margin-bottom:8px;line-height:1">📊</div>'+
+        '<div style="font-size:20px;font-weight:700;margin-bottom:6px;color:#1a0f3c">Добро пожаловать в WB Profit</div>'+
+        '<div style="font-size:13px;color:#666;max-width:520px;margin:0 auto 18px;line-height:1.5">Подключите API-токен Wildberries — увидите реальную прибыль, найдёте убыточные товары и узнаете куда уходят деньги.</div>'+
+        '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
+          '<button class="btn-primary" onclick="openOnboarding()" style="padding:11px 22px;font-size:14px">📖 Как начать (2 минуты)</button>'+
+          '<button class="bulk-btn" onclick="showSection(\'settings\',document.getElementById(\'nav-settings\'))" style="padding:11px 22px;font-size:14px">⚙️ Перейти в Настройки</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px">'+
+        '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px">💰</div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Реальная прибыль</div><div style="font-size:11px;color:#666">По каждому SKU, с учётом всех расходов WB</div></div>'+
+        '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px">🎯</div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Подбор товара</div><div style="font-size:11px;color:#666">Расчёт юнит-экономики до закупки</div></div>'+
+        '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px">⚠️</div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Тревоги</div><div style="font-size:11px;color:#666">Предупреждения когда что-то идёт не так</div></div>'+
+      '</div>';
+  } else {
+    // Токен есть, но данных нет — показываем приветствие + кнопку загрузить
+    var msg = reason || 'Нажмите «Загрузить» в фиолетовой панели сверху — подтянем свежие данные с Wildberries и покажем сводку.';
+    el.innerHTML=
+      '<div class="welcome-hero" style="text-align:center;padding:28px 20px;background:linear-gradient(135deg,#f6f3ff,#fff);border:1px solid rgba(124,58,237,.18);border-radius:14px">'+
+        '<div style="font-size:42px;margin-bottom:8px;line-height:1">👋</div>'+
+        '<div style="font-size:18px;font-weight:700;margin-bottom:6px;color:#1a0f3c">'+hi+'</div>'+
+        '<div style="font-size:13px;color:#666;max-width:480px;margin:0 auto;line-height:1.5">'+msg+'</div>'+
+      '</div>';
+  }
 }
 // Спиннер при первой загрузке отдельным методом, не съедает homeContent
 async function loadHomeData(){
   var el=document.getElementById('homeContent');
   if(!el)return;
+  // 🆕 v0.4.6: показать load-bar только если есть токен
+  var lb=document.getElementById('globalLoadBar');
+  if(lb) lb.style.display = localStorage.getItem('wb_token') ? '' : 'none';
   el.dataset.rendered='1';
   el.innerHTML='<div class="home-empty"><div class="home-spinner-icon">⏳</div>Загружаем сводку...</div>';
   // Читаем историю снапшотов из Supabase (быстро)
