@@ -596,6 +596,24 @@ tr.loss td{background:#fff5f5}
   .sidebar-item{font-size:13px!important;padding:9px 14px!important}
 }
 
+/* 🆕 v0.4.5: Load-bar компактнее на mobile — убираем большое расстояние сверху */
+  .load-bar{flex-direction:column;align-items:stretch!important;gap:8px!important;padding:10px!important;margin-bottom:10px!important}
+  .load-bar-left{text-align:center}
+  .load-bar-title{font-size:13px!important}
+  .load-bar-sub{font-size:11px!important}
+  .load-bar-right{flex-direction:column;gap:8px;width:100%}
+  .period-picker{flex-wrap:wrap;gap:4px!important;justify-content:center;width:100%}
+  .period-pill{flex:1;min-width:60px;font-size:11px!important;padding:6px 8px!important}
+  #loadBtnHome,#loadBtnHome.btn-primary{width:100%;padding:10px!important}
+
+  /* Topbar — уменьшим высоту на мобиле */
+  .topbar{padding:10px 14px 10px 60px!important;min-height:44px!important}
+  .topbar-title{font-size:14px!important}
+  .plan-badge{font-size:10px!important;padding:2px 6px!important}
+  
+  /* Main: уменьшим padding-top чтобы было меньше пустоты */
+  .main{padding:50px 12px 20px 12px!important}
+
 /* Очень узкие экраны (iPhone SE и др.) */
 @media(max-width:420px){
   .main{padding:60px 8px 16px 8px!important}
@@ -630,7 +648,7 @@ tr.loss td{background:#fff5f5}
       <div class="onb-emoji">👋</div>
       <div class="onb-title">Добро пожаловать в WB Profit!</div>
       <div class="onb-text">Это сервис, который покажет реальную прибыль по каждому товару на Wildberries, найдёт убыточные позиции и подскажет, где утекают деньги.</div>
-      <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong>. Это безопасно — токен даёт только право читать статистику.</div>
+      <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong> с правами на чтение. Сервису нужны разделы <strong>«Статистика»</strong> (продажи, остатки) и <strong>«Продвижение»</strong> (рекламные расходы для точной прибыли).</div>
       <div class="onb-actions">
         <button class="bulk-btn" onclick="closeOnboarding()">Позже</button>
         <button class="btn-primary" onclick="onbNext(2)">Дальше →</button>
@@ -646,7 +664,13 @@ tr.loss td{background:#fff5f5}
         <li>Раздел <strong>Доступ к API</strong></li>
         <li>Кнопка <strong>«Создать новый токен»</strong></li>
         <li>Название: «WB Profit» · Тип: <strong>Только чтение</strong></li>
-        <li>Раздел: <strong>Статистика</strong> (обязательно!)</li>
+        <li>Отметьте галочками разделы:
+          <ul style="margin:6px 0 0 16px;padding:0;font-size:13px">
+            <li><strong>Статистика</strong> — продажи, заказы, остатки, отчёты</li>
+            <li><strong>Продвижение</strong> — реклама (для точного расчёта прибыли)</li>
+            <li><strong>Аналитика</strong> — финансовая отчётность</li>
+          </ul>
+        </li>
         <li>Создать → скопировать токен</li>
       </ol>
       <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:10px">⚠️ Не делитесь токеном с третьими лицами. Если что — его можно отозвать в том же разделе WB.</div>
@@ -750,7 +774,17 @@ tr.loss td{background:#fff5f5}
 
     <!-- Дашборд -->
     <div class="section active" id="sectionHome">
-      <div id="homeContent"></div>
+      <div id="homeContent">
+        <div class="card" style="text-align:center;padding:32px 20px;background:linear-gradient(135deg,#f6f3ff,#fff);border:1px solid rgba(124,58,237,.15)">
+          <div style="font-size:42px;margin-bottom:8px">📊</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:6px;color:#1a0f3c">Добро пожаловать в WB Profit</div>
+          <div style="font-size:13px;color:#666;max-width:520px;margin:0 auto 14px">Подключите API токен WB и нажмите «Загрузить» сверху — сервис покажет вашу реальную прибыль, маржу и убыточные товары.</div>
+          <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">
+            <button class="btn-primary" onclick="openOnboarding()">📖 Как начать</button>
+            <button class="bulk-btn" onclick="showSection('settings',document.getElementById('nav-settings'))">⚙️ Перейти в Настройки</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Настройки -->
@@ -769,7 +803,7 @@ tr.loss td{background:#fff5f5}
           <button class="btn-primary" id="saveTokBtn" onclick="saveTokenManual()">Сохранить токен</button>
           <button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>
         </div>
-        <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Нужно право <strong>Статистика</strong>.</p>
+        <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Нужны разделы: <strong>Статистика</strong>, <strong>Продвижение</strong>, <strong>Аналитика</strong>.</p>
       </div>
       <div class="card" style="margin-top:14px">
         <div class="ct">Контроль кассового потока <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:6px">(необязательно)</span></div>
