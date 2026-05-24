@@ -2400,7 +2400,8 @@ async function loadWarehousesForPicker() {
     const current = sel.value;
     sel.innerHTML = '<option value="auto">🤖 Авто (медиана ЦФО ×1.6)</option>' +
       list.map(function(w){
-        return '<option value="' + escapeHtml(w.name) + '">' + escapeHtml(w.name) + ' (×' + w.coef + ')</option>';
+        const fbsNote = w.fbs_unavailable ? ' ⚠ FBS×' : '';
+        return '<option value="' + escapeHtml(w.name) + '" data-fbs-unav="' + (w.fbs_unavailable?'1':'0') + '">' + escapeHtml(w.name) + ' (×' + w.coef + ')' + fbsNote + '</option>';
       }).join('');
     if (current) sel.value = current;
   } catch (e) {}
@@ -2440,6 +2441,8 @@ function calcUnitV2() {
 
   const whEntry = window._unitState.warehouseList.find(function(w){ return w.name === warehouse; });
   const coef = whEntry ? whEntry.coef : 1.6;
+  // 🆕 v0.4.3: предупреждение если выбран FBS, но склад его не принимает
+  const fbsUnavailable = whEntry && whEntry.fbs_unavailable === true;
 
   function calcForModel(m) {
     const commPct = commByModel[m];
@@ -2474,7 +2477,10 @@ function calcUnitV2() {
   const roiStr = main.roi != null ? main.roi.toFixed(1) + '%' : '—';
 
   const modelLabelDisplay = model === 'fbo' ? 'FBW' : model.toUpperCase();
-  document.getElementById('unitResult').innerHTML =
+  const fbsWarnHtml = (model === 'fbs' && fbsUnavailable) ? 
+    '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#92400e">⚠️ На складе <b>' + escapeHtml(warehouse) + '</b> модель FBS недоступна. Расчёт показан по тарифам FBW — выбери другой склад для точного FBS-расчёта.</div>' : '';
+
+  document.getElementById('unitResult').innerHTML = fbsWarnHtml +
     '<div class="unit-result-grid">' +
       '<div class="unit-result-item"><div class="unit-result-lbl">Прибыль ' + modelLabelDisplay + '</div><div class="unit-result-val ' + profCls + '">' + profStr + '</div></div>' +
       '<div class="unit-result-item"><div class="unit-result-lbl">Маржа</div><div class="unit-result-val ' + marCls + '">' + marStr + '</div></div>' +
@@ -2507,7 +2513,7 @@ function calcUnitV2() {
   window._unitState.lastCalc = {
     seenPrice, priceBasic, cost, costRaw, costCcy, rate, volume, weight,
     main, fbo, fbs, dbs,
-    model, coef, warehouse,
+    model, coef, warehouse, fbsUnavailable,
     redemption: redemption*100, adPct: adPct*100, taxPct: taxPct*100, acquiringPct: acquiringPct*100,
   };
 }
@@ -2565,9 +2571,9 @@ async function saveUnitCalcV2() {
       volume_l: calc.volume,
       commission_pct: calc.main.commPct,
       logistics_rub: calc.main.totalLog,
-      tax_pct: calc.taxPct,
-      redemption_pct: calc.redemption,
-      ad_pct: calc.adPct,
+      tax_pct: Math.round(calc.taxPct * 100) / 100,
+      redemption_pct: Math.round(calc.redemption * 100) / 100,
+      ad_pct: Math.round(calc.adPct * 100) / 100,
       profit: calc.main.profit || 0,
       margin_pct: calc.main.margin || 0,
       roi_pct: calc.main.roi || 0,
@@ -2657,7 +2663,8 @@ function loadUnitFromHistory(id) {
   const c = (window._unitCalcs || []).find(function(x){ return x.id === id; });
   if (!c) return;
   document.getElementById('unitName').value = c.name || '';
-  document.getElementById('unitRetailPriceSeen').value = c.retail_price_seen || '';
+  // 🆕 v0.4.3 FIX: поле теперь priceBasic, грузим из retail_price (была критическая баг — цена сбивалась после загрузки)
+  document.getElementById('unitRetailPriceSeen').value = c.retail_price || c.retail_price_seen || '';
   document.getElementById('unitCostPrice').value = c.cost_price || '';
   document.getElementById('unitCostCurrency').value = c.cost_currency || 'RUB';
   document.getElementById('unitCostRate').value = c.cost_rate || 1;
