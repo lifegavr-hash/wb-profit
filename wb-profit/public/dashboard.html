@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.4.9</title>
+<title>WB Profit — Дашборд v0.5.0</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -1480,10 +1480,11 @@ async function init(){
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
   // Сначала подтягиваем себестоимости с сервера (фоном, не блокирует UI)
   loadCostsFromServer();
-  // Подгружаем имя селлера из WB API (для приветствия на Главной)
-  loadSellerName();
-  // Показываем сводку из Supabase. Если нет — отрендерится idle с подсказкой.
-  loadHomeData();
+  // 🔥 v0.5.0: ждём имя до 2 сек чтобы приветствие сразу было с именем (а не «Здравствуйте!»)
+  Promise.race([
+    loadSellerName(),
+    new Promise(r=>setTimeout(r,2000))
+  ]).finally(()=>loadHomeData());
   // Если у пользователя нет токена и онбординг ещё не закрывали — показываем wizard
   if(!localStorage.getItem('wb_token')&&!localStorage.getItem('onboarding_done')){
     setTimeout(openOnboarding,500);
@@ -1727,9 +1728,15 @@ function refreshLastSync(rangeFrom,rangeTo){
   info.textContent=prefix+'Обновлено: '+d.toLocaleDateString('ru-RU')+' в '+hh+':'+mm;
 }
 function saveTokenManual(){
+  // Будем вызывать loadSellerName() после успешного сохранения
+
   var tk=document.getElementById('tok1');
   if(!tk||!tk.value.trim()){alert('Введите токен');return;}
   var lb=document.getElementById('globalLoadBar'); if(lb)lb.style.display='';
+  // 🔥 v0.5.0: сбросим кеш имени чтобы подтянулось имя нового токена
+  localStorage.removeItem('wb_seller_name');
+  localStorage.removeItem('wb_seller_name_at');
+  window._sellerName='';
   localStorage.setItem('wb_token',tk.value.trim());
   var btn=document.getElementById('saveTokBtn');
   if(btn){var orig=btn.textContent;btn.textContent='✓ Сохранено';setTimeout(function(){btn.textContent=orig;},1500);}
@@ -1885,10 +1892,18 @@ async function loadSellerName(){
       localStorage.setItem('wb_seller_name',name);
       localStorage.setItem('wb_seller_name_at',Date.now().toString());
       window._sellerName=name;
-      // Перерисуем главную если она открыта (для свежего приветствия)
-      var homeSection=document.getElementById('sectionHome');
-      if(homeSection&&homeSection.classList.contains('active')){
-        loadHomeData();
+      // 🔥 v0.5.0: Перерисуем главную ВСЕГДА если homeContent уже что-то рендерил
+      // (раньше срабатывало только когда секция Home активна — но имя должно
+      //  обновиться и при переключении назад)
+      var hc=document.getElementById('homeContent');
+      if(hc&&hc.dataset.rendered==='1'){
+        var homeSection=document.getElementById('sectionHome');
+        if(homeSection&&homeSection.classList.contains('active')){
+          loadHomeData();
+        } else {
+          // Сбросим флаг — при возврате на Главную она перерендерится с именем
+          hc.dataset.rendered='';
+        }
       }
     }
   }catch(e){/* молча — не критично */}
