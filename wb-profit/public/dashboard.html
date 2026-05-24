@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.2</title>
+<title>WB Profit — Дашборд v0.5.3</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -2276,6 +2276,8 @@ async function process(raw){
       periodDays=Math.max(1,Math.round((dT-dF)/86400000)+1);
     }catch(e){}
   }
+  // 🔥 v0.5.3: запоминаем период rows чтобы overstock расчёт не путал sales/days
+  window._rowsPeriodDays = periodDays;
   window._richAlerts=buildRichAlerts(rows, fin, window._stocksMap||{}, periodDays);
   var t=fin.t;
   var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
@@ -4040,7 +4042,9 @@ function renderDashboard(snapshots){
   if(top.length){
     top.slice(0,3).forEach(function(it,i){
       var p=Number(it.profit||0);
-      h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+(i+1)+'. '+it.name+'</div><div class="top-meta">'+(it.sales||0)+' шт</div></div>';
+      // 🔥 v0.5.3: добавляем артикул в Топ-3
+      var nmLabel=it.nm?' <span style="color:#94a3b8;font-size:11px;font-weight:400">(арт. '+it.nm+')</span>':'';
+      h+='<div class="top-item"><div style="min-width:0"><div class="top-name">'+(i+1)+'. '+it.name+nmLabel+'</div><div class="top-meta">'+(it.sales||0)+' шт</div></div>';
       h+='<div class="top-profit"><div class="top-profit-val '+(p>=0?'g':'r')+'">'+(p>=0?'+':'−')+fmtR(Math.abs(p))+'</div></div></div>';
     });
   } else {
@@ -4339,18 +4343,19 @@ function collectWeekAlerts(week){
       if((st.total||0) === 0){
         arr.unshift({
           name:'Остатки кончились',
-          msg:'товар «'+it.name+'» — нет на складе. После 10 недель WB считает карточку мёртвой и снижает позиции',
+          msg:'«'+it.name+(it.nm?' (арт. '+it.nm+')':'')+'» — нет на складе. После 10 недель WB считает карточку мёртвой и снижает позиции',
           type:'out_of_stock'
         });
       }
       // Если остатков мало для скорости продаж
       else if(it.sales > 0 && (st.avail||0) > 0){
-        var perDay = it.sales / week.length;
+        // 🔥 v0.5.3: it.sales — за весь период snapshots, перенормируем по реальному периоду
+        var perDay = it.sales / Math.max(week.length, 1);
         var daysLeft = (st.avail||0) / Math.max(perDay,0.1);
         if(daysLeft < 7 && daysLeft > 0){
           arr.unshift({
             name:'Скоро закончится',
-            msg:'«'+it.name+'» — остаток '+st.avail+' шт, при текущей скорости хватит на '+Math.round(daysLeft)+' дн.',
+            msg:'«'+it.name+(it.nm?' (арт. '+it.nm+')':'')+'» — остаток '+st.avail+' шт, при текущей скорости хватит на '+Math.round(daysLeft)+' дн.',
             type:'low_stock'
           });
         }
@@ -4375,18 +4380,22 @@ function collectWeekAlerts(week){
             var frozen = cost * stock;
             arr.unshift({
               name:'Затоваривание',
-              msg:'«'+itemName+'» — '+stock+' шт без продаж'+(frozen>0?', заморожено ~'+Math.round(frozen).toLocaleString('ru-RU')+' ₽':''),
+              msg:'«'+itemName+(nm?' (арт. '+nm+')':'')+'» — '+stock+' шт без продаж'+(frozen>0?', заморожено ~'+Math.round(frozen).toLocaleString('ru-RU')+' ₽':''),
               type:'overstock'
             });
           }
         } else {
-          // Считаем оборачиваемость в днях
-          var perDay = sales / week.length;
+          // 🔥 v0.5.3 КРИТФИКС: sales берётся за период window.rows (Калькулятор),
+          // но week.length это длина snapshots (90 дней). Это давало "1077 дней"
+          // когда продажи реально 59 шт за 30 дн на остаток 706.
+          // Используем РЕАЛЬНЫЙ период rows = window._rowsPeriodDays
+          var actualDays = Number(window._rowsPeriodDays) || week.length;
+          var perDay = sales / Math.max(actualDays, 1);
           var turnover = stock / Math.max(perDay,0.01);
           if(turnover > 120){
             arr.unshift({
               name:'Медленная оборачиваемость',
-              msg:'«'+itemName+'» — '+Math.round(turnover)+' дней (норма WB до 80). Расходы на хранение растут',
+              msg:'«'+itemName+(nm?' (арт. '+nm+')':'')+'» — оборот ~'+Math.round(turnover)+' дн. при остатке '+stock+' шт и продажах '+perDay.toFixed(1)+' шт/день. Норма WB до 80 дн., после 60 — платное хранение.',
               type:'overstock'
             });
           }
