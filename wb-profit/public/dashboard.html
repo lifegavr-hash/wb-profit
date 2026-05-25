@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.10</title>
+<title>WB Profit — Дашборд v0.5.11</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -436,6 +436,7 @@ tr.loss td{background:#fff5f5}
 .ev-body{flex:1;min-width:0}
 .ev-title{font-weight:600;color:#1a0f3c;margin-bottom:2px}
 .ev-detail{font-size:12px;color:#475569}
+.ev-hint{margin-top:6px;padding:6px 10px;background:rgba(124,58,237,.06);border-left:2px solid #7c3aed;border-radius:0 6px 6px 0;font-size:11.5px;line-height:1.45;color:#374151}
 /* v0.5.9: интерактивные графики */
 .chart-tooltip{position:fixed;z-index:9999;background:rgba(20,16,40,.96);color:#fff;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:260px;display:none;transition:opacity .12s}
 .chart-tooltip-title{font-weight:600;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15)}
@@ -5029,6 +5030,7 @@ function renderAnalytics(snaps){
 // Для каждого дня собирает: товарные алерты + сравнение с baseline (7 пред. дней)
 // для трендовых событий (всплеск возвратов, обвал продаж, скачок логистики, день в убытке).
 // Сверху — сводная статистика по периоду.
+// 🔥 v0.5.11: к каждому событию добавлен hint — конкретный совет что делать
 function renderEventHistory(snaps){
   if(!snaps || snaps.length === 0){
     return '<div class="home-empty-mini">Нет данных за период</div>';
@@ -5060,7 +5062,8 @@ function renderEventHistory(snaps){
           events.push({
             sev:'crit', icon:'🔴', type:'shop_loss_day',
             title:'Магазин в убытке',
-            detail:'−'+fmtRub(Math.abs(profit))+' ₽ за день (обычно '+(avgProfit>=0?'+':'')+fmtRub(avgProfit)+' ₽/день)'
+            detail:'−'+fmtRub(Math.abs(profit))+' ₽ за день (обычно '+(avgProfit>=0?'+':'')+fmtRub(avgProfit)+' ₽/день)',
+            hint:'Проверь товары с отрицательной маржой в Калькуляторе и рекламу за этот день. Скорее всего был всплеск возвратов или скачок логистики.'
           });
         }
         // Всплеск возвратов
@@ -5071,7 +5074,8 @@ function renderEventHistory(snaps){
           events.push({
             sev:'crit', icon:'🔴', type:'returns_spike',
             title:'Всплеск возвратов',
-            detail:'возвратов '+ret+' шт (среднее ~'+avgRet.toFixed(1)+')'
+            detail:'возвратов '+ret+' шт (среднее ~'+avgRet.toFixed(1)+')',
+            hint:'Открой WB-кабинет → Возвраты. Частые причины: брак, описание не совпадает с товаром, неудобная упаковка. Подкрути карточку или замени поставку.'
           });
         }
         // Обвал продаж
@@ -5082,7 +5086,8 @@ function renderEventHistory(snaps){
           events.push({
             sev:'crit', icon:'🔴', type:'sales_drop',
             title:'Обвал продаж',
-            detail:'продано '+sales+' шт (обычно ~'+Math.round(avgSales)+' шт/день)'
+            detail:'продано '+sales+' шт (обычно ~'+Math.round(avgSales)+' шт/день)',
+            hint:'Проверь остатки на складе и видимость карточек в WB. Возможно конкуренты резко снизили цены или твой товар уехал из топа выдачи.'
           });
         }
         // Логистика взлетела
@@ -5094,7 +5099,8 @@ function renderEventHistory(snaps){
           events.push({
             sev:'crit', icon:'🔴', type:'log_spike',
             title:'Логистика взлетела',
-            detail:Math.round(log)+' ₽ (+'+growth+'% к среднему ~'+Math.round(avgLog)+' ₽/день)'
+            detail:Math.round(log)+' ₽ (+'+growth+'% к среднему ~'+Math.round(avgLog)+' ₽/день)',
+            hint:'Скорее всего была большая поставка или товары уехали на дальний склад (Хабаровск/Новосибирск). Проверь Калькулятор → Хранение/Логистика по дням.'
           });
         }
       }
@@ -5112,14 +5118,16 @@ function renderEventHistory(snaps){
         events.push({
           sev:'crit', icon:'🔴', type:'item_loss',
           title:'Товар в убытке',
-          detail:itemHtml_safe+' — '+escHtml(a.msg||'')
+          detail:itemHtml_safe+' — '+escHtml(a.msg||''),
+          hint:'Открой Подбор товара → подставь свои средние, найди безубыточную цену. Если товар системно убыточный — снимай с продажи.'
         });
       } else if(a.type === 'high_drr'){
         stats.drrDays++;
         events.push({
           sev:'warn', icon:'🟠', type:'high_drr',
           title:'Высокий ДРР',
-          detail:itemHtml_safe+' — '+escHtml(a.msg||'')
+          detail:itemHtml_safe+' — '+escHtml(a.msg||''),
+          hint:'Снизь ставки в рекламной кампании WB или отключи её. ДРР >50% — каждый рубль рекламы работает в минус.'
         });
       }
     });
@@ -5134,7 +5142,8 @@ function renderEventHistory(snaps){
         events.push({
           sev:'warn', icon:'🟠', type:'margin_risk',
           title:'Опасная маржа',
-          detail:'магазин '+margin.toFixed(1)+'% (норма 15%+, риск при <15%)'
+          detail:'магазин '+margin.toFixed(1)+'% (норма 15%+, риск при <15%)',
+          hint:'Сократи себестоимость (другой поставщик/опт) или повысь цену. При марже <10% любой возврат или скидка делает день убыточным.'
         });
       }
       // Высокая доля логистики
@@ -5145,7 +5154,8 @@ function renderEventHistory(snaps){
         events.push({
           sev:'warn', icon:'🟠', type:'log_share',
           title:'Логистика съедает выручку',
-          detail:Math.round(logShare)+'% от выручки ('+fmtR(logT)+' ₽ из '+fmtR(rev)+' ₽)'
+          detail:Math.round(logShare)+'% от выручки ('+fmtR(logT)+' ₽ из '+fmtR(rev)+' ₽)',
+          hint:'Проверь габариты упаковки в карточках товаров — часто WB начисляет логистику ×2-3 если объём занижен. Сделай реальные замеры с упаковкой.'
         });
       }
     }
@@ -5193,6 +5203,9 @@ function renderEventHistory(snaps){
       h += '<div class="ev-body">';
       h += '<div class="ev-title">'+escHtml(e.title)+'</div>';
       h += '<div class="ev-detail">'+e.detail+'</div>';
+      if(e.hint){
+        h += '<div class="ev-hint">💡 '+escHtml(e.hint)+'</div>';
+      }
       h += '</div>';
       h += '</div>';
     });
