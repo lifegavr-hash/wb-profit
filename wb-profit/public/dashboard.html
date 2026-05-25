@@ -1573,6 +1573,10 @@ async function init(){
     }
   }
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
+  // 🔥 v0.6.2: восстанавливаем кеш WB-данных если он свежий (<4ч) и совпадает с текущим периодом.
+  // Это решает проблему «после F5 таблица пустая». Делаем это ДО восстановления секции,
+  // чтобы Калькулятор/Детализация уже имели window.rows.
+  await tryRestoreDataFromCache();
   // 🔥 v0.6.1: восстанавливаем последнюю активную секцию (чтобы F5 не возвращал на Главную)
   var savedSection=null;
   try{savedSection=localStorage.getItem('wb_current_section');}catch(e){}
@@ -1901,6 +1905,50 @@ var _currentPeriod=(function(){
 function savePeriod(){
   try{localStorage.setItem('wb_current_period',JSON.stringify(_currentPeriod));}catch(e){}
 }
+// 🔥 v0.6.2: восстановить WB-данные из localStorage если они свежие и совпадают с текущим периодом.
+// Свежие = младше 4 часов. Это решает баг «после F5 таблица пустая».
+async function tryRestoreDataFromCache(){
+  try{
+    var raw=localStorage.getItem('wb_cache_raw');
+    if(!raw) return false;
+    var cache=JSON.parse(raw);
+    // Проверка возраста
+    var ageHours=(Date.now()-cache.ts)/1000/3600;
+    if(ageHours>4){
+      console.log('[cache] устарел ('+ageHours.toFixed(1)+'ч), удаляем');
+      localStorage.removeItem('wb_cache_raw');
+      return false;
+    }
+    // Проверка совпадения периода — вычисляем какой период сейчас выбран и сравниваем с кешем
+    var today=new Date();
+    var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
+    var expDf, expDt;
+    if(_currentPeriod.mode==='custom'){
+      expDf=_currentPeriod.df; expDt=_currentPeriod.dt;
+    } else {
+      var period=_currentPeriod.days||30;
+      var a=new Date(yesterday);a.setDate(yesterday.getDate()-(period-1));
+      expDt=yesterday.toISOString().slice(0,10);
+      expDf=a.toISOString().slice(0,10);
+    }
+    if(cache.df!==expDf || cache.dt!==expDt){
+      console.log('[cache] период не совпал (кеш '+cache.df+'..'+cache.dt+' vs выбран '+expDf+'..'+expDt+')');
+      return false;
+    }
+    // Восстанавливаем: подставляем даты в скрытые поля df/dt и прогоняем process()
+    var dfEl=document.getElementById('df'); if(dfEl) dfEl.value=cache.df;
+    var dtEl=document.getElementById('dt'); if(dtEl) dtEl.value=cache.dt;
+    if(cache.stocksMap) window._stocksMap=cache.stocksMap;
+    rawData=cache.raw;
+    console.log('[cache] восстановлено '+cache.raw.length+' raw-записей за '+cache.df+'..'+cache.dt+' (возраст '+ageHours.toFixed(1)+'ч)');
+    await process(cache.raw);
+    return true;
+  }catch(e){
+    console.warn('[cache] restore failed:', e);
+    try{localStorage.removeItem('wb_cache_raw');}catch(e2){}
+    return false;
+  }
+}
 // Синхронизировать визуальное выделение pills с _currentPeriod
 function syncPeriodPills(){
   document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
@@ -1921,6 +1969,8 @@ function setPeriod(days){
   }
   _currentPeriod={mode:'preset',days:days,df:null,dt:null};
   savePeriod();
+  // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
+  try{localStorage.removeItem('wb_cache_raw');}catch(e){}
   syncPeriodPills();
 }
 function openCustomPeriod(){
@@ -1957,6 +2007,8 @@ function applyCustomPeriod(){
   if(df>dt){alert('Дата начала должна быть раньше даты окончания');return;}
   _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
   savePeriod();
+  // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
+  try{localStorage.removeItem('wb_cache_raw');}catch(e){}
   document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
   var btn=document.querySelector('.period-pill[data-period="custom"]');
   if(btn){
@@ -2131,6 +2183,27 @@ async function go(tokenArg){
     var ld=document.getElementById('ldBox');if(ld)ld.style.display='none';
     localStorage.setItem('wb_last_sync',Date.now().toString());
     refreshLastSync();
+    // 🔥 v0.6.2: сохраняем raw в localStorage чтобы при F5 не грузить заново.
+    // При init() если кеш свежий (<4ч) и период совпал — прогоняем через process() мгновенно.
+    // Храним raw (не rows), т.к. process() содержит вычисления зависящие от состояния.
+    try{
+      if(rawData && rawData.length){
+        var cache={
+          ts: Date.now(),
+          df: df, dt: dt,
+          raw: rawData,
+          stocksMap: window._stocksMap||null
+        };
+        var json=JSON.stringify(cache);
+        // localStorage лимит ~5MB. Если объёмно — пропускаем кеш, не ломая загрузку
+        if(json.length < 4*1024*1024){
+          localStorage.setItem('wb_cache_raw', json);
+        } else {
+          localStorage.removeItem('wb_cache_raw');
+          console.warn('wb_cache_raw: данные >4MB, кеш пропущен (~'+(json.length/1024/1024).toFixed(1)+'MB)');
+        }
+      }
+    }catch(e){console.warn('cache save failed',e);}
   }
 }
 async function loadStocks(tok){
