@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.7</title>
+<title>WB Profit — Дашборд v0.5.8</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -2393,18 +2393,12 @@ async function process(raw){
   } else {
     freeWarn.style.display='none';
   }
-  // Rich-alerts в Калькуляторе — компактная сводка с раскрытием
-  var calcAlerts=document.getElementById('calcAlerts');
-  if(!calcAlerts){
-    calcAlerts=document.createElement('div');
-    calcAlerts.id='calcAlerts';
-    var mg2=document.getElementById('mg');
-    if(mg2&&mg2.parentNode){
-      var anchor=document.getElementById('freeLimitWarn')||mg2;
-      anchor.parentNode.insertBefore(calcAlerts,anchor.nextSibling);
-    }
+  // 🔥 v0.5.8: Защита от потерь убрана из Калькулятора — теперь только в Детализации.
+  // Удаляем DOM-узел если остался от старой версии (после обновления страницы).
+  var calcAlertsOld=document.getElementById('calcAlerts');
+  if(calcAlertsOld&&calcAlertsOld.parentNode){
+    calcAlertsOld.parentNode.removeChild(calcAlertsOld);
   }
-  calcAlerts.innerHTML=renderCalcAlertsCompact();
   renderTable(t.ppvz,t.delivery,t.storage,t.ads,t.penalty,t.salesCount,t.returnsCount,t.cost,t.profit,t.commission);
   document.getElementById('results').style.display='block';
   // Сохраняем снапшоты по дням в Supabase для Главной (фоном, не блокируем UI)
@@ -2561,38 +2555,14 @@ function renderDetail(){
     html='<div style="background:#fee2e2;border:1px solid #ef4444;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Арифметика не сходится: '+fmt(t.revenue)+' − '+fmt(totalExpenses)+' '+(t.wbAdjust>=0?'+':'')+fmt(t.wbAdjust)+' = '+fmt(expected)+' ≠ '+fmt(t.profit)+'. Сообщите в поддержку.</div>'+html;
   }
 
-  // 🔥 v0.5.4: Защита от потерь в Детализации (на основе rows из Калькулятора)
+  // 🔥 v0.5.8: Защита от потерь в Детализации — переиспользуем renderCalcAlertsCompact
+  // (тот же вид что раньше был в Калькуляторе: полная плашка с группировкой по типам и кнопкой Подробнее)
   var protectHtml = '';
   if(window._richAlerts && window._richAlerts.length){
-    var alerts = window._richAlerts;
-    var totalLoss = alerts.filter(function(a){return a.severity==='critical';})
-      .reduce(function(sum,a){return sum+(Number(a.loss)||0);},0);
-    protectHtml = '<div class="detail-card" style="border:2px solid rgba(220,38,38,.15);background:linear-gradient(135deg,rgba(220,38,38,.02),#fff)">';
-    protectHtml += '<div class="detail-card-header">';
-    protectHtml += '<span class="detail-card-title">🛡️ Защита от потерь</span>';
-    if(totalLoss >= 100){
-      protectHtml += '<span style="font-size:12px;color:#dc2626;font-weight:600;background:rgba(220,38,38,.1);padding:3px 8px;border-radius:99px">~'+fmt(totalLoss)+' ₽ потенциальных потерь</span>';
+    var compactHtml = renderCalcAlertsCompact();
+    if(compactHtml){
+      protectHtml = '<div class="detail-card" style="border:2px solid rgba(220,38,38,.15);background:linear-gradient(135deg,rgba(220,38,38,.02),#fff);padding:14px">'+compactHtml+'</div>';
     }
-    protectHtml += '</div>';
-    alerts.slice(0,5).forEach(function(a){
-      var sevColor = a.severity==='critical' ? '#dc2626' : (a.severity==='warning' ? '#f59e0b' : '#3b82f6');
-      protectHtml += '<div style="padding:10px 12px;border-left:3px solid '+sevColor+';background:rgba(0,0,0,.02);border-radius:6px;margin-bottom:8px">';
-      protectHtml += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">';
-      protectHtml += '<div style="font-weight:600;font-size:13px">'+a.icon+' '+escHtml(a.title)+'</div>';
-      if(a.loss && a.loss>=100){
-        protectHtml += '<div style="color:'+sevColor+';font-weight:600;font-size:12px;white-space:nowrap">~'+fmt(a.loss)+' ₽</div>';
-      }
-      protectHtml += '</div>';
-      // 🔥 v0.5.7: через itemHtml
-      var pureName3 = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
-      protectHtml += '<div style="font-size:12px;color:#64748b;margin-top:2px">'+itemHtml(pureName3)+'</div>';
-      protectHtml += '<div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.45">'+escHtml(a.msg)+'</div>';
-      if(a.hint){
-        protectHtml += '<div style="font-size:11px;color:#7c3aed;margin-top:6px;padding-top:6px;border-top:1px dashed #e5e7eb">💡 '+escHtml(a.hint)+'</div>';
-      }
-      protectHtml += '</div>';
-    });
-    protectHtml += '</div>';
   }
   
   document.getElementById('detailGrid').innerHTML = protectHtml + html;
@@ -4109,7 +4079,8 @@ function renderRichAlertsBlock(){
     h+='</div>';
     return h;
   }
-  alerts.slice(0,5).forEach(function(a){
+  // 🔥 v0.5.8: лимит 3 риска на Главной (было 5), полная картина — в Детализации
+  alerts.slice(0,3).forEach(function(a){
     var sevCls=a.severity==='critical'?'rich-alert-crit':(a.severity==='warning'?'rich-alert-warn':'rich-alert-info');
     h+='<div class="rich-alert '+sevCls+'">';
     h+='<div class="rich-alert-head">';
@@ -4126,8 +4097,8 @@ function renderRichAlertsBlock(){
     if(a.hint){h+='<div class="rich-alert-hint">💡 '+escHtml(a.hint)+'</div>';}
     h+='</div>';
   });
-  if(alerts.length>5){
-    h+='<div class="rich-alert-more">+'+(alerts.length-5)+' '+plural(alerts.length-5,'риск','риска','рисков')+' — открыть Калькулятор для деталей</div>';
+  if(alerts.length>3){
+    h+='<div class="rich-alert-more"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" style="color:#7c3aed;text-decoration:none;font-weight:600">+'+(alerts.length-3)+' '+plural(alerts.length-3,'риск','риска','рисков')+' — смотреть в Детализации →</a></div>';
   }
   h+='</div>';
   return h;
@@ -4401,18 +4372,19 @@ function renderDashboard(snapshots){
   h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
   var actions=buildActions(alertDays,weekAlerts);
   if(actions.length){
-    actions.forEach(function(a,i){
+    // 🔥 v0.5.8: лимит 3 совета на Главной (было всё), остальное — в Детализации
+    actions.slice(0,3).forEach(function(a,i){
       // 🔥 v0.5.7: оборачиваем все (арт. NNN) в art-tag + ищем потерянные nm в кеше
-      // (если в тексте упоминается имя товара без артикула — добавим если найдём)
       var actionHtml = a.replace(/\(арт\.\s*(\d+)\)/g, '<span class="art-tag" title="Скопируйте артикул">$1</span>');
-      // Доп: если в тексте есть имена из кеша БЕЗ артикула после них — попытаемся добавить
-      // (но только аккуратно, чтобы не сломать форматирование)
       h+='<div class="home-action">'+(i+1)+'. '+actionHtml+'</div>';
     });
+    if(actions.length>3){
+      h+='<div class="home-action" style="border-bottom:0;padding-top:10px"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" style="color:#7c3aed;text-decoration:none;font-weight:600">+'+(actions.length-3)+' '+plural(actions.length-3,'совет','совета','советов')+' — смотреть в Детализации →</a></div>';
+    }
   } else {
     h+='<div class="home-empty-mini">Конкретных рекомендаций нет — продолжайте в том же духе!</div>';
   }
-  h+='<div style="margin-top:14px;text-align:right"><a href="#" onclick="showSection(\'calc\',document.getElementById(\'nav-calc\'));return false;" class="home-link">Открыть детали в Калькуляторе →</a></div>';
+  h+='<div style="margin-top:14px;text-align:right"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" class="home-link">Открыть детали в Детализации →</a></div>';
   h+='</div>';
   el.innerHTML=h;
 }
