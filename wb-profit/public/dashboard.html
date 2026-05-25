@@ -419,6 +419,23 @@ tr.loss td{background:#fff5f5}
 .problem-val.red{color:#ef4444}
 .an-insight{background:rgba(124,58,237,.06);border-left:3px solid #7c3aed;padding:10px 14px;border-radius:0 8px 8px 0;margin-top:14px;font-size:12px;line-height:1.5}
 .an-insight strong{color:#7c3aed}
+/* v0.5.10: История проблем */
+.ev-summary{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 12px;background:#fafbff;border:1px solid #eef0ff;border-radius:10px;margin-bottom:14px;font-size:12px;color:#475569}
+.ev-chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.ev-chip-crit{background:rgba(220,38,38,.1);color:#dc2626}
+.ev-chip-warn{background:rgba(245,158,11,.12);color:#b45309}
+.ev-timeline{display:flex;flex-direction:column;gap:0}
+.ev-day{padding:12px 0;border-bottom:1px solid #f1f5f9}
+.ev-day:last-child{border-bottom:0;padding-bottom:0}
+.ev-day-date{font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.ev-day-events{display:flex;flex-direction:column;gap:6px}
+.ev-item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.45}
+.ev-crit{background:rgba(220,38,38,.04);border-left:3px solid #dc2626}
+.ev-warn{background:rgba(245,158,11,.04);border-left:3px solid #f59e0b}
+.ev-icon{flex-shrink:0;font-size:14px;line-height:1.2}
+.ev-body{flex:1;min-width:0}
+.ev-title{font-weight:600;color:#1a0f3c;margin-bottom:2px}
+.ev-detail{font-size:12px;color:#475569}
 /* v0.5.9: интерактивные графики */
 .chart-tooltip{position:fixed;z-index:9999;background:rgba(20,16,40,.96);color:#fff;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:260px;display:none;transition:opacity .12s}
 .chart-tooltip-title{font-weight:600;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.15)}
@@ -4995,12 +5012,194 @@ function renderAnalytics(snaps){
   h+=renderProblems(snaps);
   h+='</div>';
   h+='</div>';
+  // 🔥 v0.5.10: История проблем за период — хроника событий по дням
+  h+='<div class="an-card">';
+  h+='<div class="an-card-title">📊 ИСТОРИЯ ПРОБЛЕМ ЗА '+snaps.length+' ДН.</div>';
+  h+=renderEventHistory(snaps);
+  h+='</div>';
   // Виджет 4: ABC-анализ
   h+='<div class="an-card">';
   h+='<div class="an-card-title">🏷️ ABC-АНАЛИЗ ТОВАРОВ</div>';
   h+=renderABC(snaps);
   h+='</div>';
   el.innerHTML=h;
+}
+
+// 🔥 v0.5.10: История проблем за период — лента событий по дням
+// Для каждого дня собирает: товарные алерты + сравнение с baseline (7 пред. дней)
+// для трендовых событий (всплеск возвратов, обвал продаж, скачок логистики, день в убытке).
+// Сверху — сводная статистика по периоду.
+function renderEventHistory(snaps){
+  if(!snaps || snaps.length === 0){
+    return '<div class="home-empty-mini">Нет данных за период</div>';
+  }
+  // Собираем события по дням
+  var dayEvents = []; // [{day, date, events:[{sev,icon,title,detail,hint}]}]
+  var stats = {
+    lossDays: 0,
+    returnsSpikes: 0,
+    salesDrops: 0,
+    logSpikes: 0,
+    itemLossDays: 0,
+    drrDays: 0,
+    marginRisk: 0,
+    logShareRisk: 0
+  };
+  snaps.forEach(function(s, idx){
+    var events = [];
+    // === ДНЕВНЫЕ ТРЕНДОВЫЕ СОБЫТИЯ — сравнение с baseline 7 дней до ===
+    if(idx >= 2){
+      var baseline = snaps.slice(Math.max(0, idx-7), idx);
+      var bCount = baseline.length;
+      if(bCount >= 2){
+        // День в убытке (магазин)
+        var profit = Number(s.profit||0);
+        var avgProfit = baseline.reduce(function(a,x){return a+Number(x.profit||0);},0)/bCount;
+        if(profit < 0 && Math.abs(profit) >= 500){
+          stats.lossDays++;
+          events.push({
+            sev:'crit', icon:'🔴', type:'shop_loss_day',
+            title:'Магазин в убытке',
+            detail:'−'+fmtRub(Math.abs(profit))+' ₽ за день (обычно '+(avgProfit>=0?'+':'')+fmtRub(avgProfit)+' ₽/день)'
+          });
+        }
+        // Всплеск возвратов
+        var avgRet = baseline.reduce(function(a,x){return a+Number(x.returns_count||0);},0)/bCount;
+        var ret = Number(s.returns_count||0);
+        if(ret >= 3 && avgRet > 0 && ret >= avgRet*2){
+          stats.returnsSpikes++;
+          events.push({
+            sev:'crit', icon:'🔴', type:'returns_spike',
+            title:'Всплеск возвратов',
+            detail:'возвратов '+ret+' шт (среднее ~'+avgRet.toFixed(1)+')'
+          });
+        }
+        // Обвал продаж
+        var avgSales = baseline.reduce(function(a,x){return a+Number(x.sales_count||0);},0)/bCount;
+        var sales = Number(s.sales_count||0);
+        if(avgSales >= 3 && sales < avgSales*0.4){
+          stats.salesDrops++;
+          events.push({
+            sev:'crit', icon:'🔴', type:'sales_drop',
+            title:'Обвал продаж',
+            detail:'продано '+sales+' шт (обычно ~'+Math.round(avgSales)+' шт/день)'
+          });
+        }
+        // Логистика взлетела
+        var avgLog = baseline.reduce(function(a,x){return a+Number(x.logistics||0);},0)/bCount;
+        var log = Number(s.logistics||0);
+        if(avgLog >= 200 && log > avgLog*1.5){
+          stats.logSpikes++;
+          var growth = Math.round((log/avgLog-1)*100);
+          events.push({
+            sev:'crit', icon:'🔴', type:'log_spike',
+            title:'Логистика взлетела',
+            detail:Math.round(log)+' ₽ (+'+growth+'% к среднему ~'+Math.round(avgLog)+' ₽/день)'
+          });
+        }
+      }
+    }
+    // === ТОВАРНЫЕ АЛЕРТЫ ИЗ snapshot.alerts ===
+    (s.alerts||[]).forEach(function(a){
+      var nm = a.nm;
+      if(!nm && s.top_items){
+        var m = s.top_items.find(function(t){return t.name === a.name;});
+        if(m && m.nm) nm = m.nm;
+      }
+      var itemHtml_safe = itemHtml(a.name, nm);
+      if(a.type === 'loss'){
+        stats.itemLossDays++;
+        events.push({
+          sev:'crit', icon:'🔴', type:'item_loss',
+          title:'Товар в убытке',
+          detail:itemHtml_safe+' — '+escHtml(a.msg||'')
+        });
+      } else if(a.type === 'high_drr'){
+        stats.drrDays++;
+        events.push({
+          sev:'warn', icon:'🟠', type:'high_drr',
+          title:'Высокий ДРР',
+          detail:itemHtml_safe+' — '+escHtml(a.msg||'')
+        });
+      }
+    });
+    // === ПРЕДУПРЕЖДЕНИЯ ПО МАГАЗИНУ ЗА ДЕНЬ ===
+    var rev = Number(s.revenue||0);
+    var prof2 = Number(s.profit||0);
+    if(rev >= 1000){
+      var margin = prof2/rev*100;
+      // Опасная маржа магазина
+      if(margin > 0 && margin < 10){
+        stats.marginRisk++;
+        events.push({
+          sev:'warn', icon:'🟠', type:'margin_risk',
+          title:'Опасная маржа',
+          detail:'магазин '+margin.toFixed(1)+'% (норма 15%+, риск при <15%)'
+        });
+      }
+      // Высокая доля логистики
+      var logT = Number(s.logistics||0);
+      var logShare = logT/rev*100;
+      if(logShare > 25 && logT >= 500){
+        stats.logShareRisk++;
+        events.push({
+          sev:'warn', icon:'🟠', type:'log_share',
+          title:'Логистика съедает выручку',
+          detail:Math.round(logShare)+'% от выручки ('+fmtR(logT)+' ₽ из '+fmtR(rev)+' ₽)'
+        });
+      }
+    }
+    if(events.length){
+      // Сортируем: критичные первыми
+      events.sort(function(a,b){
+        if(a.sev !== b.sev) return a.sev === 'crit' ? -1 : 1;
+        return 0;
+      });
+      // Форматируем дату
+      var dateStr = s.day;
+      try{
+        var d = new Date(s.day);
+        var months=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+        var wdays=['вс','пн','вт','ср','чт','пт','сб'];
+        dateStr = d.getDate()+' '+months[d.getMonth()]+', '+wdays[d.getDay()];
+      }catch(e){}
+      dayEvents.push({day:s.day, date:dateStr, events:events});
+    }
+  });
+  // Сводная статистика
+  var totalEvents = dayEvents.reduce(function(a,d){return a+d.events.length;},0);
+  if(totalEvents === 0){
+    return '<div class="home-empty-mini">🎉 За '+snaps.length+' дн. серьёзных проблем не было<br><span style="font-size:11px;opacity:.6">Ни убытков, ни всплесков возвратов, ни обвалов продаж — магазин стабильно работает.</span></div>';
+  }
+  var sumChips = [];
+  if(stats.lossDays) sumChips.push('<span class="ev-chip ev-chip-crit">'+stats.lossDays+' '+plural(stats.lossDays,'убыточный день','убыточных дня','убыточных дней')+'</span>');
+  if(stats.itemLossDays) sumChips.push('<span class="ev-chip ev-chip-crit">'+stats.itemLossDays+' '+plural(stats.itemLossDays,'товар в убытке','товара в убытке','товаров в убытке')+'</span>');
+  if(stats.returnsSpikes) sumChips.push('<span class="ev-chip ev-chip-crit">'+stats.returnsSpikes+' '+plural(stats.returnsSpikes,'всплеск возвратов','всплеска возвратов','всплесков возвратов')+'</span>');
+  if(stats.salesDrops) sumChips.push('<span class="ev-chip ev-chip-crit">'+stats.salesDrops+' '+plural(stats.salesDrops,'обвал продаж','обвала продаж','обвалов продаж')+'</span>');
+  if(stats.logSpikes) sumChips.push('<span class="ev-chip ev-chip-crit">'+stats.logSpikes+' '+plural(stats.logSpikes,'скачок логистики','скачка логистики','скачков логистики')+'</span>');
+  if(stats.drrDays) sumChips.push('<span class="ev-chip ev-chip-warn">ДРР '+stats.drrDays+' '+plural(stats.drrDays,'раз','раза','раз')+'</span>');
+  if(stats.marginRisk) sumChips.push('<span class="ev-chip ev-chip-warn">'+stats.marginRisk+' '+plural(stats.marginRisk,'день','дня','дней')+' с опасной маржой</span>');
+  if(stats.logShareRisk) sumChips.push('<span class="ev-chip ev-chip-warn">логистика '+stats.logShareRisk+' '+plural(stats.logShareRisk,'раз','раза','раз')+'</span>');
+  var h = '<div class="ev-summary">За '+snaps.length+' дн.: '+sumChips.join(' ')+'</div>';
+  // Лента событий — обратный порядок (свежее сверху)
+  h += '<div class="ev-timeline">';
+  dayEvents.slice().reverse().forEach(function(d){
+    h += '<div class="ev-day">';
+    h += '<div class="ev-day-date">'+d.date+'</div>';
+    h += '<div class="ev-day-events">';
+    d.events.forEach(function(e){
+      h += '<div class="ev-item ev-'+e.sev+'">';
+      h += '<span class="ev-icon">'+e.icon+'</span>';
+      h += '<div class="ev-body">';
+      h += '<div class="ev-title">'+escHtml(e.title)+'</div>';
+      h += '<div class="ev-detail">'+e.detail+'</div>';
+      h += '</div>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+  });
+  h += '</div>';
+  return h;
 }
 
 // === ВИДЖЕТ 1: Линейный график ===
