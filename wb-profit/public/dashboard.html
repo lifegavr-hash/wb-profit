@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.1</div>
+      <div class="sidebar-version">WB Profit · v0.6.2</div>
     </div>
   </div>
 </div>
@@ -1573,6 +1573,17 @@ async function init(){
     }
   }
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
+  // 🔥 v0.6.1: восстанавливаем последнюю активную секцию (чтобы F5 не возвращал на Главную)
+  var savedSection=null;
+  try{savedSection=localStorage.getItem('wb_current_section');}catch(e){}
+  if(savedSection && savedSection!=='home'){
+    var navBtn=document.getElementById('nav-'+savedSection);
+    // Для PRO-only — только если PRO. Иначе остаёмся на Главной.
+    var proOnly=(savedSection==='detail'||savedSection==='analytics');
+    if(navBtn && navBtn.style.display!=='none' && (!proOnly||hasPRO())){
+      showSection(savedSection, navBtn);
+    }
+  }
   // Сначала подтягиваем себестоимости с сервера (фоном, не блокирует UI)
   loadCostsFromServer();
   // 🔥 v0.5.0: ждём имя до 2 сек чтобы приветствие сразу было с именем (а не «Здравствуйте!»)
@@ -1724,6 +1735,11 @@ function showSection(name,el){
   });
   document.querySelectorAll('.nav-item').forEach(function(i){i.classList.remove('active');});
   if(el) el.classList.add('active');
+  // 🔥 v0.6.1: подсветить nav если el не пришёл (например при вызове из showSection('promo',null))
+  if(!el){
+    var navBtn=document.getElementById('nav-'+name);
+    if(navBtn) navBtn.classList.add('active');
+  }
   document.getElementById('topbarTitle').textContent=titles[name]||'';
   // Глобальная панель загрузки — видна на разделах с WB-данными
   var loadBar=document.getElementById('globalLoadBar');
@@ -1740,6 +1756,12 @@ function showSection(name,el){
     var rs=document.getElementById('results');var ce=document.getElementById('calcEmpty');
     if(rs)rs.style.display=hasData?'block':'none';
     if(ce)ce.style.display=hasData?'none':'block';
+  }
+  // 🔥 v0.6.1: сохраняем активную секцию чтобы при F5 не возвращало на главную.
+  // Промокод и admin не сохраняем — это служебные, лучше после reload оказаться там
+  // где была реальная работа.
+  if(name!=='promo' && name!=='admin'){
+    try{localStorage.setItem('wb_current_section', name);}catch(e){}
   }
 }
 
