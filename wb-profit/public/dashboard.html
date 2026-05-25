@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.6</div>
+      <div class="sidebar-version">WB Profit · v0.6.7</div>
     </div>
   </div>
 </div>
@@ -1554,12 +1554,47 @@ async function init(){
   if(!session){window.location.href='/login.html';return;}
   currentUser=session.user;
   window.currentJwt=session.access_token; // глобально для запросов с backend-проверкой тарифа
-  var {data:profile}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  // 🔥 v0.6.7: защита от лагов Supabase. Если profile=null после запроса — retry один раз,
+  // потом fallback на free-заглушку. Без этого весь UI ложился, когда БД не отвечала.
+  var profile=null, profErr=null;
+  for(var attempt=1; attempt<=2; attempt++){
+    try{
+      var resp=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+      if(resp.data){profile=resp.data; break;}
+      profErr=resp.error;
+      if(attempt===1){
+        console.warn('[init] profile attempt 1 returned null, retrying...', profErr);
+        await new Promise(function(r){setTimeout(r,1500);});
+      }
+    }catch(e){
+      profErr=e;
+      console.warn('[init] profile attempt '+attempt+' threw:', e);
+      if(attempt===1) await new Promise(function(r){setTimeout(r,1500);});
+    }
+  }
+  if(!profile){
+    // Fallback — даём войти как free, не блокируем работу. Покажем баннер сверху.
+    console.error('[init] profile load failed permanently, using free fallback:', profErr);
+    profile={
+      id: currentUser.id,
+      email: currentUser.email,
+      plan: 'free',
+      plan_expires_at: null,
+      is_admin: false
+    };
+    // Покажем красную полоску сверху чтобы юзер знал что что-то не так
+    setTimeout(function(){
+      var bar=document.createElement('div');
+      bar.style.cssText='position:fixed;top:0;left:0;right:0;background:#fef2f2;border-bottom:2px solid #dc2626;color:#7f1d1d;padding:10px 16px;font-size:13px;text-align:center;z-index:99999;font-weight:500';
+      bar.innerHTML='⚠️ База данных временно не отвечает. Работаете в режиме Free. <a href="#" onclick="location.reload();return false" style="color:#dc2626;text-decoration:underline;margin-left:8px">Перезагрузить</a>';
+      document.body.appendChild(bar);
+    },100);
+  }
   // Авто-даунгрейд если PRO истёк (не для админа с 2099 годом — он всё равно not expired)
   if(profile&&profile.plan==='pro'&&profile.plan_expires_at&&!profile.is_admin){
     if(new Date(profile.plan_expires_at).getTime()<Date.now()){
       // Истёк — даунгрейдим в БД
-      await sb.from('profiles').update({plan:'free',plan_expires_at:null}).eq('id',currentUser.id);
+      try{await sb.from('profiles').update({plan:'free',plan_expires_at:null}).eq('id',currentUser.id);}catch(e){}
       profile.plan='free';
       profile.plan_expires_at=null;
     }
@@ -1576,7 +1611,7 @@ async function init(){
       btn.textContent='📅 '+shortDate(_currentPeriod.df)+'–'+shortDate(_currentPeriod.dt);
     }
   }
-  if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
+  if(profile && profile.is_admin) document.getElementById('nav-admin').style.display='block';
   // 🔥 v0.6.2: восстанавливаем кеш WB-данных если он свежий (<4ч) и совпадает с текущим периодом.
   // Это решает проблему «после F5 таблица пустая». Делаем это ДО восстановления секции,
   // чтобы Калькулятор/Детализация уже имели window.rows.
@@ -1672,9 +1707,11 @@ function showProUpgradeModal(featureName){
 }
 
 function updateUI(profile,email,token){
-  var initials=email.substring(0,2).toUpperCase();
+  // 🔥 v0.6.7: защита от null profile (если Supabase лагает)
+  profile = profile || {plan:'free', plan_expires_at:null, is_admin:false};
+  var initials=(email||'??').substring(0,2).toUpperCase();
   document.getElementById('userAvatar').textContent=initials;
-  document.getElementById('userEmail').textContent=email;
+  document.getElementById('userEmail').textContent=email||'(нет email)';
   var plan=profile.plan||'free';
   var expires=profile.plan_expires_at?new Date(profile.plan_expires_at):null;
   var hasPro=hasPRO();
