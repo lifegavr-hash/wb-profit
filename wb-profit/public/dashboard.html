@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.2</div>
+      <div class="sidebar-version">WB Profit · v0.6.3</div>
     </div>
   </div>
 </div>
@@ -1905,21 +1905,24 @@ var _currentPeriod=(function(){
 function savePeriod(){
   try{localStorage.setItem('wb_current_period',JSON.stringify(_currentPeriod));}catch(e){}
 }
-// 🔥 v0.6.2: восстановить WB-данные из localStorage если они свежие и совпадают с текущим периодом.
-// Свежие = младше 4 часов. Это решает баг «после F5 таблица пустая».
+// 🔥 v0.6.3: восстановить обработанные WB-данные из localStorage если они свежие и совпадают с текущим периодом.
+// Кешируем processed (rows + totals + alerts), а НЕ raw — это в 50-100 раз компактнее (raw для 90 дней ~9МБ
+// не помещается в localStorage). Восстановление = прямой рендер плиток и таблицы, без повторного process().
 async function tryRestoreDataFromCache(){
   try{
-    var raw=localStorage.getItem('wb_cache_raw');
+    // Удаляем старый ключ если остался от v0.6.2
+    try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
+    var raw=localStorage.getItem('wb_cache_processed');
     if(!raw) return false;
     var cache=JSON.parse(raw);
-    // Проверка возраста
+    // Проверка возраста (< 4 часов)
     var ageHours=(Date.now()-cache.ts)/1000/3600;
     if(ageHours>4){
       console.log('[cache] устарел ('+ageHours.toFixed(1)+'ч), удаляем');
-      localStorage.removeItem('wb_cache_raw');
+      localStorage.removeItem('wb_cache_processed');
       return false;
     }
-    // Проверка совпадения периода — вычисляем какой период сейчас выбран и сравниваем с кешем
+    // Проверка совпадения периода
     var today=new Date();
     var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
     var expDf, expDt;
@@ -1935,17 +1938,73 @@ async function tryRestoreDataFromCache(){
       console.log('[cache] период не совпал (кеш '+cache.df+'..'+cache.dt+' vs выбран '+expDf+'..'+expDt+')');
       return false;
     }
-    // Восстанавливаем: подставляем даты в скрытые поля df/dt и прогоняем process()
+    // Восстанавливаем глобальное состояние
+    window.rows = cache.rows;
+    rows = cache.rows; // также в локальную var, как делает process()
+    window._lastTotals = cache.totals;
+    window._richAlerts = cache.richAlerts || [];
+    window._freeLimitTriggered = cache.freeLimitTriggered || false;
+    window._stocksMap = cache.stocksMap || {};
+    window._rowsPeriodDays = cache.rowsPeriodDays || (_currentPeriod.days||30);
+    // Подставляем даты в скрытые поля
     var dfEl=document.getElementById('df'); if(dfEl) dfEl.value=cache.df;
     var dtEl=document.getElementById('dt'); if(dtEl) dtEl.value=cache.dt;
-    if(cache.stocksMap) window._stocksMap=cache.stocksMap;
-    rawData=cache.raw;
-    console.log('[cache] восстановлено '+cache.raw.length+' raw-записей за '+cache.df+'..'+cache.dt+' (возраст '+ageHours.toFixed(1)+'ч)');
-    await process(cache.raw);
+    // Рендерим плитки (тот же HTML что в process())
+    var t=cache.totals;
+    if(t){
+      var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
+      var adjHtml='';
+      if(Math.abs(t.wbAdjust||0)>=50){
+        var adjPos=t.wbAdjust>0;
+        var adjTitle=adjPos?'Доплаты WB':'Удержано WB';
+        adjHtml='<div class="m m-info" onclick="showAdjustInfo('+(adjPos?'true':'false')+','+Math.abs(t.wbAdjust)+')">'+
+                '<div class="ml">'+adjTitle+'</div>'+
+                '<div class="mv '+(adjPos?'green':'red')+'">'+(adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div>'+
+                '</div>';
+      }
+      var mgEl=document.getElementById('mg');
+      if(mgEl){
+        mgEl.innerHTML=
+          '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(t.salesCount)+' шт.</div></div>'+
+          '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
+          '<div class="m"><div class="ml">Выручка</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
+          '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(t.commission)+' ₽</div></div>'+
+          '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(t.delivery)+' ₽</div></div>'+
+          '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
+          '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
+          '<div class="m"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
+          wbFinHtml+
+          '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
+          adjHtml+
+          '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
+      }
+      var cntEl=document.getElementById('cnt');
+      if(cntEl) cntEl.textContent=cache.rows.length+' товаров · '+(cache.raw_count||0)+' записей (из кеша)';
+      // Free-предупреждение
+      var freeWarn=document.getElementById('freeLimitWarn');
+      if(!freeWarn){
+        freeWarn=document.createElement('div');
+        freeWarn.id='freeLimitWarn';
+        freeWarn.className='free-limit-warn';
+        var mg=document.getElementById('mg');
+        if(mg&&mg.parentNode)mg.parentNode.insertBefore(freeWarn,mg.nextSibling);
+      }
+      if(cache.freeLimitTriggered){
+        freeWarn.innerHTML='⚠️ На тарифе Free показано только <strong>30 из '+cache.freeLimitTriggered+' товаров</strong> (самые продаваемые). <a href="#" onclick="showProUpgradeModal(\'Безлимит товаров в Калькуляторе\');return false">Перейти на PRO →</a>';
+        freeWarn.style.display='block';
+      } else if(freeWarn){
+        freeWarn.style.display='none';
+      }
+      // Рендер таблицы
+      renderTable(t.ppvz,t.delivery,t.storage,t.ads,t.penalty,t.salesCount,t.returnsCount,t.cost,t.profit,t.commission);
+      var resultsEl=document.getElementById('results');
+      if(resultsEl) resultsEl.style.display='block';
+    }
+    console.log('[cache] восстановлено '+cache.rows.length+' товаров за '+cache.df+'..'+cache.dt+' (возраст '+ageHours.toFixed(1)+'ч)');
     return true;
   }catch(e){
     console.warn('[cache] restore failed:', e);
-    try{localStorage.removeItem('wb_cache_raw');}catch(e2){}
+    try{localStorage.removeItem('wb_cache_processed');}catch(e2){}
     return false;
   }
 }
@@ -1970,7 +2029,7 @@ function setPeriod(days){
   _currentPeriod={mode:'preset',days:days,df:null,dt:null};
   savePeriod();
   // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
-  try{localStorage.removeItem('wb_cache_raw');}catch(e){}
+  try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
   syncPeriodPills();
 }
 function openCustomPeriod(){
@@ -2008,7 +2067,7 @@ function applyCustomPeriod(){
   _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
   savePeriod();
   // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
-  try{localStorage.removeItem('wb_cache_raw');}catch(e){}
+  try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
   document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
   var btn=document.querySelector('.period-pill[data-period="custom"]');
   if(btn){
@@ -2183,24 +2242,32 @@ async function go(tokenArg){
     var ld=document.getElementById('ldBox');if(ld)ld.style.display='none';
     localStorage.setItem('wb_last_sync',Date.now().toString());
     refreshLastSync();
-    // 🔥 v0.6.2: сохраняем raw в localStorage чтобы при F5 не грузить заново.
-    // При init() если кеш свежий (<4ч) и период совпал — прогоняем через process() мгновенно.
-    // Храним raw (не rows), т.к. process() содержит вычисления зависящие от состояния.
+    // 🔥 v0.6.3: кешируем УЖЕ ОБРАБОТАННЫЕ данные (rows + totals + alerts).
+    // raw для 90 дней = ~9 МБ, не помещается в localStorage (лимит ~5 МБ).
+    // А обработанные rows — это 30-100 товаров × ~30 полей = десятки КБ, влезает легко.
+    // При init() рендерим напрямую из кеша БЕЗ повторного process().
     try{
-      if(rawData && rawData.length){
+      if(window.rows && window.rows.length){
         var cache={
           ts: Date.now(),
           df: df, dt: dt,
-          raw: rawData,
-          stocksMap: window._stocksMap||null
+          rows: window.rows,
+          totals: window._lastTotals||null,
+          richAlerts: window._richAlerts||[],
+          freeLimitTriggered: window._freeLimitTriggered||false,
+          stocksMap: window._stocksMap||null,
+          raw_count: rawData ? rawData.length : 0,
+          rowsPeriodDays: window._rowsPeriodDays||null
         };
         var json=JSON.stringify(cache);
-        // localStorage лимит ~5MB. Если объёмно — пропускаем кеш, не ломая загрузку
         if(json.length < 4*1024*1024){
-          localStorage.setItem('wb_cache_raw', json);
+          localStorage.setItem('wb_cache_processed', json);
+          // Старый кеш raw больше не нужен
+          localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');
+          console.log('[cache] сохранено '+(json.length/1024).toFixed(0)+' КБ ('+window.rows.length+' товаров за '+df+'..'+dt+')');
         } else {
-          localStorage.removeItem('wb_cache_raw');
-          console.warn('wb_cache_raw: данные >4MB, кеш пропущен (~'+(json.length/1024/1024).toFixed(1)+'MB)');
+          localStorage.removeItem('wb_cache_processed');
+          console.warn('[cache] >4МБ ('+(json.length/1024/1024).toFixed(1)+'МБ), пропускаем');
         }
       }
     }catch(e){console.warn('cache save failed',e);}
@@ -2549,6 +2616,7 @@ async function process(raw){
   window._rowsPeriodDays = periodDays;
   window._richAlerts=buildRichAlerts(rows, fin, window._stocksMap||{}, periodDays);
   var t=fin.t;
+  window._lastTotals=t; // 🔥 v0.6.3: нужно для кеша
   var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
   // Корректировка WB — показываем только если значимая (>=50 ₽). Кликабельная — открывает объяснение.
   var adjHtml='';
