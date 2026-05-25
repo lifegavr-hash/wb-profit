@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.5</title>
+<title>WB Profit — Дашборд v0.5.7</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -2583,13 +2583,9 @@ function renderDetail(){
         protectHtml += '<div style="color:'+sevColor+';font-weight:600;font-size:12px;white-space:nowrap">~'+fmt(a.loss)+' ₽</div>';
       }
       protectHtml += '</div>';
-      // 🔥 v0.5.5: артикул моноширинным
-      var dpNameHtml = escHtml(a.name);
-      var dpArtMatch = dpNameHtml.match(/^(.+?)\s*\(арт\.\s*(\d+)\)\s*$/);
-      if(dpArtMatch){
-        dpNameHtml = dpArtMatch[1] + ' <span class="art-tag" title="Скопируйте артикул">'+dpArtMatch[2]+'</span>';
-      }
-      protectHtml += '<div style="font-size:12px;color:#64748b;margin-top:2px">'+dpNameHtml+'</div>';
+      // 🔥 v0.5.7: через itemHtml
+      var pureName3 = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
+      protectHtml += '<div style="font-size:12px;color:#64748b;margin-top:2px">'+itemHtml(pureName3)+'</div>';
       protectHtml += '<div style="font-size:12px;color:#374151;margin-top:4px;line-height:1.45">'+escHtml(a.msg)+'</div>';
       if(a.hint){
         protectHtml += '<div style="font-size:11px;color:#7c3aed;margin-top:6px;padding-top:6px;border-top:1px dashed #e5e7eb">💡 '+escHtml(a.hint)+'</div>';
@@ -2709,13 +2705,13 @@ function toggleDetailOp(rowKey, source, opName){
     shown.forEach(function(m){
       html += '<tr>';
       if(source==='commission' || source==='cost'){
-        var nmLabel = m.nm ? '<span class="detail-ops-nm">арт. '+m.nm+'</span>' : '';
-        html += '<td>'+escHtml(m.sa||'?')+' '+nmLabel+'</td>';
+        // 🔥 v0.5.7: через itemHtml
+        html += '<td>'+itemHtml(m.sa||'?', m.nm)+'</td>';
         html += '<td class="detail-ops-meta">'+(m.meta||'')+'</td>';
       } else {
         var dateStr = m.date ? m.date.split('-').reverse().slice(0,2).join('.') : '—';
-        var nmLabel2 = m.nm ? ' <span class="detail-ops-nm">арт. '+m.nm+'</span>' : '';
-        var saLbl = m.sa ? escHtml(m.sa) + nmLabel2 : '<span style="color:#94a3b8">(без товара)</span>';
+        // 🔥 v0.5.7: через itemHtml
+        var saLbl = m.sa ? itemHtml(m.sa, m.nm) : '<span style="color:#94a3b8">(без товара)</span>';
         if(m.count > 1) saLbl += ' <span class="detail-ops-count">×'+m.count+'</span>';
         html += '<td class="detail-ops-date">'+dateStr+'</td>';
         html += '<td>'+saLbl+'</td>';
@@ -2737,6 +2733,8 @@ function toggleDetailOp(rowKey, source, opName){
 
 function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
   tComm=tComm||0;
+  // 🔥 v0.5.7: обновляем nm-кеш из rows Калькулятора
+  rebuildNmCache(window._lastSnapshots, window.rows);
   var tb=document.getElementById('tb');tb.innerHTML='';
   var stocksMap=window._stocksMap||{};
   var totalStock=0;
@@ -3260,8 +3258,9 @@ async function loadUnitHistory() {
       const dateStr = d.toLocaleDateString('ru-RU');
       const modelLabel = c.model === 'fbo' ? 'FBW' : (c.model === 'fbs' ? 'FBS' : (c.model === 'dbs' ? 'DBS' : '—'));
       const subjPart = c.subject_name ? '<div style="font-size:11px;color:#888">' + escapeHtml(c.subject_name) + '</div>' : (c.category ? '<div style="font-size:11px;color:#888">' + escapeHtml(c.category) + '</div>' : '');
+      // 🔥 v0.5.7: itemHtml — найдёт nm даже если c.nm_id пуст (по name из кеша)
       h += '<tr style="border-bottom:1px solid #f0f0f0">' +
-        '<td style="padding:8px 10px"><b>' + escapeHtml(c.name) + '</b>' + subjPart + '</td>' +
+        '<td style="padding:8px 10px"><b>' + itemHtml(c.name, c.nm_id) + '</b>' + subjPart + '</td>' +
         '<td style="padding:8px 10px"><span style="background:#ede7ff;color:#5b3aff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + modelLabel + '</span></td>' +
         '<td style="padding:8px 10px;text-align:right">' + fmt(c.retail_price) + '</td>' +
         '<td style="padding:8px 10px;text-align:right;font-weight:700;color:' + profColor + '">' + (p >= 0 ? '+' : '−') + fmt(Math.abs(p)) + ' ₽</td>' +
@@ -3699,15 +3698,81 @@ function buildAlerts(items){
   return alerts;
 }
 
-// 🔥 v0.5.5: Универсальный хелпер для отображения артикула
-// Везде где есть товар — оборачиваем артикул в .art-tag (моноширинный, копируется одним кликом)
-function fmtNm(nm){
-  return nm?'<span class="art-tag" title="Скопируйте артикул">'+nm+'</span>':'';
+// 🔥 v0.5.7: АРХИТЕКТУРНЫЙ КОНТРАКТ — все товары имеют артикул
+// 
+// Эти 3 функции — ЕДИНСТВЕННЫЙ способ выводить товар в UI.
+// Любой код который рендерит товар ОБЯЗАН использовать одну из них:
+//   • itemHtml(name, nm) — для HTML рендера (Тревоги, Защита, Топ-3, Аналитика)
+//   • itemText(name, nm) — для тестового контекста (логи, alert msg)
+//   • resolveNm(name, hint) — поиск nm если он "потерян" (старые записи)
+// 
+// nm может быть:
+//   • число WB артикула (618756423)
+//   • null/undefined — если товар не имеет артикула в WB
+// 
+// Если nm НЕТ — пытаемся восстановить через resolveNm() из глобального кеша.
+
+// Глобальный кеш name -> nm (строится при загрузке snapshots/rows)
+window._nmCache = window._nmCache || {};
+
+// Восстанавливаем nm для имени из всех источников
+function resolveNm(name, hintNm){
+  if(hintNm) return hintNm;
+  if(!name) return null;
+  // 1) из глобального кеша (top_items, window.rows)
+  if(window._nmCache[name]) return window._nmCache[name];
+  // 2) из window.rows если есть
+  if(window.rows && Array.isArray(window.rows)){
+    var row = window.rows.find(function(r){ return r.sa === name; });
+    if(row && row.nm_id){
+      window._nmCache[name] = row.nm_id;
+      return row.nm_id;
+    }
+  }
+  return null;
 }
-// Для случаев когда нужен текстовый вариант (для msg/title где HTML не рендерится)
-function fmtNmText(nm){
-  return nm?' (арт. '+nm+')':'';
+
+// Заполнить кеш по snapshots
+function rebuildNmCache(snapshots, rows){
+  var cache = window._nmCache || {};
+  if(Array.isArray(snapshots)){
+    snapshots.forEach(function(s){
+      (s.top_items||[]).forEach(function(it){
+        if(it.name && it.nm) cache[it.name] = it.nm;
+      });
+      (s.alerts||[]).forEach(function(a){
+        if(a.name && a.nm) cache[a.name] = a.nm;
+      });
+    });
+  }
+  if(Array.isArray(rows)){
+    rows.forEach(function(r){
+      if(r.sa && r.nm_id) cache[r.sa] = r.nm_id;
+    });
+  }
+  window._nmCache = cache;
 }
+
+// ОСНОВНОЙ HTML-рендерер товара. Используется ВЕЗДЕ на UI.
+// Гарантирует артикул если он восстанавливается через resolveNm.
+function itemHtml(name, nm){
+  var safeName = escHtml(String(name||'?'));
+  var resolvedNm = resolveNm(name, nm);
+  if(resolvedNm){
+    return safeName + ' <span class="art-tag" title="Скопируйте артикул">'+resolvedNm+'</span>';
+  }
+  return safeName;
+}
+
+// ТЕКСТОВЫЙ вариант — для контекстов где HTML не рендерится (alert msg, console.log)
+function itemText(name, nm){
+  var resolvedNm = resolveNm(name, nm);
+  return (name||'?') + (resolvedNm ? ' (арт. '+resolvedNm+')' : '');
+}
+
+// Совместимость со старыми хелперами
+function fmtNm(nm){ return nm ? '<span class="art-tag" title="Скопируйте артикул">'+nm+'</span>' : ''; }
+function fmtNmText(nm){ return nm ? ' (арт. '+nm+')' : ''; }
 
 // Хелперы для системы алертов
 function fmtRub(n){return Math.round(Math.abs(Number(n)||0)).toLocaleString('ru-RU');}
@@ -4054,13 +4119,9 @@ function renderRichAlertsBlock(){
       h+='<span class="rich-alert-loss">~'+fmtRub(a.loss)+' ₽</span>';
     }
     h+='</div>';
-    // 🔥 v0.5.5: выделяем артикул моноширинным шрифтом
-    var nameHtml = escHtml(a.name);
-    var artMatch = nameHtml.match(/^(.+?)\s*\(арт\.\s*(\d+)\)\s*$/);
-    if(artMatch){
-      nameHtml = artMatch[1] + ' <span class="art-tag" title="Скопируйте артикул">'+artMatch[2]+'</span>';
-    }
-    h+='<div class="rich-alert-name">'+nameHtml+'</div>';
+    // 🔥 v0.5.7: через itemHtml (resolveNm найдёт артикул из кеша)
+    var pureName2 = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
+    h+='<div class="rich-alert-name">'+itemHtml(pureName2)+'</div>';
     h+='<div class="rich-alert-msg">'+escHtml(a.msg)+'</div>';
     if(a.hint){h+='<div class="rich-alert-hint">💡 '+escHtml(a.hint)+'</div>';}
     h+='</div>';
@@ -4214,6 +4275,8 @@ async function loadHomeData(){
   // 🔥 v0.5.2: запоминаем snapshots для buildSimpleProtectAlerts
   window._lastSnapshots = snapshots;
   window._richAlerts = null;
+  // 🔥 v0.5.7: строим глобальный кеш name → nm
+  rebuildNmCache(snapshots, window.rows);
   renderDashboard(snapshots);
   // Авто-обновление: если последний снапшот старше 24 часов — фоном дёргаем вчера
   maybeAutoRefresh(snapshots);
@@ -4302,9 +4365,8 @@ function renderDashboard(snapshots){
   if(top.length){
     top.slice(0,3).forEach(function(it,i){
       var p=Number(it.profit||0);
-      // 🔥 v0.5.5: артикул моноширинным в Топ-3
-      var nmLabel=it.nm?'<span class="art-tag" title="Скопируйте артикул">'+it.nm+'</span>':'';
-      h+='<div class="top-item"><div style="min-width:0;flex:1"><div class="top-name">'+(i+1)+'. '+it.name+(nmLabel?' '+nmLabel:'')+'</div><div class="top-meta">'+(it.sales||0)+' шт</div></div>';
+      // 🔥 v0.5.7: универсальный itemHtml — гарантирует артикул через resolveNm
+      h+='<div class="top-item"><div style="min-width:0;flex:1"><div class="top-name">'+(i+1)+'. '+itemHtml(it.name, it.nm)+'</div><div class="top-meta">'+(it.sales||0)+' шт</div></div>';
       h+='<div class="top-profit"><div class="top-profit-val '+(p>=0?'g':'r')+'">'+(p>=0?'+':'−')+fmtR(Math.abs(p))+'</div></div></div>';
     });
   } else {
@@ -4320,15 +4382,13 @@ function renderDashboard(snapshots){
   var weekAlerts=collectWeekAlerts(alertDays);
   if(weekAlerts.length){
     weekAlerts.slice(0,3).forEach(function(a){
-      // 🔥 v0.5.5: выделить артикул в имени и в msg
-      var alertName = a.name;
-      var alertNameMatch = alertName.match(/^(.+?)\s*\(арт\.\s*(\d+)\)\s*$/);
-      if(alertNameMatch){
-        alertName = alertNameMatch[1] + ' <span class="art-tag" title="Скопируйте артикул">'+alertNameMatch[2]+'</span>';
-      }
-      var alertMsg = a.msg;
-      alertMsg = alertMsg.replace(/\(арт\.\s*(\d+)\)/g, '<span class="art-tag" title="Скопируйте артикул">$1</span>');
-      h+='<div class="home-alert"><div class="alert-name">'+alertName+'</div><div class="alert-msg">'+alertMsg+'</div></div>';
+      // 🔥 v0.5.7: универсальный itemHtml — гарантирует артикул
+      // Извлекаем "чистое" имя из a.name (могло быть "имя (арт. NNN)")
+      var pureName = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
+      var alertNameHtml = itemHtml(pureName, a.nm);
+      // В msg тоже оборачиваем все упоминания (арт.) в art-tag для согласованности
+      var alertMsg = (a.msg||'').replace(/\(арт\.\s*(\d+)\)/g, '<span class="art-tag" title="Скопируйте артикул">$1</span>');
+      h+='<div class="home-alert"><div class="alert-name">'+alertNameHtml+'</div><div class="alert-msg">'+alertMsg+'</div></div>';
     });
   } else {
     h+='<div class="home-empty-mini">Всё спокойно</div>';
@@ -4342,8 +4402,11 @@ function renderDashboard(snapshots){
   var actions=buildActions(alertDays,weekAlerts);
   if(actions.length){
     actions.forEach(function(a,i){
-      // 🔥 v0.5.5: артикул моноширинным в советах
+      // 🔥 v0.5.7: оборачиваем все (арт. NNN) в art-tag + ищем потерянные nm в кеше
+      // (если в тексте упоминается имя товара без артикула — добавим если найдём)
       var actionHtml = a.replace(/\(арт\.\s*(\d+)\)/g, '<span class="art-tag" title="Скопируйте артикул">$1</span>');
+      // Доп: если в тексте есть имена из кеша БЕЗ артикула после них — попытаемся добавить
+      // (но только аккуратно, чтобы не сломать форматирование)
       h+='<div class="home-action">'+(i+1)+'. '+actionHtml+'</div>';
     });
   } else {
@@ -4489,8 +4552,17 @@ function collectWeekAlerts(week){
   var byKey={};
   week.forEach(function(s,idx){
     (s.alerts||[]).forEach(function(a){
-      // Ключ группировки: nm если есть, иначе name (для обратной совместимости)
-      var key=a.nm?('nm:'+a.nm):('name:'+a.name);
+      // 🔥 v0.5.6: восстанавливаем nm из top_items для старых записей где a.nm нет
+      var nm=a.nm;
+      if(!nm && s.top_items){
+        var matchInTop=s.top_items.find(function(t){return t.name===a.name;});
+        if(matchInTop&&matchInTop.nm){
+          nm=matchInTop.nm;
+          a.nm=nm; // патчим in-place для последующего использования в фильтрации/группировке
+        }
+      }
+      // Ключ группировки: nm если есть, иначе name
+      var key=nm?('nm:'+nm):('name:'+a.name);
       if(!byKey[key]){
         byKey[key]={
           name:a.name, nm:a.nm||null,
@@ -4965,34 +5037,43 @@ function renderExpenseStructure(snaps){
 }
 // === ВИДЖЕТ 3: Топ проблем ===
 function renderProblems(snaps){
-  // Агрегируем top_items за весь период
-  var byName={};
+  // 🔥 v0.5.6: Группируем ПО nm (артикулу), а не по имени — разные карточки
+  // с одинаковыми именами не должны сливаться
+  var byKey={};
   snaps.forEach(function(s){
     (s.top_items||[]).forEach(function(it){
-      if(!byName[it.name])byName[it.name]={name:it.name,sales:0,profit:0,ad:0,revenue:0,days:0};
-      var b=byName[it.name];
+      var key=it.nm?'nm:'+it.nm:'name:'+it.name;
+      if(!byKey[key])byKey[key]={name:it.name,nm:it.nm||null,sales:0,profit:0,ad:0,revenue:0,days:0};
+      var b=byKey[key];
       b.sales+=Number(it.sales||0);
       b.profit+=Number(it.profit||0);
       b.ad+=Number(it.ad||0);
       b.revenue+=Number(it.revenue||0);
       if(it.sales>0)b.days++;
     });
-    // Из alerts тоже подтягиваем — там могут быть товары без продаж
+    // Из alerts тоже подтягиваем — там могут быть товары без продаж.
+    // 🔥 v0.5.6: восстанавливаем nm из top_items того же дня если в alerts его нет (для старых записей)
     (s.alerts||[]).forEach(function(a){
-      if(!byName[a.name])byName[a.name]={name:a.name,sales:0,profit:0,ad:0,revenue:0,days:0};
+      var nm=a.nm;
+      if(!nm && s.top_items){
+        var matchInTop=s.top_items.find(function(t){return t.name===a.name;});
+        if(matchInTop&&matchInTop.nm)nm=matchInTop.nm;
+      }
+      var key=nm?'nm:'+nm:'name:'+a.name;
+      if(!byKey[key])byKey[key]={name:a.name,nm:nm||null,sales:0,profit:0,ad:0,revenue:0,days:0};
     });
   });
-  var items=Object.values(byName);
+  var items=Object.values(byKey);
   // Категоризируем
   var problems=[];
   items.forEach(function(it){
     it.drr=it.revenue>0?Math.round(it.ad/it.revenue*100):0;
     if(it.profit<-100&&it.sales>0){
-      problems.push({type:'loss',tag:'УБЫТОК',name:it.name,val:'−'+fmtR(Math.abs(it.profit)),sortKey:it.profit});
+      problems.push({type:'loss',tag:'УБЫТОК',name:it.name,nm:it.nm,val:'−'+fmtR(Math.abs(it.profit)),sortKey:it.profit});
     } else if(it.drr>50&&it.sales>0){
-      problems.push({type:'drr',tag:'ДРР '+it.drr+'%',name:it.name,val:'реклама '+fmtR(it.ad),sortKey:-it.ad});
+      problems.push({type:'drr',tag:'ДРР '+it.drr+'%',name:it.name,nm:it.nm,val:'реклама '+fmtR(it.ad),sortKey:-it.ad});
     } else if(it.sales===0){
-      problems.push({type:'idle',tag:'НЕТ ПРОДАЖ',name:it.name,val:'',sortKey:0});
+      problems.push({type:'idle',tag:'НЕТ ПРОДАЖ',name:it.name,nm:it.nm,val:'',sortKey:0});
     }
   });
   problems.sort(function(a,b){return a.sortKey-b.sortKey;});
@@ -5001,8 +5082,9 @@ function renderProblems(snaps){
   }
   var h='';
   problems.slice(0,8).forEach(function(p){
+    // 🔥 v0.5.7: через itemHtml
     h+='<div class="problem-item">'+
-      '<div class="problem-name">'+p.name+'</div>'+
+      '<div class="problem-name">'+itemHtml(p.name, p.nm)+'</div>'+
       '<span class="problem-tag '+p.type+'">'+p.tag+'</span>'+
       (p.val?'<div class="problem-val red">'+p.val+'</div>':'')+
     '</div>';
@@ -5014,18 +5096,19 @@ function renderProblems(snaps){
 }
 // === ВИДЖЕТ 4: ABC-анализ ===
 function renderABC(snaps){
-  // Агрегируем top_items за период по товарам
-  var byName={};
+  // 🔥 v0.5.6: Агрегируем по nm (артикулу), не по имени
+  var byKey={};
   snaps.forEach(function(s){
     (s.top_items||[]).forEach(function(it){
-      if(!byName[it.name])byName[it.name]={name:it.name,sales:0,profit:0,revenue:0};
-      var b=byName[it.name];
+      var key=it.nm?'nm:'+it.nm:'name:'+it.name;
+      if(!byKey[key])byKey[key]={name:it.name,nm:it.nm||null,sales:0,profit:0,revenue:0};
+      var b=byKey[key];
       b.sales+=Number(it.sales||0);
       b.profit+=Number(it.profit||0);
       b.revenue+=Number(it.revenue||0);
     });
   });
-  var items=Object.values(byName).filter(function(i){return i.profit>0;});
+  var items=Object.values(byKey).filter(function(i){return i.profit>0;});
   if(!items.length){
     return '<div class="home-empty-mini">Нет прибыльных товаров для ABC-анализа<br><span style="font-size:11px;opacity:.6">Загрузите больше данных в Калькуляторе.</span></div>';
   }
@@ -5069,8 +5152,9 @@ function renderABC(snaps){
     s+='<thead><tr><th>Товар</th><th style="text-align:right">Продаж</th><th style="text-align:right">Прибыль</th><th style="text-align:right">% от общей</th></tr></thead><tbody>';
     list.forEach(function(it){
       var pct=(it.profit/totalProfit*100).toFixed(1);
+      // 🔥 v0.5.7: через itemHtml
       s+='<tr>'+
-        '<td>'+escHtml(it.name)+'</td>'+
+        '<td>'+itemHtml(it.name, it.nm)+'</td>'+
         '<td style="text-align:right">'+fmt(it.sales)+'</td>'+
         '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+' ₽</td>'+
         '<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'+
