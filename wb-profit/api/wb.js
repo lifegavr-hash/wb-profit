@@ -92,6 +92,11 @@ async function markRequest(tokenHash) {
 }
 
 // === Handler ===
+// 🔥 v0.6.10: maxDuration=60 сек (Vercel Hobby лимит).
+// По дефолту serverless function убивается через 10 сек — на длинных периодах WB
+// не успевает ответить и клиент получает 504. 60 сек хватает на самые большие запросы.
+export const config = { maxDuration: 60 };
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
