@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.7</div>
+      <div class="sidebar-version">WB Profit · v0.6.8</div>
     </div>
   </div>
 </div>
@@ -1160,8 +1160,7 @@ tr.loss td{background:#fff5f5}
           </div>
         </div>
         <div style="margin:10px 0;padding:10px 12px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;font-size:11.5px;color:#78350f;line-height:1.45">
-          ⏱ Максимум — 365 дней назад от вчера (лимит Wildberries API).<br>
-          Период >60 дней может грузиться несколько минут — WB разрешает 1 запрос/мин.
+          ⏱ Длинные периоды грузятся дольше. Под нагрузкой WB иногда возвращает ошибку — просто попробуйте ещё раз через минуту.
         </div>
         <div class="period-popup-actions">
           <button class="bulk-btn" onclick="closeCustomPeriod()">Отмена</button>
@@ -2083,13 +2082,8 @@ function openCustomPeriod(){
   var today=new Date();
   var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
   var yStr = yesterday.toISOString().slice(0,10);
-  // 🔥 v0.6.6: min = 365 дней назад (лимит WB API)
-  var oldestAllowed=new Date(yesterday); oldestAllowed.setDate(yesterday.getDate()-364);
-  var oldStr=oldestAllowed.toISOString().slice(0,10);
   if(_currentPeriod.mode==='custom'){
     df=_currentPeriod.df; dt=_currentPeriod.dt;
-    // Если предыдущий выбор был >365 дней назад — поправим
-    if(df<oldStr) df=oldStr;
   } else {
     dt=yStr;
     var a=new Date(yesterday);a.setDate(yesterday.getDate()-((_currentPeriod.days||30)-1));
@@ -2097,11 +2091,12 @@ function openCustomPeriod(){
   }
   document.getElementById('customDf').value=df;
   document.getElementById('customDt').value=dt;
-  // Ограничиваем max и min
+  // Ограничиваем max — нельзя в будущее и нельзя сегодня (WB не отдаёт)
+  // 🔥 v0.6.8: min убран — пользователь сам решает насколько глубоко копать
   document.getElementById('customDf').max=yStr;
   document.getElementById('customDt').max=yStr;
-  document.getElementById('customDf').min=oldStr;
-  document.getElementById('customDt').min=oldStr;
+  document.getElementById('customDf').removeAttribute('min');
+  document.getElementById('customDt').removeAttribute('min');
   document.getElementById('periodPopup').style.display='flex';
 }
 function closeCustomPeriod(){
@@ -2112,18 +2107,15 @@ function applyCustomPeriod(){
   var dt=document.getElementById('customDt').value;
   if(!df||!dt){alert('Выберите обе даты');return;}
   if(df>dt){alert('Дата начала должна быть раньше даты окончания');return;}
-  // 🔥 v0.6.6: WB API не отдаёт периоды длиннее 365 дней.
-  // Эндпоинт reportDetailByPeriod лимитирует до 31 дня за запрос, мы качаем кусками,
-  // но >365 дней дают огромный объём (тысячи запросов, минуты ожидания, риск 401/429).
+  // 🔥 v0.6.8: убрал жёсткий лимит 365 дней — Wildberries API на самом деле умеет
+  // отдавать большие периоды через пагинацию по rrdid. Иногда (под нагрузкой) WB
+  // возвращает 401, но это случается и на 90 днях, и на 2 годах — лотерея.
+  // Просто предупреждаем что долгие периоды грузятся дольше.
   var dF=new Date(df), dT=new Date(dt);
   var daysDiff=Math.ceil((dT-dF)/(1000*60*60*24))+1;
-  if(daysDiff>365){
-    alert('Wildberries API ограничивает запросы 365 днями.\n\nВы выбрали '+daysDiff+' дн. Уменьшите период до года или короче.\n\nТипичный анализ: 30-90 дней — этого достаточно для понимания трендов.');
-    return;
-  }
-  // Также показываем предупреждение для длинных периодов (60-365 дней)
-  if(daysDiff>60){
-    var ok=confirm('Период '+daysDiff+' дней — загрузка может занять до '+Math.ceil(daysDiff/30)+' минут (WB ограничивает 1 запрос в минуту на блок 31 день).\n\nПродолжить?');
+  if(daysDiff>180){
+    var estMin=Math.max(1, Math.ceil(daysDiff/180));
+    var ok=confirm('Период '+daysDiff+' дн. — загрузка может занять '+estMin+'-'+(estMin*3)+' мин.\n\nWB API под нагрузкой может вернуть ошибку — тогда попробуйте ещё раз через минуту.\n\nПродолжить?');
     if(!ok) return;
   }
   _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
@@ -2258,13 +2250,14 @@ async function loadCostsFromServer(){
   }catch(e){console.warn('loadCostsFromServer error',e);}
 }
 function showErr(msg){
+  // 🔥 v0.6.8: поддержка HTML в сообщениях (для многострочных дружелюбных ошибок)
   // Пишем в активный errBox
   var b=document.getElementById('errBoxHome');
   if(b&&document.getElementById('sectionHome').classList.contains('active')){
-    b.className='err';b.textContent=msg;b.style.display='block';return;
+    b.className='err';b.innerHTML=msg;b.style.display='block';return;
   }
   var b2=document.getElementById('errBox');
-  if(b2){b2.className='err';b2.textContent=msg;b2.style.display='block';}
+  if(b2){b2.className='err';b2.innerHTML=msg;b2.style.display='block';}
 }
 function isAdv(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('продвижени')>=0||b.indexOf('реклам')>=0||b.indexOf('promotion')>=0||o.indexOf('продвижени')>=0||o.indexOf('реклам')>=0;}
 function isWbFin(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').toLowerCase();return b.indexOf('финанс')>=0||b.indexOf('заёмщика')>=0||b.indexOf('заемщика')>=0||b.indexOf('баланс')>=0||b.indexOf('займ')>=0||o.indexOf('баланс')>=0||o.indexOf('заёмщика')>=0||o.indexOf('заемщика')>=0||o.indexOf('кредит')>=0||o.indexOf('займ')>=0;}
@@ -2297,20 +2290,18 @@ async function go(tokenArg){
     window._stocksMap=buildStocksMap(stocks);
     await process(rawData);
   }catch(e){
-    // 🔥 v0.6.6: дружелюбные сообщения для типичных ошибок WB API
+    // 🔥 v0.6.6+v0.6.8: дружелюбные сообщения для типичных ошибок WB API
     var msg=e.message||'';
     var friendlyMsg='';
     if(msg.indexOf('401')>=0){
-      var daysReq=Math.ceil((new Date(dt)-new Date(df))/(1000*60*60*24))+1;
-      if(daysReq>90){
-        friendlyMsg='⏱ WB API не успел отдать данные за '+daysReq+' дней — это много. Попробуйте период покороче (рекомендуем до 90 дней). При длинных периодах WB иногда отвечает «Неверный JWT» вместо реальной причины.';
-      } else {
-        friendlyMsg='🔑 WB не принял ваш токен. Проверьте его в Настройках — возможно истёк срок или у него нет нужных прав (Статистика + Финансы).';
-      }
+      friendlyMsg='🔑 WB не принял токен (даже после нескольких попыток). Возможные причины:<br>• Токен истёк или у него нет прав «Статистика»/«Финансы» — проверьте в Настройках<br>• Очень длинный период — попробуйте поменьше (например 6 месяцев)<br>• WB сейчас перегружен — попробуйте ещё через 5-10 минут';
     } else if(msg.indexOf('429')>=0){
       friendlyMsg='⏱ Слишком много запросов к WB. Подождите 1-2 минуты и попробуйте снова.';
     } else if(msg.indexOf('Failed to fetch')>=0 || msg.indexOf('NetworkError')>=0){
       friendlyMsg='📡 Нет связи с сервером. Проверьте интернет и попробуйте снова.';
+    } else if(msg==='PRO_REQUIRED'){
+      // showProUpgradeModal уже показал свой UI, не дублируем
+      return;
     } else {
       friendlyMsg='Ошибка: '+msg;
     }
@@ -2410,7 +2401,9 @@ function getJwt(){
 }
 
 async function loadSales(tok,df,dt){
-  var all=[],rid=0,pg=0;
+  var all=[],rid=0,pg=0,retries401=0;
+  // 🔥 v0.6.8: max 3 retry на 401 — WB под нагрузкой иногда возвращает ложный 401
+  var MAX_401_RETRIES = 3;
   // Оценочное количество дней для прогресса
   var totalDays=1;
   try{var d1=new Date(df),d2=new Date(dt);totalDays=Math.max(1,Math.round((d2-d1)/86400000)+1);}catch(e){}
@@ -2433,6 +2426,13 @@ async function loadSales(tok,df,dt){
       var ra=parseInt(r.headers.get('Retry-After')||'60',10);
       setLoadStatus('⏳ Лимит WB. Ждём '+ra+' сек (страница '+pg+')…');
       await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
+      pg--;continue;
+    }
+    // 🔥 v0.6.8: 401 на середине большого периода = временная ошибка WB, retry
+    if(r.status===401 && all.length>0 && retries401<MAX_401_RETRIES){
+      retries401++;
+      setLoadStatus('⏳ WB временно ответил ошибкой. Ждём 60 сек и пробуем снова ('+retries401+'/'+MAX_401_RETRIES+')…');
+      await new Promise(function(res){setTimeout(res,62000);});
       pg--;continue;
     }
     if(r.status===204)break;
