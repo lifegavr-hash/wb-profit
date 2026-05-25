@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.0</div>
+      <div class="sidebar-version">WB Profit · v0.6.1</div>
     </div>
   </div>
 </div>
@@ -1138,7 +1138,7 @@ tr.loss td{background:#fff5f5}
         <div class="period-picker" id="periodPicker">
           <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Вчера</button>
           <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
-          <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)">30 дней</button>
+          <button type="button" class="period-pill" data-period="30" onclick="setPeriod(30)">30 дней</button>
           <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)"><span class="pro-lock" style="display:none">🔒</span>90 дней</button>
           <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()"><span class="pro-lock" style="display:none">🔒</span>📅 Свой</button>
         </div>
@@ -1563,6 +1563,15 @@ async function init(){
   currentProfile=profile;
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
+  // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
+  // (_currentPeriod уже подтянулся из localStorage)
+  syncPeriodPills();
+  if(_currentPeriod.mode==='custom'){
+    var btn=document.querySelector('.period-pill[data-period="custom"]');
+    if(btn && _currentPeriod.df && _currentPeriod.dt){
+      btn.textContent='📅 '+shortDate(_currentPeriod.df)+'–'+shortDate(_currentPeriod.dt);
+    }
+  }
   if(profile.is_admin) document.getElementById('nav-admin').style.display='block';
   // Сначала подтягиваем себестоимости с сервера (фоном, не блокирует UI)
   loadCostsFromServer();
@@ -1854,7 +1863,33 @@ function loadPersonalExpenses(){
   }
 }
 // === PERIOD PICKER ===
-var _currentPeriod={mode:'preset',days:30,df:null,dt:null};
+// 🔥 v0.6.1: период сохраняется в localStorage, чтобы не сбрасывался при перезагрузке/навигации
+var _currentPeriod=(function(){
+  try{
+    var raw=localStorage.getItem('wb_current_period');
+    if(raw){
+      var p=JSON.parse(raw);
+      if(p && (p.mode==='preset' || p.mode==='custom')){
+        return p;
+      }
+    }
+  }catch(e){}
+  return {mode:'preset',days:30,df:null,dt:null};
+})();
+function savePeriod(){
+  try{localStorage.setItem('wb_current_period',JSON.stringify(_currentPeriod));}catch(e){}
+}
+// Синхронизировать визуальное выделение pills с _currentPeriod
+function syncPeriodPills(){
+  document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
+  if(_currentPeriod.mode==='preset'){
+    var btn=document.querySelector('.period-pill[data-period="'+_currentPeriod.days+'"]');
+    if(btn)btn.classList.add('active');
+  } else if(_currentPeriod.mode==='custom'){
+    var btn=document.querySelector('.period-pill[data-period="custom"]');
+    if(btn)btn.classList.add('active');
+  }
+}
 function setPeriod(days){
   // 🔥 v0.6.0: 30 дней доступны в Free (раньше PRO с 30+).
   // PRO-гейт остаётся для 90 дней и больше, и для Свой период.
@@ -1863,9 +1898,8 @@ function setPeriod(days){
     return;
   }
   _currentPeriod={mode:'preset',days:days,df:null,dt:null};
-  document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
-  var btn=document.querySelector('.period-pill[data-period="'+days+'"]');
-  if(btn)btn.classList.add('active');
+  savePeriod();
+  syncPeriodPills();
 }
 function openCustomPeriod(){
   if(!hasPRO()){
@@ -1900,6 +1934,7 @@ function applyCustomPeriod(){
   if(!df||!dt){alert('Выберите обе даты');return;}
   if(df>dt){alert('Дата начала должна быть раньше даты окончания');return;}
   _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
+  savePeriod();
   document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
   var btn=document.querySelector('.period-pill[data-period="custom"]');
   if(btn){
