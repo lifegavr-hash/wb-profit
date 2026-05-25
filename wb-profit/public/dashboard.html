@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.5</div>
+      <div class="sidebar-version">WB Profit · v0.6.6</div>
     </div>
   </div>
 </div>
@@ -1158,6 +1158,10 @@ tr.loss td{background:#fff5f5}
             <label>По дату</label>
             <input type="date" id="customDt">
           </div>
+        </div>
+        <div style="margin:10px 0;padding:10px 12px;background:#fff8e1;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;font-size:11.5px;color:#78350f;line-height:1.45">
+          ⏱ Максимум — 365 дней назад от вчера (лимит Wildberries API).<br>
+          Период >60 дней может грузиться несколько минут — WB разрешает 1 запрос/мин.
         </div>
         <div class="period-popup-actions">
           <button class="bulk-btn" onclick="closeCustomPeriod()">Отмена</button>
@@ -2042,8 +2046,13 @@ function openCustomPeriod(){
   var today=new Date();
   var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
   var yStr = yesterday.toISOString().slice(0,10);
+  // 🔥 v0.6.6: min = 365 дней назад (лимит WB API)
+  var oldestAllowed=new Date(yesterday); oldestAllowed.setDate(yesterday.getDate()-364);
+  var oldStr=oldestAllowed.toISOString().slice(0,10);
   if(_currentPeriod.mode==='custom'){
     df=_currentPeriod.df; dt=_currentPeriod.dt;
+    // Если предыдущий выбор был >365 дней назад — поправим
+    if(df<oldStr) df=oldStr;
   } else {
     dt=yStr;
     var a=new Date(yesterday);a.setDate(yesterday.getDate()-((_currentPeriod.days||30)-1));
@@ -2051,9 +2060,11 @@ function openCustomPeriod(){
   }
   document.getElementById('customDf').value=df;
   document.getElementById('customDt').value=dt;
-  // Ограничиваем max — нельзя в будущее и нельзя сегодня (WB не отдаёт)
+  // Ограничиваем max и min
   document.getElementById('customDf').max=yStr;
   document.getElementById('customDt').max=yStr;
+  document.getElementById('customDf').min=oldStr;
+  document.getElementById('customDt').min=oldStr;
   document.getElementById('periodPopup').style.display='flex';
 }
 function closeCustomPeriod(){
@@ -2064,6 +2075,20 @@ function applyCustomPeriod(){
   var dt=document.getElementById('customDt').value;
   if(!df||!dt){alert('Выберите обе даты');return;}
   if(df>dt){alert('Дата начала должна быть раньше даты окончания');return;}
+  // 🔥 v0.6.6: WB API не отдаёт периоды длиннее 365 дней.
+  // Эндпоинт reportDetailByPeriod лимитирует до 31 дня за запрос, мы качаем кусками,
+  // но >365 дней дают огромный объём (тысячи запросов, минуты ожидания, риск 401/429).
+  var dF=new Date(df), dT=new Date(dt);
+  var daysDiff=Math.ceil((dT-dF)/(1000*60*60*24))+1;
+  if(daysDiff>365){
+    alert('Wildberries API ограничивает запросы 365 днями.\n\nВы выбрали '+daysDiff+' дн. Уменьшите период до года или короче.\n\nТипичный анализ: 30-90 дней — этого достаточно для понимания трендов.');
+    return;
+  }
+  // Также показываем предупреждение для длинных периодов (60-365 дней)
+  if(daysDiff>60){
+    var ok=confirm('Период '+daysDiff+' дней — загрузка может занять до '+Math.ceil(daysDiff/30)+' минут (WB ограничивает 1 запрос в минуту на блок 31 день).\n\nПродолжить?');
+    if(!ok) return;
+  }
   _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
   savePeriod();
   // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
@@ -2234,7 +2259,26 @@ async function go(tokenArg){
     var stocks=await stocksPromise;
     window._stocksMap=buildStocksMap(stocks);
     await process(rawData);
-  }catch(e){showErr('Ошибка: '+e.message);}
+  }catch(e){
+    // 🔥 v0.6.6: дружелюбные сообщения для типичных ошибок WB API
+    var msg=e.message||'';
+    var friendlyMsg='';
+    if(msg.indexOf('401')>=0){
+      var daysReq=Math.ceil((new Date(dt)-new Date(df))/(1000*60*60*24))+1;
+      if(daysReq>90){
+        friendlyMsg='⏱ WB API не успел отдать данные за '+daysReq+' дней — это много. Попробуйте период покороче (рекомендуем до 90 дней). При длинных периодах WB иногда отвечает «Неверный JWT» вместо реальной причины.';
+      } else {
+        friendlyMsg='🔑 WB не принял ваш токен. Проверьте его в Настройках — возможно истёк срок или у него нет нужных прав (Статистика + Финансы).';
+      }
+    } else if(msg.indexOf('429')>=0){
+      friendlyMsg='⏱ Слишком много запросов к WB. Подождите 1-2 минуты и попробуйте снова.';
+    } else if(msg.indexOf('Failed to fetch')>=0 || msg.indexOf('NetworkError')>=0){
+      friendlyMsg='📡 Нет связи с сервером. Проверьте интернет и попробуйте снова.';
+    } else {
+      friendlyMsg='Ошибка: '+msg;
+    }
+    showErr(friendlyMsg);
+  }
   finally{
     var btnHome=document.getElementById('loadBtnHome');if(btnHome)btnHome.disabled=false;
     var btnCalc=document.getElementById('loadBtn');if(btnCalc)btnCalc.disabled=false;
