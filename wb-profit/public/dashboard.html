@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.10</div>
+      <div class="sidebar-version">WB Profit · v0.6.11</div>
     </div>
   </div>
 </div>
@@ -5197,13 +5197,26 @@ function collectWeekAlerts(week){
       }
       // Если остатков мало для скорости продаж
       else if(it.sales > 0 && (st.avail||0) > 0){
-        // 🔥 v0.5.3: it.sales — за весь период snapshots, перенормируем по реальному периоду
-        var perDay = it.sales / Math.max(week.length, 1);
+        // 🔥 v0.6.10: АКТУАЛЬНАЯ скорость по последним 14 дням, а не средняя за весь период.
+        var recent = week.slice(-14);
+        var recentDays = recent.length;
+        var recentSales = 0;
+        recent.forEach(function(s){
+          if(s.top_items && Array.isArray(s.top_items)){
+            var hit = s.top_items.find(function(t){return t.nm == nm;});
+            if(hit) recentSales += Number(hit.sales||0);
+          }
+        });
+        var perDay = recentSales / Math.max(recentDays, 1);
+        // Fallback на старую логику если recent пустой
+        if(perDay === 0){
+          perDay = it.sales / Math.max(week.length, 1);
+        }
         var daysLeft = (st.avail||0) / Math.max(perDay,0.1);
         if(daysLeft < 7 && daysLeft > 0){
           arr.unshift({
             name:'Скоро закончится',
-            msg:'«'+it.name+(it.nm?' (арт. '+it.nm+')':'')+'» — остаток '+st.avail+' шт, при текущей скорости хватит на '+Math.round(daysLeft)+' дн.',
+            msg:'«'+it.name+(it.nm?' (арт. '+it.nm+')':'')+'» — остаток '+st.avail+' шт, при текущей скорости ('+perDay.toFixed(1)+' шт/день за '+recentDays+' дн.) хватит на '+Math.round(daysLeft)+' дн.',
             type:'low_stock'
           });
         }
@@ -5233,17 +5246,36 @@ function collectWeekAlerts(week){
             });
           }
         } else {
-          // 🔥 v0.5.3 КРИТФИКС: sales берётся за период window.rows (Калькулятор),
-          // но week.length это длина snapshots (90 дней). Это давало "1077 дней"
-          // когда продажи реально 59 шт за 30 дн на остаток 706.
-          // Используем РЕАЛЬНЫЙ период rows = window._rowsPeriodDays
-          var actualDays = Number(window._rowsPeriodDays) || week.length;
-          var perDay = sales / Math.max(actualDays, 1);
+          // 🔥 v0.6.10: считаем АКТУАЛЬНУЮ скорость по последним 14 дням,
+          // а не среднюю за весь период. Иначе товар который начал продаваться
+          // только последний месяц выглядит "медленным" из-за нулей в начале.
+          // Используем snapshots если они есть, иначе fallback к старой логике.
+          var perDay = 0;
+          var recentDays = 0;
+          if(week && week.length){
+            // Берём последние 14 snapshots (или все если их меньше)
+            var recent = week.slice(-14);
+            recentDays = recent.length;
+            var recentSales = 0;
+            recent.forEach(function(s){
+              if(s.top_items && Array.isArray(s.top_items)){
+                var hit = s.top_items.find(function(t){return t.nm == nm;});
+                if(hit) recentSales += Number(hit.sales||0);
+              }
+            });
+            perDay = recentSales / Math.max(recentDays, 1);
+          }
+          // Fallback на старую логику если нет snapshots или недавних продаж не было
+          if(perDay === 0){
+            var actualDays = Number(window._rowsPeriodDays) || week.length;
+            perDay = sales / Math.max(actualDays, 1);
+            recentDays = actualDays;
+          }
           var turnover = stock / Math.max(perDay,0.01);
           if(turnover > 120){
             arr.unshift({
               name:'Медленная оборачиваемость',
-              msg:'«'+itemName+(nm?' (арт. '+nm+')':'')+'» — оборот ~'+Math.round(turnover)+' дн. при остатке '+stock+' шт и продажах '+perDay.toFixed(1)+' шт/день. Норма WB до 80 дн., после 60 — платное хранение.',
+              msg:'«'+itemName+(nm?' (арт. '+nm+')':'')+'» — оборот ~'+Math.round(turnover)+' дн. при остатке '+stock+' шт и продажах '+perDay.toFixed(1)+' шт/день (за последние '+recentDays+' дн.). Норма WB до 80 дн., после 60 — платное хранение.',
               type:'overstock'
             });
           }
