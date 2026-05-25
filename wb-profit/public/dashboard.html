@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.9</title>
+<title>WB Profit — Дашборд v0.5.10</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -4397,6 +4397,9 @@ function renderDashboard(snapshots){
   }
   h+='<div class="home-card"><div class="home-card-title">🎯 НА ЧТО ОБРАТИТЬ ВНИМАНИЕ'+yesterdayLabel+'</div>';
   var weekAlerts=collectWeekAlertsForYesterday(alertDays);
+  // 🔥 v0.5.9 fix: советы должны учитывать ВЕСЬ период, а не только вчера.
+  // Если вчера всё спокойно, советы по убыточным товарам/высокому ДРР всё равно нужны.
+  var allPeriodAlerts=collectWeekAlerts(alertDays);
   if(weekAlerts.length){
     weekAlerts.slice(0,3).forEach(function(a){
       // 🔥 v0.5.7: универсальный itemHtml — гарантирует артикул
@@ -4416,7 +4419,8 @@ function renderDashboard(snapshots){
   h+=renderRichAlertsBlock();
   // Block 6: Что сделать
   h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
-  var actions=buildActions(alertDays,weekAlerts);
+  // 🔥 v0.5.9 fix: советы строим из всех алертов периода, не только вчерашних
+  var actions=buildActions(alertDays,allPeriodAlerts);
   if(actions.length){
     // 🔥 v0.5.8: лимит 3 совета на Главной (было всё), остальное — в Детализации
     actions.slice(0,3).forEach(function(a,i){
