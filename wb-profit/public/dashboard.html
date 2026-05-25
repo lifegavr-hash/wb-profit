@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.9</div>
+      <div class="sidebar-version">WB Profit · v0.6.10</div>
     </div>
   </div>
 </div>
@@ -1892,7 +1892,8 @@ function refreshLastSync(rangeFrom,rangeTo){
   var ts=localStorage.getItem('wb_last_sync');
   var prefix='';
   if(rangeFrom&&rangeTo){
-    prefix='Данные за '+shortDate(rangeFrom)+' – '+shortDate(rangeTo)+'. ';
+    // 🔥 v0.6.10: год показывается если период не в текущем году или пересекает >1 года
+    prefix='Данные за '+formatPeriodRange(rangeFrom, rangeTo)+'. ';
   }
   if(!ts){info.textContent=prefix||'Нажмите «Загрузить», чтобы получить свежие данные с Wildberries';return;}
   var d=new Date(parseInt(ts,10));
@@ -4902,7 +4903,29 @@ function sumSnaps(arr){
   arr.forEach(function(x){s.profit+=Number(x.profit||0);s.revenue+=Number(x.revenue||0);s.ads+=Number(x.ads||0);s.sales_count+=Number(x.sales_count||0);});
   return s;
 }
-function shortDate(iso){var p=iso.split('-');var m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];return parseInt(p[2])+' '+m[parseInt(p[1])-1];}
+function shortDate(iso){
+  var p=iso.split('-');
+  var m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  var year=parseInt(p[0]);
+  var curYear=new Date().getFullYear();
+  // 🔥 v0.6.10: показываем год если он не текущий (для длинных периодов важно)
+  var yearStr = (year!==curYear) ? (' '+year) : '';
+  return parseInt(p[2])+' '+m[parseInt(p[1])-1]+yearStr;
+}
+// 🔥 v0.6.10: вспомогательная функция — выводит «25 апр 2024 – 24 мая 2026»
+// и принудительно ставит год везде если период пересекает >1 года
+function formatPeriodRange(df, dt){
+  var yF=parseInt(df.split('-')[0]);
+  var yT=parseInt(dt.split('-')[0]);
+  if(yF!==yT){
+    // Период пересекает несколько лет — выводим год у обеих дат
+    var p1=df.split('-'), p2=dt.split('-');
+    var m=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+    return parseInt(p1[2])+' '+m[parseInt(p1[1])-1]+' '+yF+' – '+parseInt(p2[2])+' '+m[parseInt(p2[1])-1]+' '+yT;
+  }
+  // Один год — обычный shortDate (он сам решит показывать год или нет)
+  return shortDate(df)+' – '+shortDate(dt);
+}
 function rangeRus(fromIso,toIso){
   // «28 апр – 4 мая» или «28 — 30 апр» если месяц одинаковый
   var fp=fromIso.split('-'),tp=toIso.split('-');
