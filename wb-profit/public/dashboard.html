@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.4</div>
+      <div class="sidebar-version">WB Profit · v0.6.5</div>
     </div>
   </div>
 </div>
@@ -1910,8 +1910,8 @@ function savePeriod(){
 // не помещается в localStorage). Восстановление = прямой рендер плиток и таблицы, без повторного process().
 async function tryRestoreDataFromCache(){
   try{
-    // Удаляем старый ключ если остался от v0.6.2
-    try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
+    // Удаляем legacy-ключ от v0.6.2 если остался (а не наш свежий кеш!)
+    try{localStorage.removeItem('wb_cache_raw');}catch(e){}
     var raw=localStorage.getItem('wb_cache_processed');
     if(!raw) return false;
     var cache=JSON.parse(raw);
