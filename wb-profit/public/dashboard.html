@@ -4316,16 +4316,37 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
   }
 
   // 5) OUT-OF-STOCK с предупреждением о потере карточки (глава 6)
+  // 🔥 v0.6.11: скорость и недельный убыток по последним 14 дням (актуально, а не средняя за весь период)
   enriched.forEach(function(it){
     if(it.sales>=3 && it.stockTotal===0){
-      var dailySales=it.sales/periodDays;
-      var dailyRevenue=it.revenue/periodDays;
-      var weeklyLoss=Math.round(dailyRevenue*7);
+      var dailySales = 0, dailyRevenue = 0, windowDays = 14;
+      if(window._lastSnapshots && Array.isArray(window._lastSnapshots) && window._lastSnapshots.length){
+        var recent = window._lastSnapshots.slice(-14);
+        windowDays = recent.length;
+        var recentSales = 0, recentRevenue = 0;
+        recent.forEach(function(s){
+          if(s.top_items && Array.isArray(s.top_items)){
+            var hit = s.top_items.find(function(t){return String(t.nm) === String(it.nm);});
+            if(hit){
+              recentSales += Number(hit.sales||0);
+              recentRevenue += Number(hit.revenue||0);
+            }
+          }
+        });
+        dailySales = recentSales / Math.max(windowDays, 1);
+        dailyRevenue = recentRevenue / Math.max(windowDays, 1);
+      }
+      if(dailySales === 0){
+        dailySales = it.sales / periodDays;
+        dailyRevenue = it.revenue / periodDays;
+        windowDays = periodDays;
+      }
+      var weeklyLoss = Math.round(dailyRevenue*7);
       alerts.push({
         severity:'critical', type:'out_of_stock', icon:'🔴',
         title:'Out-of-stock',
         name:it.name+(it.nm?' (арт. '+it.nm+')':''),
-        msg:'Остаток на складах WB: 0 шт. Скорость продаж: ~'+dailySales.toFixed(1)+' шт/день. После 14 дней WB снизит позиции, после 10 недель карточка станет «мёртвой».',
+        msg:'Остаток на складах WB: 0 шт. Скорость продаж: ~'+dailySales.toFixed(1)+' шт/день (за последние '+windowDays+' дн.). После 14 дней WB снизит позиции, после 10 недель карточка станет «мёртвой».',
         loss:weeklyLoss,
         hint:'Срочно сделайте поставку. Если задерживается — поднимите цену чтобы притормозить остаточные продажи.'
       });
@@ -4333,10 +4354,32 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
   });
 
   // 6) ЗАТОВАРИВАНИЕ — оборачиваемость > 120 дней (глава 1.4)
+  // 🔥 v0.6.11: считаем АКТУАЛЬНУЮ скорость по последним 14 дням из snapshots,
+  // а не среднюю за весь период. Иначе товар с активными продажами последний месяц
+  // выглядит "медленным" из-за нулей в начале (когда его не было в топ-5 каждый день).
   enriched.forEach(function(it){
     if(it.stockTotal>0 && it.sales>=1){
-      var dailySales=it.sales/periodDays;
-      var daysOfStock=it.stockTotal/dailySales;
+      // Окно расчёта — последние 14 дней snapshots или весь period если snapshots нет
+      var dailySales = 0;
+      var windowDays = 14;
+      if(window._lastSnapshots && Array.isArray(window._lastSnapshots) && window._lastSnapshots.length){
+        var recent = window._lastSnapshots.slice(-14);
+        windowDays = recent.length;
+        var recentSales = 0;
+        recent.forEach(function(s){
+          if(s.top_items && Array.isArray(s.top_items)){
+            var hit = s.top_items.find(function(t){return String(t.nm) === String(it.nm);});
+            if(hit) recentSales += Number(hit.sales||0);
+          }
+        });
+        dailySales = recentSales / Math.max(windowDays, 1);
+      }
+      // Fallback на старую логику если snapshots нет или товара в них нет вообще
+      if(dailySales === 0){
+        dailySales = it.sales / periodDays;
+        windowDays = periodDays;
+      }
+      var daysOfStock = it.stockTotal / Math.max(dailySales, 0.01);
       if(daysOfStock>120){
         var cost=Number(it.raw.cost||0);
         var frozen=cost>0?Math.round(cost*it.stockTotal):null;
@@ -4345,7 +4388,7 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
           severity:'warning', type:'overstocked', icon:'🟠',
           title:'Затоваривание',
           name:it.name+(it.nm?' (арт. '+it.nm+')':''),
-          msg:'Оборачиваемость ~'+Math.round(daysOfStock)+' дней (норма WB: 60-80). Остаток '+it.stockTotal+' шт при продажах '+dailySales.toFixed(1)+' шт/день.'+
+          msg:'Оборачиваемость ~'+Math.round(daysOfStock)+' дней (норма WB: 60-80). Остаток '+it.stockTotal+' шт при продажах '+dailySales.toFixed(1)+' шт/день (за последние '+windowDays+' дн.).'+
               (frozen?' Заморожен капитал: ~'+fmtRub(frozen)+' ₽.':''),
           loss:storageMonth,
           hint:'Рассмотрите скидку, рекламу или вывоз остатков. После 60 дней WB начисляет платное хранение.'
@@ -4392,8 +4435,30 @@ function buildRichAlerts(rows, fin, stocksMap, periodDays){
 
 // Рендер блока «Защита от потерь» на Главной — топ-5 алертов
 
-// 🔥 v0.5.2: Упрощённая защита от потерь — работает без window.rows
+// 🔥 v0.6.11: Упрощённая защита от потерь — работает без window.rows
 // Использует top_items из snapshots для агрегации по nm/name за весь период
+// При этом КРИТИЧЕСКИЕ алерты (убыток, ДРР>маржи) проверяем дополнительно за последние 14 дней,
+// чтобы не выдавать устаревшие проблемы (товар был в убытке 3 месяца назад, сейчас прибыльный).
+function computeRecentItemStats(snapshots, nm, name, windowSize){
+  var w = windowSize || 14;
+  var recent = snapshots.slice(-w);
+  var sales = 0, revenue = 0, profit = 0, days = 0;
+  recent.forEach(function(s){
+    if(!s.top_items) return;
+    var hit = s.top_items.find(function(t){
+      if(nm && String(t.nm) === String(nm)) return true;
+      if(!nm && t.name === name) return true;
+      return false;
+    });
+    if(hit){
+      sales += Number(hit.sales||0);
+      revenue += Number(hit.revenue||0);
+      profit += Number(hit.profit||0);
+      days++;
+    }
+  });
+  return {sales:sales, revenue:revenue, profit:profit, days:days, windowDays:recent.length};
+}
 function buildSimpleProtectAlerts(snapshots){
   if(!Array.isArray(snapshots)||snapshots.length===0)return [];
   var alerts=[];
@@ -4447,26 +4512,55 @@ function buildSimpleProtectAlerts(snapshots){
   }
   
   // 3) ТОВАРЫ В УБЫТКЕ за период (агрегированно)
+  // 🔥 v0.6.11: проверяем убыток ещё за последние 14 дней. Если 14 дн в плюсе —
+  // не паникуем, проблема уже решена. Алертим только когда товар УСТОЙЧИВО убыточный.
   Object.keys(byItem).forEach(function(k){
     var it=byItem[k];
     if(it.sales>=3 && it.profit<0){
       var marginPct=it.revenue>0?(it.profit/it.revenue*100):0;
+      // Проверка по последним 14 дням
+      var recent = computeRecentItemStats(snapshots, it.nm, it.name, 14);
+      // Если в последние 14 дней товар уже в плюсе — не алертим, ситуация исправлена
+      if(recent.sales >= 1 && recent.profit >= 0){
+        // Пропускаем — товар уже не в убытке
+        return;
+      }
+      // Если за весь период убыток, но в последние 14 дней были продажи и снова убыток — показываем РЕАЛЬНЫЙ убыток за 14 дн
+      var displayMsg, displayLoss;
+      if(recent.sales >= 1){
+        var recentMarginPct = recent.revenue>0?(recent.profit/recent.revenue*100):0;
+        displayMsg = 'За последние '+recent.windowDays+' дн.: продано '+recent.sales+' шт, выручка '+fmtRub(recent.revenue)+' ₽, убыток '+fmtRub(Math.abs(recent.profit))+' ₽ (маржа '+recentMarginPct.toFixed(1)+'%)';
+        displayLoss = Math.round(Math.abs(recent.profit));
+      } else {
+        // Нет недавних продаж — товар не продаётся, но был убыточным когда продавался
+        displayMsg = 'За период '+it.days+' дн.: продано '+it.sales+' шт, убыток '+fmtRub(Math.abs(it.profit))+' ₽ (маржа '+marginPct.toFixed(1)+'%). Последние 14 дн. без продаж.';
+        displayLoss = Math.round(Math.abs(it.profit));
+      }
       alerts.push({
         severity:'critical', type:'item_loss', icon:'🔴',
         title:'Товар в убытке',
         name:it.name+(it.nm?' (арт. '+it.nm+')':''),
-        msg:'За период '+it.days+' дн.: продано '+it.sales+' шт, выручка '+fmtRub(it.revenue)+' ₽, убыток '+fmtRub(Math.abs(it.profit))+' ₽ (маржа '+marginPct.toFixed(1)+'%)',
-        loss:Math.round(Math.abs(it.profit)),
+        msg:displayMsg,
+        loss:displayLoss,
         hint:'Откройте «Подбор товара» чтобы найти безубыточную цену, или снимите товар если он системно убыточный.'
       });
     } else if(it.sales>=3){
       var marginPct2=it.revenue>0?(it.profit/it.revenue*100):0;
       if(marginPct2>=0 && marginPct2<10){
+        // 🔥 v0.6.11: low margin тоже проверяем по последним 14 дням
+        var recentLM = computeRecentItemStats(snapshots, it.nm, it.name, 14);
+        var recentMarginLM = recentLM.revenue>0 ? (recentLM.profit/recentLM.revenue*100) : marginPct2;
+        // Если последние 14 дней маржа >=15% — ситуация уже улучшилась, не алертим
+        if(recentLM.sales >= 3 && recentMarginLM >= 15){
+          return;
+        }
+        var displayMargin = (recentLM.sales >= 3) ? recentMarginLM : marginPct2;
+        var displayPeriod = (recentLM.sales >= 3) ? ('за последние '+recentLM.windowDays+' дн.') : 'за весь период';
         alerts.push({
           severity:'warning', type:'low_margin', icon:'🟡',
           title:'Опасно низкая маржа',
           name:it.name+(it.nm?' (арт. '+it.nm+')':''),
-          msg:'Маржинальность '+marginPct2.toFixed(1)+'% — любая реклама или возвраты сделают товар убыточным.',
+          msg:'Маржинальность '+displayMargin.toFixed(1)+'% ('+displayPeriod+') — любая реклама или возвраты сделают товар убыточным.',
           loss:null,
           hint:'Безопасный порог — 15-20%. Подумайте о повышении цены или снижении себестоимости.'
         });
@@ -5986,6 +6080,8 @@ function renderProblems(snaps){
   // 🔥 v0.5.9: Категоризируем — только РЕАЛЬНЫЕ проблемы, без «нет продаж»
   // (селлер сам знает что товар не продаётся — это не инсайт)
   // Сортировка по тяжести: убыток → логистика съедает → маржа в зоне риска → высокий ДРР
+  // 🔥 v0.6.11: каждой проблеме проверяем актуальность по последним 14 дням —
+  // не показываем устаревшие проблемы которые уже самоисправились
   var problems=[];
   items.forEach(function(it){
     // Считаем только товары которые ПРОДАВАЛИСЬ — иначе не наша проблема
@@ -5993,11 +6089,18 @@ function renderProblems(snaps){
     it.drr=it.revenue>0?Math.round(it.ad/it.revenue*100):0;
     it.margin=it.revenue>0?(it.profit/it.revenue*100):0;
     it.logShare=it.revenue>0?Math.round(it.logistics/it.revenue*100):0;
+    // Проверка актуальности по последним 14 дням (если snaps >= 14)
+    var recent = (snaps.length >= 7) ? computeRecentItemStats(snaps, it.nm, it.name, 14) : null;
     // 1) УБЫТОК — самая тяжёлая
     if(it.profit<-100){
+      // Если за последние 14 дн товар уже в плюсе — пропускаем, ситуация исправлена
+      if(recent && recent.sales >= 3 && recent.profit >= 0){
+        return;
+      }
       problems.push({type:'loss',tag:'УБЫТОК',name:it.name,nm:it.nm,
         val:'−'+fmtR(Math.abs(it.profit))+' ₽',
-        hint:'продано '+it.sales+' шт за '+it.days+' дн, маржа '+it.margin.toFixed(0)+'%',
+        hint:'продано '+it.sales+' шт за '+it.days+' дн, маржа '+it.margin.toFixed(0)+'%'+
+             (recent && recent.sales>=3 ? ' (за последние '+recent.windowDays+' дн.: '+(recent.profit>=0?'+':'-')+fmtR(Math.abs(recent.profit))+' ₽)' : ''),
         sortKey:it.profit});
     }
     // 2) СЪЕДАЕТ ЛОГИСТИКА — логистика >25% от выручки (типичная норма 5-15%)
@@ -6009,6 +6112,11 @@ function renderProblems(snaps){
     }
     // 3) МАРЖА В ЗОНЕ РИСКА — 1-10% (любая ошибка/возврат уведёт в минус)
     else if(it.margin>0 && it.margin<10 && it.revenue>=1000){
+      // Если за последние 14 дн маржа уже выросла >=15% — пропускаем
+      if(recent && recent.sales >= 3 && recent.revenue > 0){
+        var recentMargin = recent.profit/recent.revenue*100;
+        if(recentMargin >= 15) return;
+      }
       problems.push({type:'drr',tag:'МАРЖА '+it.margin.toFixed(0)+'%',name:it.name,nm:it.nm,
         val:fmtR(it.profit)+' ₽',
         hint:'продано '+it.sales+' шт за '+it.days+' дн. На грани — снижайте себестоимость или повышайте цену.',
