@@ -1115,7 +1115,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.8</div>
+      <div class="sidebar-version">WB Profit · v0.6.9</div>
     </div>
   </div>
 </div>
@@ -1604,12 +1604,23 @@ async function init(){
   // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
   // (_currentPeriod уже подтянулся из localStorage)
   syncPeriodPills();
+  // 🔥 v0.6.9: показать диапазон в подзаголовке сразу при загрузке страницы
+  var today=new Date();
+  var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
+  var dfShow, dtShow;
   if(_currentPeriod.mode==='custom'){
+    dfShow=_currentPeriod.df; dtShow=_currentPeriod.dt;
     var btn=document.querySelector('.period-pill[data-period="custom"]');
     if(btn && _currentPeriod.df && _currentPeriod.dt){
       btn.textContent='📅 '+shortDate(_currentPeriod.df)+'–'+shortDate(_currentPeriod.dt);
     }
+  } else {
+    var days=_currentPeriod.days||30;
+    dtShow=yesterday.toISOString().slice(0,10);
+    var a=new Date(yesterday); a.setDate(yesterday.getDate()-(days-1));
+    dfShow=a.toISOString().slice(0,10);
   }
+  refreshLastSync(dfShow, dtShow);
   if(profile && profile.is_admin) document.getElementById('nav-admin').style.display='block';
   // 🔥 v0.6.2: восстанавливаем кеш WB-данных если он свежий (<4ч) и совпадает с текущим периодом.
   // Это решает проблему «после F5 таблица пустая». Делаем это ДО восстановления секции,
@@ -2071,6 +2082,22 @@ function setPeriod(days){
   // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
   try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
   syncPeriodPills();
+  // 🔥 v0.6.9: показать выбранный диапазон в подзаголовке
+  var today=new Date();
+  var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
+  var dtStr=yesterday.toISOString().slice(0,10);
+  var a=new Date(yesterday); a.setDate(yesterday.getDate()-(days-1));
+  var dfStr=a.toISOString().slice(0,10);
+  refreshLastSync(dfStr, dtStr);
+  // 🔥 v0.6.9: для длинных периодов спросим подтверждение, для коротких — сразу грузим.
+  // Это убирает лишний клик "Загрузить" — селлер кликнул период = хочет данные.
+  if(localStorage.getItem('wb_token')){
+    if(days>=90){
+      var ok=confirm('Загрузить данные за '+days+' дней?\n\nДлинные периоды грузятся 1-3 минуты.');
+      if(!ok) return;
+    }
+    goFromHome();
+  }
 }
 function openCustomPeriod(){
   if(!hasPRO()){
@@ -2130,6 +2157,11 @@ function applyCustomPeriod(){
     btn.textContent='📅 '+shortDate(df)+'–'+shortDate(dt);
   }
   closeCustomPeriod();
+  // 🔥 v0.6.9: показать период в подзаголовке "Обновлено" и СРАЗУ запустить загрузку
+  refreshLastSync(df, dt);
+  if(localStorage.getItem('wb_token')){
+    goFromHome();
+  }
 }
 
 async function goFromHome(){
@@ -2264,6 +2296,12 @@ function isWbFin(bonus,oper){var b=(bonus||'').toLowerCase();var o=(oper||'').to
 function getMonth(r){var d=r.rr_dt||r.sale_dt||r.order_dt||r.date||'';if(!d) return null;return d.substring(0,7);}
 
 async function go(tokenArg){
+  // 🔥 v0.6.9: защита от двойного запуска — если уже идёт загрузка, игнорируем
+  if(window._loadInProgress){
+    console.log('[go] already loading, skipping duplicate call');
+    return;
+  }
+  window._loadInProgress = true;
   // Если передан tokenArg — используем его (из goFromHome). Иначе берём из поля (старый сценарий, теперь в Настройках).
   var tok=tokenArg||(document.getElementById('tok1')&&document.getElementById('tok1').value.trim())||localStorage.getItem('wb_token')||'';
   var df=document.getElementById('df').value;
@@ -2282,6 +2320,7 @@ async function go(tokenArg){
   var btnCalc=document.getElementById('loadBtn');if(btnCalc)btnCalc.disabled=true;
   var ldH=document.getElementById('ldBoxHome');if(ldH)ldH.style.display='flex';
   var ld=document.getElementById('ldBox');if(ld)ld.style.display='flex';
+  startLoadTimer(); // 🔥 v0.6.9: запускаем таймер «идёт X сек»
   try{
     // Параллельно: основные данные продаж + остатки.
     var stocksPromise=loadStocks(tok).catch(function(e){console.warn('stocks failed',e);return null;});
@@ -2308,6 +2347,8 @@ async function go(tokenArg){
     showErr(friendlyMsg);
   }
   finally{
+    window._loadInProgress = false; // 🔥 v0.6.9: разрешаем следующую загрузку
+    stopLoadTimer(); // 🔥 v0.6.9: останавливаем таймер
     var btnHome=document.getElementById('loadBtnHome');if(btnHome)btnHome.disabled=false;
     var btnCalc=document.getElementById('loadBtn');if(btnCalc)btnCalc.disabled=false;
     var ldH=document.getElementById('ldBoxHome');if(ldH)ldH.style.display='none';
@@ -2449,9 +2490,39 @@ async function loadSales(tok,df,dt){
   setLoadStatus('Обрабатываем '+all.length+' записей…');
   return all;
 }
+// 🔥 v0.6.9: setLoadStatus + таймер «идёт X сек / мин» для длинных загрузок
+var _loadStatusText = '';
+var _loadStartTs = 0;
+var _loadTimerInt = null;
 function setLoadStatus(text){
-  var ids=['ldTxt','ldTxtHome'];
-  ids.forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=text;});
+  _loadStatusText = text;
+  renderLoadStatus();
+}
+function renderLoadStatus(){
+  var suffix = '';
+  if(_loadStartTs > 0){
+    var elapsed = Math.floor((Date.now() - _loadStartTs) / 1000);
+    if(elapsed < 60){
+      suffix = ' · идёт ' + elapsed + ' сек';
+    } else {
+      var m = Math.floor(elapsed/60), s = elapsed%60;
+      suffix = ' · идёт ' + m + ' мин ' + (s<10?'0':'') + s + ' сек';
+    }
+  }
+  var full = _loadStatusText + suffix;
+  ['ldTxt','ldTxtHome'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.textContent=full;
+  });
+}
+function startLoadTimer(){
+  _loadStartTs = Date.now();
+  if(_loadTimerInt) clearInterval(_loadTimerInt);
+  _loadTimerInt = setInterval(renderLoadStatus, 1000);
+}
+function stopLoadTimer(){
+  if(_loadTimerInt){clearInterval(_loadTimerInt); _loadTimerInt=null;}
+  _loadStartTs = 0;
+  _loadStatusText = '';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
