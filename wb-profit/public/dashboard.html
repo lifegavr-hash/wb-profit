@@ -9,7 +9,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Дашборд v0.5.11</title>
+<title>WB Profit — Аналитика продаж</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
@@ -45,6 +45,10 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .user-plan{font-size:10px;color:rgba(255,255,255,.35)}
 .logout-btn{display:block;width:100%;margin-top:8px;padding:6px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--rs);color:rgba(255,255,255,.5);font-size:12px;cursor:pointer;text-align:center}
 .logout-btn:hover{background:rgba(255,255,255,.1)}
+.sidebar-legal{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:rgba(255,255,255,.35);text-align:center;line-height:1.5}
+.sidebar-legal a{color:rgba(255,255,255,.55);text-decoration:none}
+.sidebar-legal a:hover{color:rgba(255,255,255,.85)}
+.sidebar-version{margin-top:6px;font-size:9px;color:rgba(255,255,255,.25);letter-spacing:.3px}
 .main{overflow:hidden;display:flex;flex-direction:column}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .topbar-title{font-size:16px;font-weight:500}
@@ -1096,7 +1100,6 @@ tr.loss td{background:#fff5f5}
     <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)">💰 Подбор товара</button>
     <div class="nav-sec">Аккаунт</div>
     <button class="nav-item" id="nav-settings" onclick="showSection('settings',this)">⚙️ Настройки</button>
-    <button class="nav-item" id="nav-promo" onclick="showSection('promo',this)">🎁 Промокод</button>
     <button class="nav-item" id="nav-admin" style="display:none" onclick="showSection('admin',this)">⚙️ Админ-панель</button>
   </div>
   <div class="sidebar-bottom">
@@ -1108,6 +1111,12 @@ tr.loss td{background:#fff5f5}
       </div>
     </div>
     <button class="logout-btn" onclick="logout()">Выйти</button>
+    <div class="sidebar-legal">
+      <a href="/offer.html" target="_blank">Оферта</a> ·
+      <a href="/privacy.html" target="_blank">Политика ПД</a> ·
+      <a href="mailto:support@wb-profit.ru">Помощь</a>
+      <div class="sidebar-version">WB Profit · v0.6.0</div>
+    </div>
   </div>
 </div>
 
@@ -1129,7 +1138,7 @@ tr.loss td{background:#fff5f5}
         <div class="period-picker" id="periodPicker">
           <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Вчера</button>
           <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
-          <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)"><span class="pro-lock" style="display:none">🔒</span>30 дней</button>
+          <button type="button" class="period-pill active" data-period="30" onclick="setPeriod(30)">30 дней</button>
           <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)"><span class="pro-lock" style="display:none">🔒</span>90 дней</button>
           <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()"><span class="pro-lock" style="display:none">🔒</span>📅 Свой</button>
         </div>
@@ -1169,6 +1178,13 @@ tr.loss td{background:#fff5f5}
     <!-- Настройки -->
     <div class="section" id="sectionSettings">
       <div class="card">
+        <div class="ct">🎁 Тариф и промокод</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Промокод даёт PRO-доступ к Детализации, Аналитике, 90 дням и больше. Если у тебя есть промокод от партнёра или из нашего Telegram-канала — введи здесь.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" onclick="showSection('promo',null)">Активировать промокод →</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
         <div class="ct">Подключение к Wildberries</div>
         <div style="margin-bottom:12px">
           <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">API токен WB</label>
@@ -1840,8 +1856,9 @@ function loadPersonalExpenses(){
 // === PERIOD PICKER ===
 var _currentPeriod={mode:'preset',days:30,df:null,dt:null};
 function setPeriod(days){
-  // Гейт: 30+ дней — только PRO
-  if(days>=30&&!hasPRO()){
+  // 🔥 v0.6.0: 30 дней доступны в Free (раньше PRO с 30+).
+  // PRO-гейт остаётся для 90 дней и больше, и для Свой период.
+  if(days>=90&&!hasPRO()){
     requirePRO('Период «'+days+' дней»');
     return;
   }
