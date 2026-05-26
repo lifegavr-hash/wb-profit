@@ -1140,7 +1140,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.0</div>
+      <div class="sidebar-version">WB Profit · v0.7.1</div>
     </div>
   </div>
 </div>
@@ -1630,6 +1630,10 @@ async function init(){
   currentProfile=profile;
   updateUI(profile,currentUser.email,session.access_token);
   initCalc();
+  // 🔥 v0.7.1: подтягиваем актуальные лимиты тарифа с бэкенда.
+  // Фронтовый profile из Supabase больше не источник истины для лимитов —
+  // источник: /api/profile (там JOIN с таблицей plans, с проверкой подписи JWT).
+  fetchPlanLimits(session.access_token);
   // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
   // (_currentPeriod уже подтянулся из localStorage)
   syncPeriodPills();
@@ -1727,6 +1731,36 @@ function daysUntilPlanExpires(){
   var ms=new Date(currentProfile.plan_expires_at).getTime()-Date.now();
   if(ms<=0)return 0;
   return Math.ceil(ms/(24*60*60*1000));
+}
+// 🔥 v0.7.1: грузим лимиты тарифа с бэкенда (источник истины: таблица plans + JWT-аутентификация)
+async function fetchPlanLimits(jwt){
+  try{
+    var r = await fetch('/api/profile', {
+      headers: { Authorization: 'Bearer ' + jwt }
+    });
+    if(!r.ok) {
+      console.warn('[plan-limits] /api/profile failed:', r.status);
+      return;
+    }
+    var d = await r.json();
+    window._planLimits = d.limits || null;
+    window._planFeatures = d.features || null;
+    window._planObj = { id: d.plan, name: d.plan_name, price: d.plan_price };
+    console.log('[plan-limits] loaded:', d.plan, d.features);
+  }catch(e){
+    console.warn('[plan-limits] fetch error:', e);
+  }
+}
+// Проверка конкретной фичи тарифа (детализация, аналитика, telegram, excel и т.д.)
+// Если фронт пытается открыть запрещённую секцию — показываем PRO-модал.
+function hasFeature(featureKey){
+  if(currentProfile && currentProfile.is_admin) return true;
+  // Если лимиты с бэка ещё не пришли — используем фолбэк по plan
+  if(!window._planFeatures) {
+    // Free/Start: только базовое. PRO/Business: всё.
+    return hasPRO();
+  }
+  return !!window._planFeatures[featureKey];
 }
 // Универсальный гейт: показать модал «Доступно в PRO» если нет
 function requirePRO(featureName){
@@ -1857,7 +1891,7 @@ async function applyPromo(){
   errBox.style.display='none'; okBox.style.display='none';
   if(!code){errBox.textContent='Введите промокод';errBox.style.display='block';return;}
   var {data:{session}}=await sb.auth.getSession();
-  var r=await fetch('/api/promo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,userId:currentUser.id})});
+  var r=await fetch('/api/promo',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(window.currentJwt||'')},body:JSON.stringify({code})});
   var d=await r.json();
   if(d.error){errBox.textContent=d.error;errBox.style.display='block';}
   else{okBox.textContent='Промокод активирован! '+d.plan.toUpperCase()+' на '+d.days+' дней. Обновите страницу.';okBox.style.display='block';}
@@ -2564,11 +2598,12 @@ async function loadSales(tok,df,dt){
     if(jwt)headers['X-User-Auth']='Bearer '+jwt;
     var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:headers});
     if(r.status===403){
-      // PRO-required от backend
+      // PRO-required / PERIOD_LIMIT / FEATURE_REQUIRED от backend (v0.7.1)
       var body={};try{body=await r.json();}catch(e){}
-      if(body.error==='PRO_REQUIRED'){
-        showProUpgradeModal(body.feature||'Расширенный период');
-        throw new Error('PRO_REQUIRED');
+      if(body.error==='PRO_REQUIRED' || body.error==='FEATURE_REQUIRED' || body.error==='PERIOD_LIMIT'){
+        var feat = body.feature || body.message || 'Расширенный период';
+        showProUpgradeModal(feat);
+        throw new Error(body.error);
       }
     }
     if(r.status===429){
