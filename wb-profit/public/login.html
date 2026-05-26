@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WB Profit — Вход</title>
+<!-- 🔥 v0.7.7.6: Yandex.Metrika (плейсхолдер — подставь YM_COUNTER_ID) -->
+<script>
+(function(){
+  var id = 'YM_COUNTER_ID';
+  if(!id || id === 'YM_COUNTER_ID' || !/^\d+$/.test(String(id))) return;
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+  ym(id, "init", {clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true});
+  window._YM_ID = id;
+})();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--purple-light:#EEEDFE;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--red:#c0392b;--red-bg:#fdf0ef;--green:#1a7a4a;--r:12px;--rs:8px}
@@ -74,6 +86,7 @@ input:focus{border-color:var(--purple)}
   </div>
 
   <p class="hint-text">14 дней PRO бесплатно · Карта не нужна</p>
+  <p class="hint-text" style="margin-top:10px;font-size:13px"><a href="/demo" style="color:#5433c6;font-weight:600;text-decoration:none">🎭 Посмотреть демо без регистрации →</a></p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
