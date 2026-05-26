@@ -99,6 +99,37 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .plan-btn-current{background:#e5e7eb;color:#64748b;cursor:default}
 .plan-btn-downgrade{background:#fff;color:#64748b;border:1px solid #e5e7eb}
 .plan-btn-downgrade:hover{background:#f9fafb}
+/* 🔥 v0.7.3: UX-полировка Калькулятора */
+.calc-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.calc-search{position:relative;flex:1;min-width:240px;max-width:480px}
+.calc-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:13px;pointer-events:none}
+.calc-search input{width:100%;padding:8px 32px 8px 32px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;background:#fff;transition:all .15s}
+.calc-search input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+.calc-search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:6px;background:transparent;border:0;cursor:pointer;color:#94a3b8;font-size:13px}
+.calc-search-clear:hover{background:#f5f3ff;color:#7c3aed}
+.calc-drilldown{display:flex;align-items:center;gap:8px;padding:6px 12px;background:#fef3c7;border:1px solid #f59e0b;border-radius:99px;font-size:12px;color:#78350f;font-weight:500}
+.calc-drilldown-close{cursor:pointer;color:#92400e;font-weight:700;background:transparent;border:0;padding:0 4px;font-size:14px}
+.calc-drilldown-close:hover{color:#dc2626}
+.calc-presets{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.calc-preset-btn{padding:5px 10px;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:99px;font-size:11px;cursor:pointer;transition:all .15s;font-weight:500}
+.calc-preset-btn:hover{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.calc-preset-save{padding:5px 10px;background:transparent;color:#94a3b8;border:1px dashed #cbd5e1;border-radius:99px;font-size:11px;cursor:pointer;transition:all .15s}
+.calc-preset-save:hover{color:#7c3aed;border-color:#7c3aed}
+/* Сортировка колонок */
+.th-sort{cursor:pointer;user-select:none;position:relative;transition:background .15s}
+.th-sort:hover{background:#f5f3ff}
+.sort-ind{display:inline-block;width:10px;color:#cbd5e1;font-size:10px;margin-left:2px}
+.th-sort.asc .sort-ind::after{content:'▲';color:#7c3aed}
+.th-sort.desc .sort-ind::after{content:'▼';color:#7c3aed}
+.th-sort:hover .sort-ind::after{content:'⇅';color:#94a3b8}
+.th-sort.asc:hover .sort-ind::after{content:'▲'}
+.th-sort.desc:hover .sort-ind::after{content:'▼'}
+/* Плитки KPI — теперь кликабельные */
+.metrics .m{cursor:pointer;transition:all .15s;position:relative}
+.metrics .m:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.12)}
+.metrics .m.active-drill{background:#fef3c7!important;border:2px solid #f59e0b!important;box-shadow:0 0 0 3px rgba(245,158,11,.2)}
+.metrics .m::after{content:'';position:absolute;top:6px;right:8px;width:5px;height:5px;border-right:1.5px solid #cbd5e1;border-top:1.5px solid #cbd5e1;transform:rotate(45deg);opacity:0;transition:opacity .15s}
+.metrics .m:hover::after{opacity:1}
 .ct{font-size:14px;font-weight:500;margin-bottom:1rem}
 .btn-primary{padding:9px 20px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer}
 .btn-primary:hover{opacity:.9}
@@ -1171,7 +1202,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.2</div>
+      <div class="sidebar-version">WB Profit · v0.7.3</div>
     </div>
   </div>
 </div>
@@ -1310,6 +1341,16 @@ tr.loss td{background:#fff5f5}
             </div>
           </div>
           <p class="hint" style="margin-bottom:12px">Себестоимость сохраняется автоматически. Убыточные товары выделены красным.</p>
+          <!-- 🔥 v0.7.3: поиск + drilldown -->
+          <div class="calc-toolbar">
+            <div class="calc-search">
+              <span class="calc-search-icon">🔍</span>
+              <input type="text" id="calcSearch" placeholder="Поиск по артикулу WB, артикулу продавца или категории..." oninput="onCalcSearchInput(this.value)">
+              <button class="calc-search-clear" id="calcSearchClear" onclick="document.getElementById('calcSearch').value='';onCalcSearchInput('');" style="display:none" title="Очистить поиск">✕</button>
+            </div>
+            <div id="calcDrilldownBadge" class="calc-drilldown" style="display:none"></div>
+            <div id="calcPresetBar" class="calc-presets"></div>
+          </div>
           <div class="bulk-bar">
             <div class="bulk-row">
               <label class="bulk-lbl">Себестоимость:</label>
@@ -1338,21 +1379,23 @@ tr.loss td{background:#fff5f5}
             <table id="productsTable">
               <thead><tr>
                 <th class="cb-col"><input type="checkbox" id="cbAll" onchange="toggleAllCheckboxes(this.checked)" title="Выбрать все"></th>
-                <th>Артикул WB</th><th>Артикул</th><th>Категория</th>
-                <th>Продажи</th>
-                <th class="col-returns">Возвраты</th>
-                <th class="col-stock" title="Доступно к продаже / Всего на складах WB (с учётом «в пути»)">Остаток</th>
-                <th class="col-commPct" title="Реальная комиссия WB по товару, в %">Комиссия %</th>
-                <th>Выплата WB ₽</th>
-                <th>Логистика ₽</th>
-                <th class="col-storage">Хранение ₽</th>
-                <th>Реклама ₽</th>
-                <th class="col-drr" style="display:none" title="Доля рекламных расходов: реклама / выручка × 100%">ДРР %</th>
-                <th class="col-cpc" style="display:none" title="Стоимость рекламы на 1 проданную единицу">CPC</th>
-                <th class="col-cpo" style="display:none" title="Стоимость рекламы на 1 заказ (≈ продажу)">CPO</th>
-                <th class="col-penalty">Штрафы ₽</th>
-                <th>Себест. ₽/шт</th>
-                <th>Чистая прибыль ₽</th>
+                <th class="th-sort" data-sort="nm_id" onclick="onCalcSort('nm_id')" title="Кликните для сортировки по артикулу WB">Артикул WB <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort="sa" onclick="onCalcSort('sa')" title="Кликните для сортировки по артикулу продавца">Артикул <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort="cat" onclick="onCalcSort('cat')" title="Кликните для сортировки по категории">Категория <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort="sales" onclick="onCalcSort('sales')" title="Кликните для сортировки по продажам">Продажи <span class="sort-ind"></span></th>
+                <th class="col-returns th-sort" data-sort="ret" onclick="onCalcSort('ret')" title="Возвраты товаров за период. Чем меньше — тем лучше. Высокий возврат снижает прибыль">Возвраты <span class="sort-ind"></span></th>
+                <th class="col-stock th-sort" data-sort="stock" onclick="onCalcSort('stock')" title="Доступно к продаже / Всего на складах WB (с учётом «в пути»). При остатке <5 шт — риск out-of-stock">Остаток <span class="sort-ind"></span></th>
+                <th class="col-commPct th-sort" data-sort="commPct" onclick="onCalcSort('commPct')" title="Реальная комиссия WB по товару в процентах. Зависит от категории и модели работы (FBO/FBS)">Комиссия % <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort="ppvz" onclick="onCalcSort('ppvz')" title="Сумма к выплате от WB за период (после удержания комиссии)">Выплата WB ₽ <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort="del" onclick="onCalcSort('del')" title="Расходы на логистику WB: доставка до клиента и возвратная логистика">Логистика ₽ <span class="sort-ind"></span></th>
+                <th class="col-storage th-sort" data-sort="stor" onclick="onCalcSort('stor')" title="Расходы на хранение товара на складах WB. Высокое хранение = затоваривание">Хранение ₽ <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort="adv" onclick="onCalcSort('adv')" title="Затраты на рекламу WB (внутренние рекламные кампании)">Реклама ₽ <span class="sort-ind"></span></th>
+                <th class="col-drr th-sort" data-sort="drr" onclick="onCalcSort('drr')" style="display:none" title="ДРР — доля рекламных расходов: реклама / выручка × 100%. Норма до 30%">ДРР % <span class="sort-ind"></span></th>
+                <th class="col-cpc th-sort" data-sort="cpc" onclick="onCalcSort('cpc')" style="display:none" title="CPC — стоимость рекламы на 1 проданную единицу">CPC <span class="sort-ind"></span></th>
+                <th class="col-cpo th-sort" data-sort="cpo" onclick="onCalcSort('cpo')" style="display:none" title="CPO — стоимость рекламы на 1 заказ (≈ продажу)">CPO <span class="sort-ind"></span></th>
+                <th class="col-penalty th-sort" data-sort="pen" onclick="onCalcSort('pen')" title="Штрафы от WB (за пересортицу, нарушения упаковки, неверные данные)">Штрафы ₽ <span class="sort-ind"></span></th>
+                <th title="Себестоимость 1 шт товара. Заполните чтобы видеть реальную чистую прибыль">Себест. ₽/шт</th>
+                <th class="th-sort" data-sort="profit" onclick="onCalcSort('profit')" title="Чистая прибыль = Выплата − Логистика − Хранение − Реклама − Штрафы − Себестоимость. Красное = убыток">Чистая прибыль ₽ <span class="sort-ind"></span></th>
               </tr></thead>
               <tbody id="tb"></tbody>
               <tfoot><tr class="tfoot-row" id="tfoot"></tr></tfoot>
@@ -2190,17 +2233,17 @@ async function tryRestoreDataFromCache(){
       if(mgEl){
         mgEl.innerHTML=
           '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(t.salesCount)+' шт.</div></div>'+
-          '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
+          '<div class="m" data-drill="returns" onclick="onCalcDrilldown(\'returns\')" title="Кликните чтобы показать только товары с возвратами"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
           '<div class="m"><div class="ml">Выручка</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
           '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(t.commission)+' ₽</div></div>'+
           '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(t.delivery)+' ₽</div></div>'+
-          '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
-          '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
-          '<div class="m"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
+          '<div class="m" data-drill="storage" onclick="onCalcDrilldown(\'storage\')" title="Кликните чтобы показать товары с расходами на хранение"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
+          '<div class="m" data-drill="ads" onclick="onCalcDrilldown(\'ads\')" title="Кликните чтобы показать только товары с рекламой"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
+          '<div class="m" data-drill="penalty" onclick="onCalcDrilldown(\'penalty\')" title="Кликните чтобы показать только товары со штрафами"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
           wbFinHtml+
           '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
           adjHtml+
-          '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
+          '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="Кликните чтобы показать только убыточные товары"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
       }
       var cntEl=document.getElementById('cnt');
       if(cntEl) cntEl.textContent=cache.rows.length+' товаров · '+(cache.raw_count||0)+' записей (из кеша)';
@@ -2957,19 +3000,19 @@ async function process(raw){
   document.getElementById('mg').innerHTML=
     // Доходные
     '<div class="m"><div class="ml">Продажи</div><div class="mv">'+fmt(t.salesCount)+' шт.</div></div>'+
-    '<div class="m"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
+    '<div class="m" data-drill="returns" onclick="onCalcDrilldown(\'returns\')" title="Кликните чтобы показать только товары с возвратами"><div class="ml">Возвраты</div><div class="mv red">'+fmt(t.returnsCount)+' шт.</div></div>'+
     '<div class="m"><div class="ml">Выручка</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
     // Расходы (вычитаются)
     '<div class="m"><div class="ml">Комиссия WB</div><div class="mv red">−'+fmt(t.commission)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Логистика</div><div class="mv red">−'+fmt(t.delivery)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
+    '<div class="m" data-drill="storage" onclick="onCalcDrilldown(\'storage\')" title="Кликните чтобы показать товары с расходами на хранение"><div class="ml">Хранение</div><div class="mv red">−'+fmt(t.storage)+' ₽</div></div>'+
+    '<div class="m" data-drill="ads" onclick="onCalcDrilldown(\'ads\')" title="Кликните чтобы показать только товары с рекламой"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
+    '<div class="m" data-drill="penalty" onclick="onCalcDrilldown(\'penalty\')" title="Кликните чтобы показать только товары со штрафами"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
     wbFinHtml+
     '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
     adjHtml+
     // Итог
-    '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
+    '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="Кликните чтобы показать только убыточные товары"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
   // Free-предупреждение если обрезали
   var freeWarn=document.getElementById('freeLimitWarn');
@@ -3299,16 +3342,224 @@ function toggleDetailOp(rowKey, source, opName){
   exp.textContent = '▼';
 }
 
+// === v0.7.3: фильтры, сортировка и пресеты Калькулятора ===
+// Состояние
+window._calcSearch = '';                              // строка поиска
+window._calcDrill = null;                             // {type:'returns'|'ads'|'penalty'|'losses'|'highDrr', label:'...'}
+window._calcSort = {field:null, dir:'desc'};          // сортировка по полю
+// Описание drilldown фильтров
+var CALC_DRILLDOWNS = {
+  returns: {label:'Только товары с возвратами', filter: function(a){return a.ret>0;}},
+  ads: {label:'Только товары с рекламой', filter: function(a){return a.adv>0;}},
+  penalty: {label:'Только товары со штрафами', filter: function(a){return a.pen>0;}},
+  storage: {label:'Только товары с хранением', filter: function(a){return a.stor>0;}},
+  losses: {label:'Только убыточные товары', filter: function(a){
+    if(!(a.cost>0)) return false;
+    var prf = a.ppvz - a.del - a.stor - a.adv - a.pen - a.cost*Math.max(a.sales-a.ret,0);
+    return prf < 0;
+  }},
+  noCost: {label:'Не указана себестоимость', filter: function(a){return !(a.cost>0);}},
+  outOfStock: {label:'Заканчиваются на складе', filter: function(a){
+    var st = (window._stocksMap||{})[a.nm_id];
+    return st && st.avail !== undefined && st.avail < 5;
+  }}
+};
+// Применить поиск
+function onCalcSearchInput(q){
+  window._calcSearch = (q||'').toLowerCase().trim();
+  document.getElementById('calcSearchClear').style.display = window._calcSearch ? '' : 'none';
+  rerenderCalc();
+}
+// Применить drilldown от плитки
+function onCalcDrilldown(type){
+  if(!CALC_DRILLDOWNS[type]) return;
+  // Тоггл — если уже активен этот тип, выключаем
+  if(window._calcDrill && window._calcDrill.type === type){
+    window._calcDrill = null;
+  } else {
+    window._calcDrill = {type:type, label:CALC_DRILLDOWNS[type].label};
+  }
+  rerenderCalc();
+}
+function clearCalcDrilldown(){
+  window._calcDrill = null;
+  rerenderCalc();
+}
+// Сортировка по колонке
+function onCalcSort(field){
+  if(window._calcSort.field === field){
+    // Тот же столбец: меняем направление, или сбрасываем
+    if(window._calcSort.dir === 'desc') window._calcSort.dir = 'asc';
+    else if(window._calcSort.dir === 'asc') {window._calcSort.field = null; window._calcSort.dir = 'desc';}
+  } else {
+    window._calcSort.field = field;
+    window._calcSort.dir = 'desc'; // числа по умолчанию убывание
+    // Для текстовых полей — по возрастанию логичнее
+    if(['nm_id','sa','cat'].indexOf(field)!==-1) window._calcSort.dir = 'asc';
+  }
+  rerenderCalc();
+}
+// Получить отфильтрованные и отсортированные строки (исходный rows не трогаем)
+function getFilteredCalcRows(){
+  var result = rows.slice();
+  // Поиск
+  if(window._calcSearch){
+    var q = window._calcSearch;
+    result = result.filter(function(a){
+      return String(a.nm_id||'').toLowerCase().indexOf(q)!==-1
+          || String(a.sa||'').toLowerCase().indexOf(q)!==-1
+          || String(a.cat||'').toLowerCase().indexOf(q)!==-1;
+    });
+  }
+  // Drilldown
+  if(window._calcDrill && CALC_DRILLDOWNS[window._calcDrill.type]){
+    result = result.filter(CALC_DRILLDOWNS[window._calcDrill.type].filter);
+  }
+  // Сортировка
+  if(window._calcSort.field){
+    var f = window._calcSort.field;
+    var dir = window._calcSort.dir === 'asc' ? 1 : -1;
+    result.sort(function(a,b){
+      var va, vb;
+      if(f === 'profit'){
+        va = a.ppvz - a.del - a.stor - a.adv - a.pen - (a.cost||0)*Math.max(a.sales-a.ret,0);
+        vb = b.ppvz - b.del - b.stor - b.adv - b.pen - (b.cost||0)*Math.max(b.sales-b.ret,0);
+      } else if(f === 'drr'){
+        var rA = a.commPct>0?(a.commRub/a.commPct*100):0;
+        var rB = b.commPct>0?(b.commRub/b.commPct*100):0;
+        va = rA>0 ? (a.adv/rA*100) : 0;
+        vb = rB>0 ? (b.adv/rB*100) : 0;
+      } else if(f === 'cpc' || f === 'cpo'){
+        va = a.sales>0 ? a.adv/a.sales : 0;
+        vb = b.sales>0 ? b.adv/b.sales : 0;
+      } else if(f === 'stock'){
+        var sa = (window._stocksMap||{})[a.nm_id]; var sb = (window._stocksMap||{})[b.nm_id];
+        va = sa?sa.avail:0; vb = sb?sb.avail:0;
+      } else {
+        va = a[f]; vb = b[f];
+      }
+      // Текстовые поля
+      if(typeof va === 'string' || typeof vb === 'string'){
+        return String(va||'').localeCompare(String(vb||'')) * dir;
+      }
+      va = Number(va)||0; vb = Number(vb)||0;
+      return (va - vb) * dir;
+    });
+  }
+  return result;
+}
+// Перерендер таблицы (но без перерасчёта плиток сверху — они общие для всех rows)
+function rerenderCalc(){
+  updateCalcToolbarUi();
+  // Обновляем подсветку сортировки в заголовках
+  document.querySelectorAll('#productsTable .th-sort').forEach(function(th){
+    th.classList.remove('asc','desc');
+    if(th.getAttribute('data-sort') === window._calcSort.field){
+      th.classList.add(window._calcSort.dir);
+    }
+  });
+  // Перерисовываем tbody, сохраняем оригинальные итоги в tfoot (они для ВСЕХ строк, не отфильтрованных)
+  if(typeof window._lastRenderArgs === 'object' && window._lastRenderArgs){
+    var a = window._lastRenderArgs;
+    renderTable(a.tP, a.tD, a.tS, a.tAd, a.tPn, a.tSl, a.tRt, a.tCost, a.tp, a.tComm);
+  }
+}
+function updateCalcToolbarUi(){
+  // Drilldown badge
+  var badge = document.getElementById('calcDrilldownBadge');
+  if(badge){
+    if(window._calcDrill){
+      badge.innerHTML = '🎯 ' + escHtml(window._calcDrill.label) + ' <button class="calc-drilldown-close" onclick="clearCalcDrilldown()" title="Сбросить фильтр">✕</button>';
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+      badge.innerHTML = '';
+    }
+  }
+  // Подсветка активной плитки
+  document.querySelectorAll('.metrics .m').forEach(function(m){
+    m.classList.remove('active-drill');
+    if(window._calcDrill && m.getAttribute('data-drill') === window._calcDrill.type){
+      m.classList.add('active-drill');
+    }
+  });
+  // Пресеты
+  renderCalcPresets();
+}
+// === Пресеты фильтров ===
+function getCalcPresets(){
+  try{return JSON.parse(localStorage.getItem('calc_presets')||'[]');}catch(e){return [];}
+}
+function saveCalcPreset(){
+  var name = prompt('Название пресета (например: «Только убыточные»):', '');
+  if(!name) return;
+  var presets = getCalcPresets();
+  // Удаляем существующий с тем же именем (replace)
+  presets = presets.filter(function(p){return p.name !== name;});
+  presets.push({
+    name: name.slice(0, 40),
+    search: window._calcSearch,
+    drill: window._calcDrill ? window._calcDrill.type : null,
+    sort: window._calcSort.field ? {field:window._calcSort.field, dir:window._calcSort.dir} : null,
+  });
+  // Ограничиваем 10 пресетов
+  presets = presets.slice(-10);
+  localStorage.setItem('calc_presets', JSON.stringify(presets));
+  renderCalcPresets();
+}
+function applyCalcPreset(idx){
+  var presets = getCalcPresets();
+  var p = presets[idx];
+  if(!p) return;
+  window._calcSearch = p.search || '';
+  document.getElementById('calcSearch').value = window._calcSearch;
+  document.getElementById('calcSearchClear').style.display = window._calcSearch ? '' : 'none';
+  window._calcDrill = p.drill && CALC_DRILLDOWNS[p.drill] ? {type:p.drill, label:CALC_DRILLDOWNS[p.drill].label} : null;
+  window._calcSort = p.sort ? {field:p.sort.field, dir:p.sort.dir} : {field:null, dir:'desc'};
+  rerenderCalc();
+}
+function deleteCalcPreset(idx){
+  var presets = getCalcPresets();
+  presets.splice(idx, 1);
+  localStorage.setItem('calc_presets', JSON.stringify(presets));
+  renderCalcPresets();
+}
+function renderCalcPresets(){
+  var bar = document.getElementById('calcPresetBar');
+  if(!bar) return;
+  var presets = getCalcPresets();
+  var h = '';
+  presets.forEach(function(p, i){
+    h += '<button class="calc-preset-btn" onclick="applyCalcPreset('+i+')" title="Кликните чтобы применить. Зажмите Ctrl/Cmd и кликните чтобы удалить" oncontextmenu="event.preventDefault();if(confirm(\'Удалить пресет «\'+'+JSON.stringify(p.name)+'+'+'\'»?\'))deleteCalcPreset('+i+');return false;">'+escHtml(p.name)+'</button>';
+  });
+  // Кнопка «Сохранить текущий вид» — только если есть что сохранять
+  if(window._calcSearch || window._calcDrill || window._calcSort.field){
+    h += '<button class="calc-preset-save" onclick="saveCalcPreset()" title="Сохранить текущие фильтры как пресет">+ сохранить</button>';
+  }
+  bar.innerHTML = h;
+}
+
 function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
   tComm=tComm||0;
   // 🔥 v0.5.7: обновляем nm-кеш из rows Калькулятора
   rebuildNmCache(window._lastSnapshots, window.rows);
+  // 🔥 v0.7.3: запоминаем итоги — для повторного вызова при изменении фильтра (rerenderCalc)
+  window._lastRenderArgs = {tP:tP, tD:tD, tS:tS, tAd:tAd, tPn:tPn, tSl:tSl, tRt:tRt, tCost:tCost, tp:tp, tComm:tComm};
   var tb=document.getElementById('tb');tb.innerHTML='';
   var stocksMap=window._stocksMap||{};
   var totalStock=0;
+  // 🔥 v0.7.3: tbody рендерим по отфильтрованным строкам (плитки и итоги в footer — по всем)
+  var filteredRows = getFilteredCalcRows();
+  // Если фильтр спрятал всё — покажем empty-state
+  if(filteredRows.length === 0 && rows.length > 0){
+    tb.innerHTML = '<tr><td colspan="20" style="text-align:center;padding:32px;color:#94a3b8">'+
+      'Ничего не найдено по выбранным фильтрам. '+
+      '<a onclick="window._calcSearch=\'\';window._calcDrill=null;window._calcSort={field:null,dir:\'desc\'};document.getElementById(\'calcSearch\').value=\'\';rerenderCalc()" style="color:#7c3aed;cursor:pointer">Сбросить фильтры</a>'+
+      '</td></tr>';
+  }
   // Для CPC/CPO нужны суммы выручки и продаж по товарам — это уже в rows
-  for(var i=0;i<rows.length;i++){
-    var a=rows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+  for(var i=0;i<filteredRows.length;i++){
+    var a=filteredRows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
     var pc=prf>=0?'green':'red',ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
     // Остаток
     var st=stocksMap[a.nm_id]||null;
@@ -3336,7 +3587,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     // CPO — стоимость рекламы на 1 заказ. У нас sales ≈ orders, поэтому CPO ≈ CPC. Покажем то же значение.
     var cpoHtml=cpcHtml;
     tb.innerHTML+='<tr'+(a.cost>0&&prf<0?' class="loss"':'')+'>'+
-      '<td class="cb-col"><input type="checkbox" class="cb-row" data-i="'+i+'" onchange="onRowCheckboxChange()"></td>'+
+      '<td class="cb-col"><input type="checkbox" class="cb-row" data-i="'+rows.indexOf(a)+'" onchange="onRowCheckboxChange()"></td>'+
       '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
       '<td>'+fmt(a.sales)+'</td>'+
@@ -3351,7 +3602,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       '<td class="col-cpc" style="display:none">'+cpcHtml+'</td>'+
       '<td class="col-cpo" style="display:none">'+cpoHtml+'</td>'+
       '<td class="col-penalty red">−'+fmt(a.pen)+' ₽</td>'+
-      '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+i+',this.value)"></td>'+
+      '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+rows.indexOf(a)+',this.value)"></td>'+
       '<td>'+ps+'</td></tr>';
   }
   var tf=document.getElementById('tfoot');
@@ -3376,6 +3627,8 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     '<td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
   // После рендера применяем сохранённые настройки видимости
   applyColPrefs();
+  // 🔥 v0.7.3: обновляем UI тулбара (drilldown-badge, подсветка плиток, пресеты)
+  if(typeof updateCalcToolbarUi === 'function') updateCalcToolbarUi();
 }
 function toggleCol(checkbox){
   var col=checkbox.dataset.col;
