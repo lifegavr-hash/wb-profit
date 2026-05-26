@@ -1787,7 +1787,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.6</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.7</div>
     </div>
   </div>
 </div>
@@ -2415,11 +2415,14 @@ function _wbProfitHotkeys(e){
 window.addEventListener('keydown', _wbProfitHotkeys, true); // capture: true — перехватываем раньше всех
 
 async function init(){
-  // 🔥 v0.7.7.6: Публичный демо-режим через /demo URL или ?demo=1 параметр.
-  // Полностью обходим Supabase-auth — никакого fetch к /api/config, никакого редиректа на login.
+  // 🔥 v0.7.7.6+hotfix: Публичный демо-режим.
+  // Vercel rewrite /demo → /dashboard.html?demo=1 НЕ пробрасывает query в браузер,
+  // поэтому также проверяем pathname === '/demo'.
+  // ВАЖНО: для незалогиненного посетителя /demo не должен редиректить на login.
+  var pathDemo = location.pathname === '/demo';
   var urlDemo = new URLSearchParams(location.search).get('demo') === '1';
   var lsDemo = localStorage.getItem('wb_demo_active') === '1';
-  if(urlDemo || lsDemo){
+  if(pathDemo || urlDemo || lsDemo){
     return initDemoBypass();
   }
   var r=await fetch('/api/config');
@@ -2571,8 +2574,11 @@ function initDemoBypass(){
     if(logoutBtn){
       logoutBtn.textContent = '✨ Зарегистрироваться';
       logoutBtn.onclick = function(){
-        localStorage.removeItem('wb_demo_active');
-        location.href = '/login.html';
+        // ВАЖНО: чистим демо-флаг ДО редиректа, иначе login.html
+        // не сможет нормально открыться (мы вернёмся в /demo через рефреш)
+        try{localStorage.removeItem('wb_demo_active');}catch(e){}
+        location.href = '/login.html?signup=1';
+        return false;
       };
     }
     // Скрываем "Настройки" и "Промокод" — там запросы к API
@@ -2589,7 +2595,8 @@ function initDemoBypass(){
     // Сразу банер
     var banner = document.getElementById('demoBanner');
     if(banner){
-      banner.innerHTML = '🎭 ДЕМО-РЕЖИМ: показаны тестовые данные. <a href="/login.html" style="color:#fff;text-decoration:underline;margin-left:8px;font-weight:700">Зарегистрироваться →</a>';
+      // Делаем ссылку через onclick чтобы также чистить флаг
+      banner.innerHTML = '🎭 ДЕМО-РЕЖИМ: показаны тестовые данные. <a href="/login.html?signup=1" onclick="try{localStorage.removeItem(\'wb_demo_active\');}catch(e){}" style="color:#fff;text-decoration:underline;margin-left:8px;font-weight:700">Зарегистрироваться →</a>';
     }
   }, 100);
 }
