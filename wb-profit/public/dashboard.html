@@ -77,6 +77,71 @@ html[data-theme="dark"] .onb-mock-browser,html[data-theme="dark"] .onb-mock-menu
 html[data-theme="dark"] .onb-visual-mock{background:#252539;border-color:var(--border)}
 html[data-theme="dark"] .ml,html[data-theme="dark"] .hint{color:var(--muted)}
 html[data-theme="dark"] .mv{color:var(--text)}
+/* 🔥 v0.7.7.1 hotfix: добавляем переопределения для хардкод-цветов */
+html[data-theme="dark"] .bulk-btn{background:#252539;color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .bulk-btn:hover{background:#2a2a44;border-color:#a78bfa;color:#a78bfa}
+html[data-theme="dark"] .plan-btn-downgrade{background:#252539;color:var(--muted);border-color:var(--border)}
+html[data-theme="dark"] .plan-btn-downgrade:hover{background:#2a2a44;color:var(--text)}
+html[data-theme="dark"] .plan-btn-current{background:#3b3b52;color:var(--muted)}
+html[data-theme="dark"] .logout-btn{background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);border-color:rgba(255,255,255,.15)}
+html[data-theme="dark"] .logout-btn:hover{background:rgba(255,255,255,.15);color:#fff}
+html[data-theme="dark"] .detail-formula{background:var(--card-bg);border-color:var(--border)}
+html[data-theme="dark"] .detail-formula-title{color:var(--muted)}
+html[data-theme="dark"] .detail-formula-row{border-color:rgba(255,255,255,.05);color:var(--text)}
+html[data-theme="dark"] .detail-formula-row.total{border-top-color:var(--text)}
+/* Доп. фоны разделов */
+html[data-theme="dark"] .abc-table th{background:#252539;color:var(--text)}
+html[data-theme="dark"] .abc-table td{color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .abc-group-header{background:#252539}
+html[data-theme="dark"] .abc-group-header:hover{background:#2a2a44}
+html[data-theme="dark"] .abc-group-body{background:#1a1a2e}
+html[data-theme="dark"] .home-empty,html[data-theme="dark"] .home-empty-mini{color:var(--muted)}
+/* Тосты — фон уже задан выше, но иконки и кнопка close нуждаются в коррекции */
+html[data-theme="dark"] .toast.success{background:#0f3a2a;color:#86efac}
+html[data-theme="dark"] .toast.error{background:#3a1414;color:#fca5a5}
+html[data-theme="dark"] .toast.warning{background:#3a2814;color:#fcd34d}
+html[data-theme="dark"] .toast.info{background:#14283a;color:#93c5fd}
+/* Период-пилюлюлю в load-bar — load-bar остаётся фиолетовым, не трогаем .period-pill.active */
+/* Чистая прибыль большая плитка */
+html[data-theme="dark"] .m.hi{background:#1f1f33;border-color:var(--border)}
+html[data-theme="dark"] .m{background:var(--card-bg);border-color:var(--border)}
+/* Поля промокода и др. inputs */
+html[data-theme="dark"] .promo-input,html[data-theme="dark"] #promoCode{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+/* CT (заголовки карточек) */
+html[data-theme="dark"] .ct{color:var(--text)}
+/* Подсказки */
+html[data-theme="dark"] .hint{color:var(--muted)}
+/* Wb tokeninfo Сохранено */
+html[data-theme="dark"] #savedHint,html[data-theme="dark"] #personalExpensesHint{color:#22c55e}
+/* Кнопки топа таблицы Калькулятора */
+html[data-theme="dark"] .calc-search-clear:hover{background:#2a2a44;color:#a78bfa}
+/* Бейджи в шапке */
+html[data-theme="dark"] .plan-badge{background:#252539;color:var(--text);border:1px solid var(--border)}
+html[data-theme="dark"] .plan-badge.pro{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;border-color:transparent}
+/* Промокод card */
+html[data-theme="dark"] #sectionPromo .card{background:var(--card-bg)}
+/* Onboarding */
+html[data-theme="dark"] .onb-bg{background:rgba(0,0,0,.7)}
+html[data-theme="dark"] .onb-title{color:var(--text)}
+html[data-theme="dark"] .onb-text{color:var(--muted)}
+html[data-theme="dark"] .onb-close{color:var(--muted)}
+html[data-theme="dark"] .onb-mock-url{background:#1a1a2e;color:var(--muted)}
+html[data-theme="dark"] .onb-mock-menu-item{color:var(--muted);border-color:var(--border)}
+html[data-theme="dark"] .onb-mock-menu-item.highlight{background:rgba(167,139,250,.15);color:#a78bfa}
+html[data-theme="dark"] .onb-mock-tab{color:var(--muted)}
+html[data-theme="dark"] .onb-mock-tab.highlight{background:rgba(167,139,250,.15);color:#a78bfa;border-bottom-color:#a78bfa}
+html[data-theme="dark"] .onb-mock-form{background:var(--card-bg)}
+html[data-theme="dark"] .onb-mock-form-row{color:var(--text)}
+html[data-theme="dark"] .onb-mock-label{color:var(--muted)}
+html[data-theme="dark"] .onb-mock-value{color:var(--text)}
+html[data-theme="dark"] .onb-mock-chip{background:rgba(34,197,94,.15);color:#22c55e}
+/* Mobile-menu кнопка */
+html[data-theme="dark"] .mob-menu-btn{background:var(--card-bg);color:var(--text);border-color:var(--border)}
+/* Period popup */
+html[data-theme="dark"] .period-popup-card{background:var(--card-bg);color:var(--text);border:1px solid var(--border)}
+html[data-theme="dark"] .period-popup-title{color:var(--text)}
+html[data-theme="dark"] .period-popup-card label{color:var(--muted)}
+html[data-theme="dark"] .period-popup-card input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 /* Скрытые поля и абсолютные оверлеи не должны участвовать в grid-сетке body */
 body > input[type="hidden"]{display:none!important}
@@ -1475,7 +1540,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.1</div>
     </div>
   </div>
 </div>
