@@ -2,7 +2,7 @@
 // WB лимит: 1 запрос/мин на токен. Мы держим этот лимит сами и кэшируем прошлые дни.
 
 import crypto from 'node:crypto';
-import { extractJwt, getUserPlan, sendIfPlanError } from '../lib/plan-check.js';
+import { extractJwt, checkPeriodLimit, sendIfPlanError } from '../lib/plan-check.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -128,27 +128,31 @@ export default async function handler(req, res) {
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
 
   // ─── Проверка тарифа ───
-  // Если период > 7 дней — требуем PRO. JWT берём из X-User-Auth (Authorization занят WB-токеном).
+  // v0.7.1: используем лимит max_period_days из таблицы plans, а не хардкод.
+  // Free/Start: 30 дней / PRO/Business: 365. JWT в X-User-Auth (Authorization занят WB-токеном).
   try {
-    const fromMs = new Date(dateFrom).getTime();
-    const toMs = new Date(dateTo).getTime();
-    const days = Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
-    if (days > 7) {
-      const jwt = extractJwt(req);
-      const plan = await getUserPlan(jwt);
-      if (plan.error) {
-        if (sendIfPlanError(res, plan)) return;
+    const jwt = extractJwt(req);
+    if (jwt) {
+      const check = await checkPeriodLimit(jwt, dateFrom, dateTo);
+      if (check.error) {
+        // PERIOD_LIMIT → 403 с понятным сообщением для фронта
+        if (sendIfPlanError(res, check)) return;
       }
-      if (!plan.hasPro) {
+    } else {
+      // Если JWT нет — анонимный пробный режим, ограничиваем как Free (30 дней max)
+      const fromMs = new Date(dateFrom).getTime();
+      const toMs = new Date(dateTo).getTime();
+      const days = Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
+      if (days > 30) {
         return res.status(403).json({
-          error: 'PRO_REQUIRED',
-          message: `Период ${days} дней доступен только на тарифе PRO. Бесплатно — до 7 дней.`,
-          feature: `Период ${days} дней`,
+          error: 'PERIOD_LIMIT',
+          message: `Период ${days} дней доступен только авторизованным пользователям. Войдите в аккаунт.`,
+          maxDays: 30,
         });
       }
     }
   } catch (e) {
-    // Если что-то сломалось в проверке тарифа — НЕ блокируем запрос (failsafe).
+    // Failsafe: если что-то сломалось — пропускаем (не хотим блокировать всех из-за бага)
     console.warn('[wb] plan-check error:', e.message);
   }
 

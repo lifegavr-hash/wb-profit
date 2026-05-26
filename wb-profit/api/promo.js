@@ -1,4 +1,14 @@
+// /api/promo — активация промокода
+// v0.7.1: SECURITY FIX — userId теперь берётся ТОЛЬКО из JWT, не из body.
+// Раньше можно было активировать промокод на чужой аккаунт прислав чужой userId.
+//
+// Также: запрет активации промокода если уже есть активный платный план
+// (иначе можно стакать триалы бесконечно).
+
 import { createClient } from '@supabase/supabase-js';
+import { getUserPlanWithLimits } from '../lib/plan-check.js';
+
+const PLAN_RANK = { free: 0, start: 1, pro: 2, business: 3 };
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,20 +17,56 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { code, userId } = req.body;
-  if (!code || !userId) return res.status(400).json({ error: 'Укажите code и userId' });
+  // SECURITY: userId — ТОЛЬКО из JWT, не из body
+  const jwt = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!jwt) return res.status(401).json({ error: 'Нет токена авторизации' });
+  const planResult = await getUserPlanWithLimits(jwt);
+  if (planResult.error) {
+    return res.status(planResult.status || 401).json({ error: planResult.error, message: planResult.message });
+  }
+  const userId = planResult.user.id;
+  const isAdmin = planResult.isAdmin;
+  const currentPlan = planResult.plan;
+  const currentExpires = planResult.expiresAt;
+
+  const { code } = req.body || {};
+  if (!code) return res.status(400).json({ error: 'Укажите code' });
 
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+  // Ищем промокод
   const { data: promo, error: promoError } = await supabase
     .from('promo_codes').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single();
 
-  if (promoError || !promo) return res.status(404).json({ error: 'Промокод не найден или недействителен' });
-  if (promo.used_count >= promo.max_uses) return res.status(400).json({ error: 'Промокод использован максимальное количество раз' });
+  if (promoError || !promo) {
+    return res.status(404).json({ error: 'Промокод не найден или недействителен' });
+  }
+  if (promo.used_count >= promo.max_uses) {
+    return res.status(400).json({ error: 'Промокод использован максимальное количество раз' });
+  }
 
-  const { data: existing } = await supabase.from('promo_uses').select('id').eq('promo_id', promo.id).eq('user_id', userId).single();
-  if (existing) return res.status(400).json({ error: 'Вы уже использовали этот промокод' });
+  // Уже использовал этот промокод?
+  const { data: existing } = await supabase
+    .from('promo_uses').select('id').eq('promo_id', promo.id).eq('user_id', userId).maybeSingle();
+  if (existing) {
+    return res.status(400).json({ error: 'Вы уже использовали этот промокод' });
+  }
 
+  // 🔥 v0.7.1: запрет активации поверх активного платного плана (если не админ).
+  // Исключение: можно АПГРЕЙД (например со Старта на PRO). Даунгрейд/тот же уровень — запрет.
+  if (!isAdmin && currentExpires && currentExpires.getTime() > Date.now()) {
+    const curRank = PLAN_RANK[currentPlan] ?? 0;
+    const promoRank = PLAN_RANK[promo.plan] ?? 0;
+    if (promoRank <= curRank) {
+      return res.status(400).json({
+        error: 'ACTIVE_PLAN',
+        message: `У вас уже активен тариф ${currentPlan.toUpperCase()} до ${currentExpires.toLocaleDateString('ru-RU')}. Этот промокод даёт ${promo.plan.toUpperCase()} — нет смысла активировать.`,
+      });
+    }
+    // Апгрейд (например с start на pro) — разрешён
+  }
+
+  // Активация
   const expires = new Date();
   expires.setDate(expires.getDate() + promo.days);
 
@@ -28,5 +74,10 @@ export default async function handler(req, res) {
   await supabase.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id);
   await supabase.from('profiles').update({ plan: promo.plan, plan_expires_at: expires.toISOString() }).eq('id', userId);
 
-  return res.status(200).json({ success: true, plan: promo.plan, days: promo.days });
+  return res.status(200).json({
+    success: true,
+    plan: promo.plan,
+    days: promo.days,
+    expires_at: expires.toISOString(),
+  });
 }

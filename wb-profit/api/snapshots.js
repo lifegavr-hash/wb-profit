@@ -1,8 +1,9 @@
 // /api/snapshots
-// POST: { snapshots: [{day, sales_count, ...}, ...] }  — сохранить снапшоты
-// GET  ?days=7                                        — отдать последние N дней
+// POST: { snapshots: [{day, sales_count, ...}, ...] }  — сохранить снапшоты (без лимита, пусть копится)
+// GET  ?days=7                                        — отдать последние N дней, обрезается до max_history_days тарифа
 
 import { createClient } from '@supabase/supabase-js';
+import { getUserPlanWithLimits } from '../lib/plan-check.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,12 +14,24 @@ export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Нет токена' });
 
+  // v0.7.1: получаем план + лимиты из БД (с кешем 5 минут)
+  const planResult = await getUserPlanWithLimits(token);
+  if (planResult.error) {
+    return res.status(planResult.status || 500).json({ error: planResult.error, message: planResult.message });
+  }
+  const user = planResult.user;
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-  if (authErr || !user) return res.status(401).json({ error: 'Неверный токен' });
 
   if (req.method === 'GET') {
-    const days = Math.min(parseInt(req.query.days || '7', 10), 90);
+    // 🔥 v0.7.1: лимит истории берётся из таблицы plans (max_history_days)
+    // Free/Start: 30, PRO: 365, Business: 730. Админ — без лимита.
+    const requested = parseInt(req.query.days || '7', 10);
+    const maxHistory = planResult.isAdmin
+      ? 99999
+      : (planResult.limits?.max_history_days || 30);
+    const days = Math.min(requested, maxHistory);
+    const wasTrimmed = requested > maxHistory;
+
     const since = new Date();
     since.setDate(since.getDate() - days);
     const sinceIso = since.toISOString().slice(0, 10);
@@ -31,7 +44,19 @@ export default async function handler(req, res) {
       .order('day', { ascending: true });
 
     if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({ snapshots: data || [] });
+
+    // Если фронт запросил больше чем тариф позволяет — добавим info в ответ
+    const response = { snapshots: data || [] };
+    if (wasTrimmed) {
+      response.warning = {
+        type: 'HISTORY_LIMIT',
+        message: `Ваш тариф позволяет видеть историю до ${maxHistory} дней. Запрошено ${requested} — обрезано.`,
+        max_history_days: maxHistory,
+        requested_days: requested,
+        plan: planResult.plan,
+      };
+    }
+    return res.status(200).json(response);
   }
 
   if (req.method === 'POST') {
@@ -39,6 +64,7 @@ export default async function handler(req, res) {
     const snapshots = Array.isArray(body.snapshots) ? body.snapshots : [];
     if (!snapshots.length) return res.status(400).json({ error: 'snapshots пустой' });
 
+    // Запись — без лимита. Пусть копится: при апгрейде сразу видна вся история.
     const rows = snapshots.map((s) => ({
       user_id: user.id,
       day: s.day,
@@ -60,7 +86,6 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString(),
     }));
 
-    // Upsert по PK (user_id, day)
     const { error } = await supabase
       .from('daily_snapshots')
       .upsert(rows, { onConflict: 'user_id,day' });
