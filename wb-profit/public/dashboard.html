@@ -99,6 +99,22 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .plan-btn-current{background:#e5e7eb;color:#64748b;cursor:default}
 .plan-btn-downgrade{background:#fff;color:#64748b;border:1px solid #e5e7eb}
 .plan-btn-downgrade:hover{background:#f9fafb}
+/* 🔥 v0.7.4: Top movers в Аналитике */
+.movers-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.movers-col{background:#fafafa;border-radius:10px;padding:10px}
+.movers-col-title{font-size:12px;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:.3px}
+.movers-col-title.green{color:#059669}
+.movers-col-title.red{color:#dc2626}
+.mover-row{padding:7px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.mover-row:last-child{border-bottom:0}
+.mover-name{font-weight:500;color:#1e293b;margin-bottom:2px}
+.mover-meta{color:#64748b;font-size:11px;display:flex;align-items:center;gap:8px}
+@media(max-width:680px){.movers-grid{grid-template-columns:1fr}}
+/* 🔥 v0.7.4: процент изменения период-к-периоду в Детализации */
+.pct-good{display:inline-block;font-size:11px;font-weight:600;color:#10b981;margin-left:8px;padding:1px 6px;background:#ecfdf5;border-radius:99px;cursor:help}
+.pct-bad{display:inline-block;font-size:11px;font-weight:600;color:#dc2626;margin-left:8px;padding:1px 6px;background:#fef2f2;border-radius:99px;cursor:help}
+.pct-eq{display:inline-block;font-size:11px;color:#94a3b8;margin-left:8px;cursor:help}
+.detail-prev-period-hint{font-size:11px;color:#94a3b8;margin:8px 0 14px;padding:6px 10px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 6px 6px 0}
 /* 🔥 v0.7.3: UX-полировка Калькулятора */
 .calc-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .calc-search{position:relative;flex:1;min-width:240px;max-width:480px}
@@ -1202,7 +1218,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.3</div>
+      <div class="sidebar-version">WB Profit · v0.7.4</div>
     </div>
   </div>
 </div>
@@ -3066,6 +3082,62 @@ async function process(raw){
   }catch(e){console.warn('snapshots aggregation failed',e);}
 }
 
+// 🔥 v0.7.4: считаем предыдущий период по снапшотам (для сравнения в Детализации)
+// Возвращает {revenue, commission, delivery, storage, ads, penalty, cost, profit}
+function computePrevPeriodTotals(days){
+  var snaps = window._lastSnapshots || [];
+  if(snaps.length === 0) return null;
+  // Сортируем по дате
+  snaps.sort(function(a,b){return a.day<b.day?-1:1;});
+  var lastDay = snaps[snaps.length-1].day;
+  // Текущий период: последние N дней до lastDay
+  var endCur = new Date(lastDay); 
+  var startCur = new Date(endCur); startCur.setDate(startCur.getDate() - (days-1));
+  // Предыдущий период: ещё N дней до этого
+  var endPrev = new Date(startCur); endPrev.setDate(endPrev.getDate() - 1);
+  var startPrev = new Date(endPrev); startPrev.setDate(startPrev.getDate() - (days-1));
+  // Фильтруем
+  function inRange(day, from, to){
+    var d = new Date(day);
+    return d >= from && d <= to;
+  }
+  var prevSnaps = snaps.filter(function(s){return inRange(s.day, startPrev, endPrev);});
+  if(prevSnaps.length < Math.max(1, Math.floor(days*0.3))) return null; // менее 30% покрытия — пропускаем
+  // Суммируем
+  var t = {revenue:0, commission:0, delivery:0, storage:0, ads:0, penalty:0, wbFinance:0, cost:0, profit:0, salesCount:0, returnsCount:0};
+  prevSnaps.forEach(function(s){
+    t.revenue += Number(s.revenue) || 0;
+    t.commission += Number(s.commission) || 0;
+    t.delivery += Number(s.logistics) || 0;
+    t.storage += Number(s.storage) || 0;
+    t.ads += Number(s.ads) || 0;
+    t.penalty += Number(s.penalties) || 0;
+    t.wbFinance += Number(s.wb_finance) || 0;
+    t.cost += Number(s.cost) || 0;
+    t.profit += Number(s.profit) || 0;
+    t.salesCount += Number(s.sales_count) || 0;
+    t.returnsCount += Number(s.returns_count) || 0;
+  });
+  // Метаданные
+  function fmtDate(d){return d.toISOString().slice(0,10);}
+  t._range = {from: fmtDate(startPrev), to: fmtDate(endPrev), days: prevSnaps.length};
+  return t;
+}
+// Хелпер: HTML-стрелка с процентом изменения. positive=true означает что рост = плохо (для расходов).
+function pctChangeHtml(cur, prev, growthIsBad){
+  if(!prev || prev < 50) return '';   // слишком мало данных для сравнения
+  var diff = cur - prev;
+  var pct = Math.round(diff/prev*100);
+  if(Math.abs(pct) < 3) return '<span class="pct-eq" title="Примерно столько же, что и в предыдущем периоде">≈</span>';
+  var isUp = pct > 0;
+  // Для расходов: рост = плохо. Для выручки/прибыли: рост = хорошо.
+  var goodChange = growthIsBad ? !isUp : isUp;
+  var cls = goodChange ? 'pct-good' : 'pct-bad';
+  var arrow = isUp ? '↑' : '↓';
+  var sign = isUp ? '+' : '';
+  return '<span class="'+cls+'" title="Изменение vs предыдущий период ('+fmt(prev)+' ₽)">'+arrow+' '+sign+pct+'%</span>';
+}
+
 function renderDetail(){
   if(!rawData||!rawData.length){
     document.getElementById('detailEmpty').style.display='block';
@@ -3116,14 +3188,28 @@ function renderDetail(){
     var lbl=pos?'Доплаты WB':'Удержано WB';
     adjBlock='<div class="m"><div class="ml">'+lbl+'</div><div class="mv '+(pos?'green':'red')+'">'+(pos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div></div>';
   }
+  // 🔥 v0.7.4: предыдущий период для сравнения
+  var periodDays = _currentPeriod && _currentPeriod.mode==='preset' ? _currentPeriod.days : null;
+  if(!periodDays && _currentPeriod && _currentPeriod.df && _currentPeriod.dt){
+    periodDays = Math.round((new Date(_currentPeriod.dt) - new Date(_currentPeriod.df))/(24*60*60*1000)) + 1;
+  }
+  var prevT = periodDays ? computePrevPeriodTotals(periodDays) : null;
+  var prevTotalExpenses = prevT ? (prevT.commission+prevT.delivery+prevT.storage+prevT.ads+prevT.penalty+prevT.wbFinance+prevT.cost) : 0;
   document.getElementById('detailMetrics').innerHTML=
-    '<div class="m"><div class="ml">Выручка</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Все расходы</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Выручка'+(prevT?pctChangeHtml(t.revenue, prevT.revenue, false):'')+'</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Все расходы'+(prevT?pctChangeHtml(totalExpenses, prevTotalExpenses, true):'')+'</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
     adjBlock+
-    '<div class="m hi"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
+    '<div class="m hi"><div class="ml">Чистая прибыль'+(prevT?pctChangeHtml(t.profit, prevT.profit, false):'')+'</div><div class="mv '+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
 
+  // 🔥 v0.7.4: подсказка о сравнении с предыдущим периодом
+  var prevPeriodHint = '';
+  if(prevT && prevT._range){
+    prevPeriodHint = '<div class="detail-prev-period-hint">📊 Стрелки рядом с цифрами — сравнение с предыдущим периодом ('+
+      shortDate(prevT._range.from)+'–'+shortDate(prevT._range.to)+
+      ', '+prevT._range.days+' дн.). Зелёное — хорошо, красное — плохо.</div>';
+  }
   // Объяснение P&L формулы, чтобы пользователь мог проверить на калькуляторе
-  var formulaHtml='<div class="detail-formula">';
+  var formulaHtml=prevPeriodHint+'<div class="detail-formula">';
   formulaHtml+='<div class="detail-formula-title">Как считается прибыль</div>';
   formulaHtml+='<div class="detail-formula-row"><span>Выручка</span><span class="green">+'+fmt(t.revenue)+' ₽</span></div>';
   formulaHtml+='<div class="detail-formula-row"><span>− Комиссия WB</span><span class="red">−'+fmt(t.commission)+' ₽</span></div>';
@@ -3155,7 +3241,20 @@ function renderDetail(){
     html+='<div class="detail-card">';
     html+='<div class="detail-card-header">';
     html+='<span class="detail-card-title">'+grp.icon+' '+groupName+'</span>';
-    html+='<span class="detail-card-total">−'+fmt(grp.total)+' ₽</span>';
+    // 🔥 v0.7.4: процент изменения для каждой группы
+    var grpPctHtml = '';
+    if(prevT){
+      var prevAmt = 0;
+      if(groupName === 'Логистика и доставка') prevAmt = prevT.delivery;
+      else if(groupName === 'Хранение') prevAmt = prevT.storage;
+      else if(groupName === 'Реклама и продвижение') prevAmt = prevT.ads;
+      else if(groupName === 'Штрафы и удержания') prevAmt = prevT.penalty;
+      else if(groupName === 'ВБ Финанс (кредит)') prevAmt = prevT.wbFinance;
+      else if(groupName === 'Комиссия WB') prevAmt = prevT.commission;
+      else if(groupName === 'Себестоимость товаров') prevAmt = prevT.cost;
+      grpPctHtml = pctChangeHtml(grp.total, prevAmt, true);
+    }
+    html+='<span class="detail-card-total">−'+fmt(grp.total)+' ₽'+grpPctHtml+'</span>';
     html+='</div>';
 
     for(var k=0;k<grp.ops.length;k++){
@@ -6109,6 +6208,11 @@ function renderAnalytics(snaps){
   h+='<div class="an-card-title">📊 ИСТОРИЯ ПРОБЛЕМ ЗА '+snaps.length+' ДН.</div>';
   h+=renderEventHistory(snaps);
   h+='</div>';
+  // 🔥 v0.7.4 A2: Top Movers — лидеры роста и падения
+  h+='<div class="an-card">';
+  h+='<div class="an-card-title">📈 ЛИДЕРЫ РОСТА И ПАДЕНИЯ</div>';
+  h+=renderTopMovers(snaps);
+  h+='</div>';
   // Виджет 4: ABC-анализ
   h+='<div class="an-card">';
   h+='<div class="an-card-title">🏷️ ABC-АНАЛИЗ ТОВАРОВ</div>';
@@ -6306,6 +6410,96 @@ function renderEventHistory(snaps){
   return h;
 }
 
+// 🔥 v0.7.4 A2: Top Movers — товары с резким ростом или падением продаж/прибыли
+// Берём первую половину периода и сравниваем со второй. Считаем сдвиги по продажам и прибыли.
+function renderTopMovers(snaps){
+  if(!snaps || snaps.length < 4){
+    return '<div class="home-empty-mini">Нужно минимум 4 дня данных для сравнения</div>';
+  }
+  // Делим период пополам
+  var mid = Math.floor(snaps.length/2);
+  var firstHalf = snaps.slice(0, mid);
+  var secondHalf = snaps.slice(mid);
+  // Агрегируем top_items по половинам
+  function aggregate(arr){
+    var map = {};
+    arr.forEach(function(s){
+      (s.top_items||[]).forEach(function(it){
+        var key = String(it.nm || it.name);
+        if(!map[key]) map[key] = {nm:it.nm, name:it.name, sales:0, profit:0};
+        map[key].sales += Number(it.sales||0);
+        map[key].profit += Number(it.profit||0);
+      });
+    });
+    return map;
+  }
+  var firstMap = aggregate(firstHalf);
+  var secondMap = aggregate(secondHalf);
+  // Считаем дельты — только для тех кто был в обеих половинах
+  var movers = [];
+  Object.keys(secondMap).forEach(function(key){
+    var s = secondMap[key];
+    var f = firstMap[key];
+    // Чтобы попасть в movers — нужно ≥3 продажи в одной из половин
+    if((s.sales||0) < 3 && (f && (f.sales||0) < 3)) return;
+    var firstSales = f ? f.sales : 0;
+    var firstProfit = f ? f.profit : 0;
+    var dSales = s.sales - firstSales;
+    var dProfit = s.profit - firstProfit;
+    // Процент изменения продаж
+    var pctSales = firstSales > 0 ? Math.round(dSales/firstSales*100) : (s.sales > 0 ? 100 : 0);
+    // Существенные движения: дельта >= 5 шт ИЛИ изменение >=50% при firstSales>=3
+    if(Math.abs(dSales) < 5 && (firstSales < 3 || Math.abs(pctSales) < 50)) return;
+    movers.push({
+      nm: s.nm, name: s.name,
+      firstSales: firstSales, secondSales: s.sales,
+      firstProfit: firstProfit, secondProfit: s.profit,
+      dSales: dSales, dProfit: dProfit, pctSales: pctSales
+    });
+  });
+  if(!movers.length){
+    return '<div class="home-empty-mini">Существенных изменений по товарам не найдено</div>';
+  }
+  // Top 5 роста и top 5 падения
+  var growers = movers.filter(function(m){return m.dSales > 0;}).sort(function(a,b){return b.dSales-a.dSales;}).slice(0,5);
+  var fallers = movers.filter(function(m){return m.dSales < 0;}).sort(function(a,b){return a.dSales-b.dSales;}).slice(0,5);
+  // Подписи периодов
+  var firstLabel = shortDate(firstHalf[0].day)+'–'+shortDate(firstHalf[firstHalf.length-1].day);
+  var secondLabel = shortDate(secondHalf[0].day)+'–'+shortDate(secondHalf[secondHalf.length-1].day);
+  var h = '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px">Сравнение: <strong>'+secondLabel+'</strong> vs <strong>'+firstLabel+'</strong></div>';
+  h += '<div class="movers-grid">';
+  // Растут
+  h += '<div class="movers-col"><div class="movers-col-title green">🟢 Лидеры роста</div>';
+  if(growers.length){
+    growers.forEach(function(m){
+      var pctStr = m.pctSales >= 999 ? '+999%+' : (m.pctSales >= 0 ? '+' : '') + m.pctSales + '%';
+      h += '<div class="mover-row">';
+      h += '<div class="mover-name">'+itemHtml(m.name, m.nm)+'</div>';
+      h += '<div class="mover-meta">'+m.firstSales+' → '+m.secondSales+' шт. <span class="pct-good">'+pctStr+'</span></div>';
+      h += '</div>';
+    });
+  } else {
+    h += '<div class="home-empty-mini" style="padding:8px">Нет</div>';
+  }
+  h += '</div>';
+  // Падают
+  h += '<div class="movers-col"><div class="movers-col-title red">🔴 Падение продаж</div>';
+  if(fallers.length){
+    fallers.forEach(function(m){
+      var pctStr = m.pctSales + '%';
+      h += '<div class="mover-row">';
+      h += '<div class="mover-name">'+itemHtml(m.name, m.nm)+'</div>';
+      h += '<div class="mover-meta">'+m.firstSales+' → '+m.secondSales+' шт. <span class="pct-bad">'+pctStr+'</span></div>';
+      h += '</div>';
+    });
+  } else {
+    h += '<div class="home-empty-mini" style="padding:8px">Нет</div>';
+  }
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
 // === ВИДЖЕТ 1: Линейный график ===
 function renderTimelineChart(snaps){
   if(!snaps.length)return '<div class="home-empty-mini">Нет данных</div>';
@@ -6381,6 +6575,36 @@ function renderTimelineChart(snaps){
     var hitX = cx - hitW/2;
     h+='<rect class="tl-hit" x="'+hitX+'" y="'+pad.t+'" width="'+hitW+'" height="'+ih+'" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')" onmousemove="showTlTooltip(event,'+i+')"/>';
   });
+  // 🔥 v0.7.4 A1: Метки критичных событий на графике
+  // Помечаем дни с убытком магазина или со всплеском возвратов
+  var eventMarkers = [];
+  pts.forEach(function(p,i){
+    if(i < 2) return; // baseline нужен
+    var baseline = pts.slice(Math.max(0,i-7), i);
+    var avgRet = baseline.length ? baseline.reduce(function(a,x){return a+Number(snaps[snaps.indexOf({day:x.day})]?.returns_count||0);},0)/baseline.length : 0;
+    // Простой подход: pts знает prof, для возвратов смотрим snaps напрямую
+    var s = snaps[i];
+    var prof = p.prof;
+    var ret = Number(s.returns_count||0);
+    var marker = null;
+    if(prof < -500){
+      marker = {i:i, type:'loss', icon:'🔴', title:'Магазин в убытке', detail:'−'+fmtR(Math.abs(prof))+' ₽'};
+    } else if(ret >= 3 && baseline.length >= 3){
+      var baseAvgRet = baseline.reduce(function(a,b,j){return a+Number(snaps[i-baseline.length+j].returns_count||0);},0)/baseline.length;
+      if(baseAvgRet > 0 && ret >= baseAvgRet*2){
+        marker = {i:i, type:'returns', icon:'⚠️', title:'Всплеск возвратов', detail:ret+' шт (среднее '+baseAvgRet.toFixed(1)+')'};
+      }
+    }
+    if(marker) eventMarkers.push(marker);
+  });
+  // Рисуем метки — серые тонкие линии до верха графика + иконки
+  eventMarkers.forEach(function(m){
+    var mx = x(m.i);
+    var color = m.type === 'loss' ? '#ef4444' : '#f59e0b';
+    h += '<line x1="'+mx+'" y1="'+(pad.t+2)+'" x2="'+mx+'" y2="'+(pad.t+ih)+'" stroke="'+color+'" stroke-width="1" stroke-dasharray="2,3" opacity="0.4"/>';
+    // Маркер сверху
+    h += '<circle cx="'+mx+'" cy="'+(pad.t+8)+'" r="6" fill="'+color+'" stroke="#fff" stroke-width="1.5"><title>'+escHtml(m.title)+' · '+escHtml(m.detail)+' · '+shortDate(pts[m.i].day)+'</title></circle>';
+  });
   // Подписи дат: первая, средняя, последняя
   var idxs=[0,Math.floor(pts.length/2),pts.length-1];
   idxs.forEach(function(i){
@@ -6388,6 +6612,10 @@ function renderTimelineChart(snaps){
     h+='<text x="'+x(i)+'" y="'+(H-8)+'" font-size="10" fill="#94a3b8" text-anchor="middle">'+shortDate(pts[i].day)+'</text>';
   });
   h+='</svg>';
+  // Легенда меток если есть
+  if(eventMarkers.length){
+    h += '<div style="font-size:11px;color:#64748b;margin-top:4px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ef4444;margin-right:4px"></span>убыточный день · <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#f59e0b;margin-right:4px"></span>всплеск возвратов · наведи на маркер</div>';
+  }
   // Инсайт
   var profitDays=pts.filter(function(p){return p.prof>0;}).length;
   var lossDays=pts.length-profitDays;
