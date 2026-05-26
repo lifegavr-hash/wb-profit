@@ -74,6 +74,31 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .mv{font-size:22px;font-weight:500}
 .green{color:var(--green)}.red{color:var(--red)}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1rem}
+/* 🔥 v0.7.0: карточки тарифов */
+.plans-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.plans-loading{grid-column:1/-1;text-align:center;color:var(--muted);padding:32px;font-size:13px}
+.plan-card{position:relative;background:#fff;border:2px solid #e5e7eb;border-radius:14px;padding:18px 16px;display:flex;flex-direction:column;transition:all .15s ease}
+.plan-card:hover{border-color:#c4b5fd;transform:translateY(-2px);box-shadow:0 6px 20px rgba(124,58,237,.08)}
+.plan-card.highlight{border-color:#7c3aed;background:linear-gradient(180deg,#faf5ff 0%,#fff 60%)}
+.plan-card.current{border-color:#10b981;background:linear-gradient(180deg,#ecfdf5 0%,#fff 60%)}
+.plan-card.current::before{content:'Ваш тариф';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+.plan-card.highlight::before{content:'Популярный';position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#7c3aed;color:#fff;padding:3px 10px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.5px;white-space:nowrap}
+.plan-card.highlight.current::before{content:'Ваш + популярный';background:linear-gradient(135deg,#10b981,#7c3aed)}
+.plan-name{font-size:16px;font-weight:700;color:#1a0f3c;margin-bottom:4px}
+.plan-desc{font-size:11px;color:#94a3b8;margin-bottom:12px;min-height:28px;line-height:1.4}
+.plan-price{display:flex;align-items:baseline;gap:4px;margin-bottom:14px}
+.plan-price-num{font-size:24px;font-weight:700;color:#1a0f3c}
+.plan-price-suffix{font-size:12px;color:#94a3b8}
+.plan-price-free{font-size:18px;font-weight:600;color:#10b981}
+.plan-features{list-style:none;padding:0;margin:0 0 14px;flex:1;font-size:12px;color:#475569;line-height:1.5}
+.plan-features li{padding:3px 0 3px 18px;position:relative}
+.plan-features li::before{content:'✓';position:absolute;left:0;top:3px;color:#10b981;font-weight:700}
+.plan-btn{width:100%;padding:10px;border-radius:10px;border:0;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.plan-btn-select{background:#7c3aed;color:#fff}
+.plan-btn-select:hover{background:#6d28d9}
+.plan-btn-current{background:#e5e7eb;color:#64748b;cursor:default}
+.plan-btn-downgrade{background:#fff;color:#64748b;border:1px solid #e5e7eb}
+.plan-btn-downgrade:hover{background:#f9fafb}
 .ct{font-size:14px;font-weight:500;margin-bottom:1rem}
 .btn-primary{padding:9px 20px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer}
 .btn-primary:hover{opacity:.9}
@@ -1115,7 +1140,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.6.11</div>
+      <div class="sidebar-version">WB Profit · v0.7.0</div>
     </div>
   </div>
 </div>
@@ -1180,11 +1205,15 @@ tr.loss td{background:#fff5f5}
 
     <!-- Настройки -->
     <div class="section" id="sectionSettings">
+      <!-- 🔥 v0.7.0: блок с тарифами — динамически из /api/plans -->
       <div class="card">
-        <div class="ct">🎁 Тариф и промокод</div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Промокод даёт PRO-доступ к Детализации, Аналитике, 90 дням и больше. Если у тебя есть промокод от партнёра или из нашего Telegram-канала — введи здесь.</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary" onclick="showSection('promo',null)">Активировать промокод →</button>
+        <div class="ct">💎 Тарифы</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Выберите подходящий план. Текущий тариф: <strong id="currentPlanLabel">Free</strong>.</p>
+        <div id="plansGrid" class="plans-grid">
+          <div class="plans-loading">Загружаем тарифы...</div>
+        </div>
+        <div style="margin-top:14px;padding:12px 14px;background:#f5f3ff;border-left:3px solid #7c3aed;border-radius:0 8px 8px 0;font-size:12.5px;color:#475569;line-height:1.5">
+          🎁 Есть промокод? <a href="#" onclick="showSection('promo',null);return false" style="color:#7c3aed;font-weight:600;text-decoration:none">Активировать →</a>
         </div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -1805,6 +1834,7 @@ function showSection(name,el){
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
+  if(name==='settings') loadAndRenderPlans(); // 🔥 v0.7.0
   if(name==='unit'){loadUnitHistory();offerUserAverages();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
@@ -1900,6 +1930,82 @@ function refreshLastSync(rangeFrom,rangeTo){
   var hh=String(d.getHours()).padStart(2,'0'),mm=String(d.getMinutes()).padStart(2,'0');
   info.textContent=prefix+'Обновлено: '+d.toLocaleDateString('ru-RU')+' в '+hh+':'+mm;
 }
+// 🔥 v0.7.0: Загрузка и рендеринг тарифов в Настройках
+var _plansCache = null;
+async function loadAndRenderPlans(){
+  var gridEl = document.getElementById('plansGrid');
+  var labelEl = document.getElementById('currentPlanLabel');
+  if(!gridEl) return;
+  // Подпишем текущий тариф
+  var curPlan = (currentProfile && currentProfile.plan) || 'free';
+  // Загружаем тарифы
+  try{
+    if(!_plansCache){
+      var r = await fetch('/api/plans');
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var data = await r.json();
+      _plansCache = data.plans || [];
+    }
+  }catch(e){
+    console.warn('[plans] load failed:', e);
+    gridEl.innerHTML = '<div class="plans-loading">Не удалось загрузить тарифы. Попробуйте позже.</div>';
+    return;
+  }
+  // Подпись текущего тарифа
+  var curPlanObj = _plansCache.find(function(p){return p.id === curPlan;});
+  if(labelEl){
+    var planName = curPlanObj ? curPlanObj.name : 'Free';
+    var expiresHtml = '';
+    if(currentProfile && currentProfile.plan_expires_at && curPlan !== 'free'){
+      var d = new Date(currentProfile.plan_expires_at);
+      var y = d.getFullYear();
+      if(y < 2090){
+        // Если истекает в реалистичные сроки — показываем
+        expiresHtml = ' <span style="font-size:11px;color:#94a3b8">(до '+d.toLocaleDateString('ru-RU')+')</span>';
+      }
+    }
+    labelEl.innerHTML = escHtml(planName) + expiresHtml;
+  }
+  // Рендер карточек
+  var html = '';
+  _plansCache.forEach(function(p){
+    var isCurrent = p.id === curPlan;
+    var isHighlight = p.highlight;
+    var classes = 'plan-card';
+    if(isCurrent) classes += ' current';
+    if(isHighlight) classes += ' highlight';
+    var priceHtml = p.price_monthly === 0
+      ? '<div class="plan-price"><span class="plan-price-free">Бесплатно</span></div>'
+      : '<div class="plan-price"><span class="plan-price-num">'+p.price_monthly+' ₽</span><span class="plan-price-suffix">/ мес</span></div>';
+    var featuresList = '';
+    (p.features || []).forEach(function(f){
+      featuresList += '<li>'+escHtml(f)+'</li>';
+    });
+    var btnHtml;
+    if(isCurrent){
+      btnHtml = '<button class="plan-btn plan-btn-current" disabled>Текущий тариф</button>';
+    } else if(p.id === 'free'){
+      btnHtml = '<button class="plan-btn plan-btn-downgrade" onclick="alert(\'Чтобы перейти на Free — отмените активную подписку через нашу поддержку\')">Перейти на Free</button>';
+    } else {
+      // Платный тариф — пока ведём на промокод (платежи появятся позже)
+      btnHtml = '<button class="plan-btn plan-btn-select" onclick="onSelectPlan(\''+p.id+'\')">Выбрать</button>';
+    }
+    html += '<div class="'+classes+'">'+
+      '<div class="plan-name">'+escHtml(p.name)+'</div>'+
+      '<div class="plan-desc">'+escHtml(p.short_description||'')+'</div>'+
+      priceHtml+
+      '<ul class="plan-features">'+featuresList+'</ul>'+
+      btnHtml+
+    '</div>';
+  });
+  gridEl.innerHTML = html;
+}
+// Обработчик выбора платного тарифа — пока ведём на промокод (платежи в следующем этапе)
+function onSelectPlan(planId){
+  alert('Платежи через ЮKassa подключим в ближайшем релизе.\n\nПока есть промокоды — переходим к ним.');
+  showSection('promo', document.getElementById('nav-promo'));
+}
+
 function saveTokenManual(){
   // Будем вызывать loadSellerName() после успешного сохранения
 
