@@ -76,7 +76,10 @@ html[data-theme="dark"] .onb-card{background:var(--card-bg);color:var(--text)}
 html[data-theme="dark"] .onb-mock-browser,html[data-theme="dark"] .onb-mock-menu,html[data-theme="dark"] .onb-mock-form{background:#252539;border-color:var(--border)}
 html[data-theme="dark"] .onb-visual-mock{background:#252539;border-color:var(--border)}
 html[data-theme="dark"] .ml,html[data-theme="dark"] .hint{color:var(--muted)}
-html[data-theme="dark"] .mv{color:var(--text)}
+html[data-theme="dark"] .mv:not(.green):not(.red):not(.blue){color:var(--text)}
+html[data-theme="dark"] .mv.green,html[data-theme="dark"] .green{color:#4ade80!important}
+html[data-theme="dark"] .mv.red,html[data-theme="dark"] .red{color:#f87171!important}
+html[data-theme="dark"] .mv.blue,html[data-theme="dark"] .blue{color:#60a5fa!important}
 /* 🔥 v0.7.7.1 hotfix: добавляем переопределения для хардкод-цветов */
 html[data-theme="dark"] .bulk-btn{background:#252539;color:var(--text);border-color:var(--border)}
 html[data-theme="dark"] .bulk-btn:hover{background:#2a2a44;border-color:#a78bfa;color:#a78bfa}
@@ -201,6 +204,7 @@ html[data-theme="dark"] .ev-detail{color:var(--muted)}
 html[data-theme="dark"] .ev-hint{color:#a78bfa;background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.3)}
 html[data-theme="dark"] .an-legend{color:var(--muted)}
 html[data-theme="dark"] .an-insight{background:#252539;color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .an-insight strong{color:#a78bfa!important}
 html[data-theme="dark"] .rich-alert{background:#252539;border-color:var(--border)}
 html[data-theme="dark"] .rich-alert-crit{background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.3)}
 html[data-theme="dark"] .rich-alert-warn{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3)}
@@ -268,6 +272,66 @@ html[data-theme="dark"] #cnt{color:#94a3b8!important}
 /* btn-primary в dark — был --purple=#a78bfa, белый текст давал 2.72 (нечитаемо). Тёмно-фиолетовый = 7.4:1 */
 html[data-theme="dark"] .btn-primary:not(.load-bar .btn-primary):not(.settings-save-btn:disabled){background:#7c3aed!important;color:#fff!important}
 html[data-theme="dark"] .btn-primary:not(.load-bar .btn-primary):not(.settings-save-btn:disabled):hover{background:#6d28d9!important}
+/* === v0.7.7.4 ВТОРАЯ ВОЛНА ПОЛНОГО АУДИТА === */
+/* --- Главная: mini-chart полоски слишком тонкие даже когда зелёный/красный ярки --- */
+html[data-theme="dark"] .mini-chart{padding:4px 6px}
+html[data-theme="dark"] .mc-bar{min-height:6px!important;opacity:1!important;box-shadow:0 0 0 1px rgba(255,255,255,.04)}
+html[data-theme="dark"] .mc-bar.green{background:linear-gradient(180deg,#4ade80,#16a34a)!important}
+html[data-theme="dark"] .mc-bar.red{background:linear-gradient(180deg,#f87171,#dc2626)!important}
+html[data-theme="dark"] .mc-bar-wrap{background:rgba(255,255,255,.025);border-radius:4px 4px 0 0}
+html[data-theme="dark"] .mc-lbl{color:#9ca3af!important}
+/* --- Детализация: алерт "Защита от потерь" белый на белом --- */
+html[data-theme="dark"] .calc-alerts{background:#1e1e2e!important;border-color:rgba(167,139,250,.25)!important}
+html[data-theme="dark"] .calc-alerts-title{color:var(--text)!important}
+html[data-theme="dark"] .calc-alerts-count{background:rgba(167,139,250,.18)!important;color:#c4b5fd!important}
+html[data-theme="dark"] .calc-alerts-loss{color:#f87171!important}
+html[data-theme="dark"] .calc-alerts-toggle{border-color:var(--border)!important;color:#a78bfa!important;background:transparent!important}
+html[data-theme="dark"] .calc-alerts-toggle:hover{background:rgba(167,139,250,.08)!important}
+/* --- Детализация: полоска прогресса .detail-bar белая --- */
+html[data-theme="dark"] .detail-bar{background:rgba(255,255,255,.06)!important}
+html[data-theme="dark"] .detail-bar-fill{background:#f87171!important}
+html[data-theme="dark"] .detail-count{color:#94a3b8!important}
+/* --- Аналитика: ev-summary белый контейнер с chips внутри --- */
+html[data-theme="dark"] .ev-summary{background:#1e1e2e!important;border-color:var(--border)!important;color:var(--muted)!important}
+html[data-theme="dark"] .ev-chip-crit{background:rgba(239,68,68,.16)!important;color:#fca5a5!important}
+html[data-theme="dark"] .ev-chip-warn{background:rgba(245,158,11,.16)!important;color:#fcd34d!important}
+html[data-theme="dark"] .ev-day{border-color:var(--border)!important}
+html[data-theme="dark"] .ev-day-date{color:#a78bfa!important}
+/* --- Аналитика: ABC-группы белые карточки --- */
+html[data-theme="dark"] .abc-group{background:#1a1a2e!important;border-color:var(--border)!important}
+html[data-theme="dark"] .abc-group[data-cat="A"] .abc-group-header{background:linear-gradient(135deg,rgba(34,197,94,.12),#252539)!important}
+html[data-theme="dark"] .abc-group[data-cat="B"] .abc-group-header{background:linear-gradient(135deg,rgba(245,158,11,.12),#252539)!important}
+html[data-theme="dark"] .abc-group[data-cat="C"] .abc-group-header{background:linear-gradient(135deg,rgba(148,163,184,.12),#252539)!important}
+html[data-theme="dark"] .abc-group-header:hover{filter:brightness(1.15)}
+html[data-theme="dark"] .abc-group-body{background:#1a1a2e!important}
+html[data-theme="dark"] .abc-group-title{color:var(--text)!important}
+html[data-theme="dark"] .abc-group-sub{color:var(--muted)!important}
+html[data-theme="dark"] .abc-group-total{color:#4ade80!important}
+/* --- Аналитика: TopMovers — серые имена нечитаемы --- */
+html[data-theme="dark"] .mover-name{color:var(--text)!important}
+html[data-theme="dark"] .mover-meta{color:#94a3b8!important}
+html[data-theme="dark"] .mover-row{border-bottom-color:var(--border)!important}
+html[data-theme="dark"] .movers-col-title.green{color:#4ade80!important}
+html[data-theme="dark"] .movers-col-title.red{color:#f87171!important}
+/* --- Аналитика: линии сетки SVG-графика #f1f5f9 — режут глаза --- */
+html[data-theme="dark"] #sectionAnalytics svg line[stroke="#f1f5f9"]{stroke:rgba(255,255,255,.08)!important}
+html[data-theme="dark"] #sectionAnalytics svg line[stroke="#e5e7eb"]{stroke:rgba(255,255,255,.1)!important}
+html[data-theme="dark"] #sectionAnalytics svg text{fill:#9ca3af!important}
+/* --- Аналитика: "Средняя прибыль за период" — strong #7c3aed → #a78bfa в strong тёмной --- */
+html[data-theme="dark"] #sectionAnalytics strong[style*="#7c3aed"],html[data-theme="dark"] #sectionAnalytics [style*="color:#7c3aed"]{color:#a78bfa!important}
+/* --- Аналитика: подсказки/советы с inline color:#475569 / #64748b --- */
+html[data-theme="dark"] #sectionAnalytics div[style*="color:#475569"],html[data-theme="dark"] #sectionAnalytics div[style*="color:#64748b"]{color:#94a3b8!important}
+/* --- ОЧЕНЬ ВАЖНО: .mv .green / .red — ранее .mv затирал смысловые цвета в Калькуляторе. Уже исправлено выше, дублирую с !important на случай конфликта --- */
+html[data-theme="dark"] .mv.green{color:#4ade80!important}
+html[data-theme="dark"] .mv.red{color:#f87171!important}
+html[data-theme="dark"] .mv.blue{color:#60a5fa!important}
+/* --- Универсал для любого inline #1e293b / #1a0f3c / #0f172a на тёмном --- */
+html[data-theme="dark"] [style*="color:#1e293b"],html[data-theme="dark"] [style*="color: #1e293b"]{color:var(--text)!important}
+html[data-theme="dark"] [style*="color:#1a0f3c"],html[data-theme="dark"] [style*="color: #1a0f3c"]{color:var(--text)!important}
+html[data-theme="dark"] [style*="color:#0f172a"],html[data-theme="dark"] [style*="color: #0f172a"]{color:var(--text)!important}
+/* --- Универсал: inline background:#fff / white на тёмной теме --- */
+html[data-theme="dark"] [style*="background:#fff"]:not(.theme-btn):not(.mc-bar):not(svg *),html[data-theme="dark"] [style*="background: #fff"]:not(.theme-btn):not(.mc-bar):not(svg *){background:var(--card-bg)!important}
+html[data-theme="dark"] [style*="background:white"]:not(.theme-btn):not(.mc-bar):not(svg *){background:var(--card-bg)!important}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 /* Скрытые поля и абсолютные оверлеи не должны участвовать в grid-сетке body */
 body > input[type="hidden"]{display:none!important}
@@ -1666,7 +1730,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.3</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.4</div>
     </div>
   </div>
 </div>
