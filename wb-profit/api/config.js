@@ -12,41 +12,51 @@ export default async function handler(req, res) {
     const checks = { app: 'ok', env: 'unknown', supabase: 'unknown' };
     let allOk = true;
 
-    const requiredEnvs = ['SUPABASE_URL'];
-    const missingEnvs = requiredEnvs.filter(k => !process.env[k]);
-    if (missingEnvs.length === 0) {
+    // 1. Проверка env переменных
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+    if (supabaseUrl && supabaseKey) {
       checks.env = 'ok';
     } else {
-      checks.env = 'missing:' + missingEnvs.join(',');
+      const missing = [];
+      if (!supabaseUrl) missing.push('SUPABASE_URL');
+      if (!supabaseKey) missing.push('SUPABASE_PUBLISHABLE_KEY');
+      checks.env = 'missing:' + missing.join(',');
       allOk = false;
     }
 
-    try {
-      const supabaseUrl = process.env.SUPABASE_URL;
-      if (supabaseUrl) {
+    // 2. Проверка доступности Supabase через /auth/v1/settings
+    if (supabaseUrl && supabaseKey) {
+      try {
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), 3000);
-        const r = await fetch(supabaseUrl + '/rest/v1/', {
-          method: 'HEAD',
-          headers: { 'apikey': process.env.SUPABASE_PUBLISHABLE_KEY || '' },
+        const r = await fetch(supabaseUrl + '/auth/v1/settings', {
+          method: 'GET',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': 'Bearer ' + supabaseKey
+          },
           signal: ctrl.signal
         });
         clearTimeout(tid);
-        checks.supabase = (r.ok || r.status === 404) ? 'ok' : 'status:' + r.status;
-        if (!r.ok && r.status !== 404) allOk = false;
-      } else {
-        checks.supabase = 'no_url';
+        if (r.ok) {
+          checks.supabase = 'ok';
+        } else {
+          checks.supabase = 'status:' + r.status;
+          allOk = false;
+        }
+      } catch (e) {
+        checks.supabase = 'error:' + (e.name || 'unknown');
         allOk = false;
       }
-    } catch (e) {
-      checks.supabase = 'error:' + (e.name || 'unknown');
-      allOk = false;
+    } else {
+      checks.supabase = 'skipped_no_env';
     }
 
     return res.status(allOk ? 200 : 503).json({
       ok: allOk,
       timestamp: new Date().toISOString(),
-      version: 'v0.7.7.7',
+      version: 'v0.7.7.8',
       checks: checks
     });
   }
