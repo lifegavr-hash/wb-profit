@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<script>
+// 🔥 v0.7.7 G2: применяем тему ДО загрузки CSS чтобы не было мигания
+try{
+  var __theme = localStorage.getItem('wb_theme');
+  if(__theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+}catch(e){}
+</script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -12,7 +19,64 @@
 <title>WB Profit — Аналитика продаж</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px}
+:root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px;--card-bg:#fff;--input-bg:#fff;--shadow:rgba(0,0,0,.06)}
+/* 🔥 v0.7.7 G2: тёмная тема через data-theme="dark" на <html> */
+html[data-theme="dark"]{--purple:#a78bfa;--bg:#0f0f1a;--surface:#1a1a2e;--border:rgba(255,255,255,.1);--text:#e8e8eb;--muted:#9ca3af;--hint:#64748b;--green:#22c55e;--red:#ef4444;--red-bg:rgba(239,68,68,.1);--card-bg:#1e1e2e;--input-bg:#252539;--shadow:rgba(0,0,0,.35)}
+html[data-theme="dark"] body{background:var(--bg);color:var(--text)}
+html[data-theme="dark"] .card,html[data-theme="dark"] .home-card,html[data-theme="dark"] .an-card,html[data-theme="dark"] .detail-card{background:var(--card-bg);border-color:var(--border);box-shadow:0 1px 3px var(--shadow)}
+html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] textarea{background:var(--input-bg)!important;color:var(--text)!important;border-color:var(--border)!important}
+html[data-theme="dark"] input::placeholder{color:var(--hint)}
+html[data-theme="dark"] table{color:var(--text)}
+html[data-theme="dark"] table th{background:#252539;color:var(--text)}
+html[data-theme="dark"] table tr{border-color:var(--border)}
+html[data-theme="dark"] tbody tr:hover{background:#1f1f33}
+html[data-theme="dark"] .plan-card{background:#252539;border-color:#3b3b52}
+html[data-theme="dark"] .plan-card:hover{border-color:#7c3aed}
+html[data-theme="dark"] .plan-card.highlight{background:linear-gradient(180deg,#1f1932 0%,#252539 60%);border-color:#a78bfa}
+html[data-theme="dark"] .plan-card.current{background:linear-gradient(180deg,#0f2922 0%,#252539 60%);border-color:#22c55e}
+html[data-theme="dark"] .plan-name{color:var(--text)}
+html[data-theme="dark"] .plan-features{color:var(--muted)}
+html[data-theme="dark"] .plan-desc{color:var(--hint)}
+html[data-theme="dark"] .topbar{background:var(--bg);border-color:var(--border)}
+html[data-theme="dark"] .topbar-title{color:var(--text)}
+html[data-theme="dark"] .topbar-search-btn{background:#252539;border-color:var(--border);color:var(--muted)}
+html[data-theme="dark"] .topbar-search-btn:hover{background:#2a2a44;border-color:#7c3aed;color:#a78bfa}
+html[data-theme="dark"] .topbar-search-kbd{background:#1a1a2e;border-color:#3b3b52;color:var(--muted)}
+html[data-theme="dark"] .nav-item:hover{background:rgba(167,139,250,.1)}
+html[data-theme="dark"] .nav-item.active{background:rgba(167,139,250,.15);color:#a78bfa}
+html[data-theme="dark"] .detail-formula{background:#252539}
+html[data-theme="dark"] .detail-prev-period-hint{background:#1a1a2e;border-color:#3b3b52;color:var(--muted)}
+html[data-theme="dark"] .calc-search input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .calc-group-select{background:var(--input-bg);color:var(--text);border-color:var(--border)}
+html[data-theme="dark"] .calc-group-header{background:linear-gradient(90deg,rgba(167,139,250,.15) 0%,transparent 100%);border-color:rgba(167,139,250,.3)}
+html[data-theme="dark"] .calc-group-header:hover{background:linear-gradient(90deg,rgba(167,139,250,.25) 0%,transparent 100%)}
+html[data-theme="dark"] .calc-group-header td{color:#c4b5fd}
+html[data-theme="dark"] .home-action,html[data-theme="dark"] .home-alert,html[data-theme="dark"] .rich-alert{background:#252539;border-color:var(--border)}
+html[data-theme="dark"] .home-action:hover{background:#2a2a44}
+html[data-theme="dark"] .movers-col,html[data-theme="dark"] .abc-cmp-col{background:#252539}
+html[data-theme="dark"] .pct-good{background:rgba(34,197,94,.15);color:#22c55e}
+html[data-theme="dark"] .pct-bad{background:rgba(239,68,68,.15);color:#ef4444}
+html[data-theme="dark"] .margin-green{background:rgba(34,197,94,.15);color:#22c55e}
+html[data-theme="dark"] .margin-yellow{background:rgba(245,158,11,.15);color:#f59e0b}
+html[data-theme="dark"] .margin-red{background:rgba(239,68,68,.15);color:#ef4444}
+html[data-theme="dark"] .toast{background:#252539;color:var(--text)}
+html[data-theme="dark"] .cmdk-panel{background:#1a1a2e;color:var(--text)}
+html[data-theme="dark"] .cmdk-search{border-color:var(--border)}
+html[data-theme="dark"] .cmdk-search input{color:var(--text)}
+html[data-theme="dark"] .cmdk-item{color:var(--text)}
+html[data-theme="dark"] .cmdk-item:hover,html[data-theme="dark"] .cmdk-item.active{background:rgba(167,139,250,.15);color:#a78bfa}
+html[data-theme="dark"] .cmdk-kbd{background:#252539;color:var(--muted)}
+html[data-theme="dark"] .abc-cmp-modal{background:#1a1a2e}
+html[data-theme="dark"] .abc-cmp-modal-title{color:var(--text)}
+html[data-theme="dark"] .abc-cmp-close{background:#252539;color:var(--muted)}
+html[data-theme="dark"] .abc-cmp-name{color:var(--text)}
+html[data-theme="dark"] .abc-cmp-val{color:var(--text)}
+html[data-theme="dark"] .abc-cmp-metric{border-color:var(--border)}
+html[data-theme="dark"] .onb-card{background:var(--card-bg);color:var(--text)}
+html[data-theme="dark"] .onb-mock-browser,html[data-theme="dark"] .onb-mock-menu,html[data-theme="dark"] .onb-mock-form{background:#252539;border-color:var(--border)}
+html[data-theme="dark"] .onb-visual-mock{background:#252539;border-color:var(--border)}
+html[data-theme="dark"] .ml,html[data-theme="dark"] .hint{color:var(--muted)}
+html[data-theme="dark"] .mv{color:var(--text)}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 /* Скрытые поля и абсолютные оверлеи не должны участвовать в grid-сетке body */
 body > input[type="hidden"]{display:none!important}
@@ -262,6 +326,28 @@ body.demo-mode{padding-top:36px}
 .calc-preset-btn:hover{background:#7c3aed;color:#fff;border-color:#7c3aed}
 .calc-preset-save{padding:5px 10px;background:transparent;color:#94a3b8;border:1px dashed #cbd5e1;border-radius:99px;font-size:11px;cursor:pointer;transition:all .15s}
 .calc-preset-save:hover{color:#7c3aed;border-color:#7c3aed}
+/* 🔥 v0.7.7 G2: переключатель темы */
+.theme-toggle{display:flex;gap:10px;flex-wrap:wrap}
+.theme-btn{display:flex;align-items:center;gap:10px;padding:14px 18px;background:var(--surface);border:2px solid var(--border);border-radius:10px;cursor:pointer;font-size:14px;color:var(--text);transition:all .15s;font-weight:500;min-width:140px}
+.theme-btn:hover{border-color:#7c3aed}
+.theme-btn.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}
+html[data-theme="dark"] .theme-btn.active{background:rgba(167,139,250,.15);color:#a78bfa}
+.theme-btn-icon{font-size:22px}
+.theme-btn-label{font-weight:600}
+.calc-group-select{padding:7px 12px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#475569;cursor:pointer;font-family:inherit}
+.calc-group-select:hover{border-color:#7c3aed}
+.calc-group-select:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
+/* Заголовок группы в таблице */
+.calc-group-header{background:linear-gradient(90deg,#f5f3ff 0%,#fff 100%);font-weight:600;cursor:pointer;border-top:2px solid #ddd6fe;border-bottom:1px solid #ddd6fe;user-select:none;transition:background .15s}
+.calc-group-header:hover{background:linear-gradient(90deg,#ede9fe 0%,#f5f3ff 100%)}
+.calc-group-header td{padding:10px 12px!important;color:#6d28d9;font-size:13px}
+.calc-group-arrow{display:inline-block;width:12px;font-size:10px;color:#7c3aed;margin-right:6px;transition:transform .2s}
+.calc-group-header.collapsed .calc-group-arrow{transform:rotate(-90deg)}
+.calc-group-name{font-weight:700}
+.calc-group-count{font-weight:400;color:#94a3b8;font-size:11px;margin-left:6px}
+.calc-group-totals{float:right;display:inline-flex;gap:14px;font-size:12px;color:#64748b;font-weight:500}
+.calc-group-totals .red{color:#dc2626;font-weight:600}
+.calc-group-totals .green{color:#059669;font-weight:600}
 /* Сортировка колонок */
 .th-sort{cursor:pointer;user-select:none;position:relative;transition:background .15s}
 .th-sort:hover{background:#f5f3ff}
@@ -1389,7 +1475,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.6.1</div>
+      <div class="sidebar-version">WB Profit · v0.7.7</div>
     </div>
   </div>
 </div>
@@ -1471,6 +1557,21 @@ tr.loss td{background:#fff5f5}
           🎁 Есть промокод? <a href="#" onclick="showSection('promo',null);return false" style="color:#7c3aed;font-weight:600;text-decoration:none">Активировать →</a>
         </div>
       </div>
+      <!-- 🔥 v0.7.7 G2: переключатель темы -->
+      <div class="card" style="margin-top:14px">
+        <div class="ct">🎨 Внешний вид</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Выберите тему оформления. Настройка сохраняется на этом устройстве.</p>
+        <div class="theme-toggle">
+          <button class="theme-btn" data-theme-value="light" onclick="setTheme('light')">
+            <span class="theme-btn-icon">☀️</span>
+            <span class="theme-btn-label">Светлая</span>
+          </button>
+          <button class="theme-btn" data-theme-value="dark" onclick="setTheme('dark')">
+            <span class="theme-btn-icon">🌙</span>
+            <span class="theme-btn-label">Тёмная</span>
+          </button>
+        </div>
+      </div>
       <div class="card" style="margin-top:14px">
         <div class="ct">Подключение к Wildberries</div>
         <div style="margin-bottom:12px">
@@ -1541,6 +1642,13 @@ tr.loss td{background:#fff5f5}
               <input type="text" id="calcSearch" placeholder="Поиск по артикулу WB, артикулу продавца или категории..." oninput="onCalcSearchInput(this.value)">
               <button class="calc-search-clear" id="calcSearchClear" onclick="document.getElementById('calcSearch').value='';onCalcSearchInput('');" style="display:none" title="Очистить поиск">✕</button>
             </div>
+            <!-- 🔥 v0.7.7 K4: группировка строк -->
+            <select id="calcGroupBy" onchange="onCalcGroupChange()" class="calc-group-select" title="Группировка строк">
+              <option value="">Без группировки</option>
+              <option value="cat">По категории</option>
+              <option value="status">По прибыли/убытку</option>
+              <option value="stock">По остатку</option>
+            </select>
             <div id="calcDrilldownBadge" class="calc-drilldown" style="display:none"></div>
             <div id="calcPresetBar" class="calc-presets"></div>
           </div>
@@ -1843,6 +1951,24 @@ var rows=[], byMonthData={};
 var rawData=[];
 var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
 var moNames=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+
+// 🔥 v0.7.7 G2: переключатель темы
+function setTheme(theme){
+  // theme: 'light' | 'dark'
+  if(theme === 'dark'){
+    document.documentElement.setAttribute('data-theme', 'dark');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  try{localStorage.setItem('wb_theme', theme);}catch(e){}
+  updateThemeButtons();
+}
+function updateThemeButtons(){
+  var current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  document.querySelectorAll('.theme-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-theme-value') === current);
+  });
+}
 
 // === 🔥 v0.7.6 G3: Toast-уведомления вместо alert() ===
 function showToast(text, type, duration){
@@ -2443,7 +2569,7 @@ function showSection(name,el){
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
-  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); /* v0.7.0/v0.7.5 */ }
+  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); /* v0.7.0/v0.7.5/v0.7.7 */ }
   if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
@@ -4071,6 +4197,61 @@ function onCalcSort(field){
   }
   rerenderCalc();
 }
+// 🔥 v0.7.7 K4: группировка строк
+window._calcGroupBy = '';                              // '' | 'cat' | 'status' | 'stock'
+window._calcGroupCollapsed = (function(){try{return JSON.parse(localStorage.getItem('calc_group_collapsed')||'{}');}catch(e){return {};}})();
+function onCalcGroupChange(){
+  window._calcGroupBy = document.getElementById('calcGroupBy').value;
+  rerenderCalc();
+}
+function toggleCalcGroup(groupKey){
+  window._calcGroupCollapsed[groupKey] = !window._calcGroupCollapsed[groupKey];
+  try{localStorage.setItem('calc_group_collapsed', JSON.stringify(window._calcGroupCollapsed));}catch(e){}
+  // Покажем/спрячем строки группы
+  document.querySelectorAll('tr[data-group="'+CSS.escape(groupKey)+'"]').forEach(function(tr){
+    tr.style.display = window._calcGroupCollapsed[groupKey] ? 'none' : '';
+  });
+  // Обновим стрелку
+  var hdr = document.querySelector('tr.calc-group-header[data-group-header="'+CSS.escape(groupKey)+'"]');
+  if(hdr){
+    hdr.classList.toggle('collapsed', !!window._calcGroupCollapsed[groupKey]);
+  }
+}
+// Получить ключ группы для строки
+function getCalcGroupKey(row){
+  var gb = window._calcGroupBy;
+  if(!gb) return null;
+  if(gb === 'cat'){
+    return row.cat || 'Без категории';
+  }
+  if(gb === 'status'){
+    var prf = row.ppvz - row.del - row.stor - row.adv - row.pen - (row.cost||0)*Math.max(row.sales-row.ret,0);
+    if(!(row.cost > 0)) return '⚠️ Не указана себестоимость';
+    if(prf < 0) return '🔴 Убыточные';
+    if(prf < row.ppvz*0.1) return '🟡 Низкая маржа';
+    return '🟢 Прибыльные';
+  }
+  if(gb === 'stock'){
+    var st = (window._stocksMap||{})[row.nm_id];
+    var avail = st ? Number(st.avail||0) : 0;
+    if(avail === 0) return '🔴 Нет на складе';
+    if(avail < 5) return '🟡 Заканчивается (<5)';
+    if(avail < 20) return '🟢 На складе (5-19)';
+    return '🟢 На складе (20+)';
+  }
+  return null;
+}
+// Получить порядок групп для сортировки (status и stock имеют логичный порядок)
+function getCalcGroupOrder(){
+  if(window._calcGroupBy === 'status'){
+    return ['🔴 Убыточные', '🟡 Низкая маржа', '🟢 Прибыльные', '⚠️ Не указана себестоимость'];
+  }
+  if(window._calcGroupBy === 'stock'){
+    return ['🔴 Нет на складе', '🟡 Заканчивается (<5)', '🟢 На складе (5-19)', '🟢 На складе (20+)'];
+  }
+  return null; // алфавитный
+}
+
 // Получить отфильтрованные и отсортированные строки (исходный rows не трогаем)
 function getFilteredCalcRows(){
   var result = rows.slice();
@@ -4229,9 +4410,59 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       '<a onclick="window._calcSearch=\'\';window._calcDrill=null;window._calcSort={field:null,dir:\'desc\'};document.getElementById(\'calcSearch\').value=\'\';rerenderCalc()" style="color:#7c3aed;cursor:pointer">Сбросить фильтры</a>'+
       '</td></tr>';
   }
+  // 🔥 v0.7.7 K4: если включена группировка — сортируем строки по группе + считаем суммы по группам
+  var groupOrder = null;        // массив имён групп в нужном порядке
+  var groupSums = {};           // groupKey -> {count, profit, revenue, ppvz}
+  if(window._calcGroupBy){
+    // Группируем
+    var groupsMap = {};
+    filteredRows.forEach(function(r){
+      var k = getCalcGroupKey(r);
+      if(!groupsMap[k]) groupsMap[k] = [];
+      groupsMap[k].push(r);
+    });
+    // Суммы по группам
+    Object.keys(groupsMap).forEach(function(k){
+      groupSums[k] = {count:groupsMap[k].length, profit:0, revenue:0, ppvz:0};
+      groupsMap[k].forEach(function(r){
+        var rp = r.ppvz - r.del - r.stor - r.adv - r.pen - (r.cost||0)*Math.max(r.sales-r.ret,0);
+        if(r.cost > 0) groupSums[k].profit += rp;
+        groupSums[k].revenue += (r.ppvz || 0); // выплата ≈ выручке после комиссии
+        groupSums[k].ppvz += (r.ppvz || 0);
+      });
+    });
+    // Порядок групп
+    var customOrder = getCalcGroupOrder();
+    if(customOrder){
+      groupOrder = customOrder.filter(function(k){return groupsMap[k];});
+    } else {
+      groupOrder = Object.keys(groupsMap).sort(function(a,b){return a.localeCompare(b);});
+    }
+    // Пересобираем filteredRows в порядке групп
+    var sorted = [];
+    groupOrder.forEach(function(k){
+      groupsMap[k].forEach(function(r){r._groupKey = k; sorted.push(r);});
+    });
+    filteredRows = sorted;
+  }
+  var prevGroupKey = null;
   // Для CPC/CPO нужны суммы выручки и продаж по товарам — это уже в rows
   for(var i=0;i<filteredRows.length;i++){
     var a=filteredRows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+    // 🔥 v0.7.7 K4: вставляем заголовок группы перед первой строкой новой группы
+    if(window._calcGroupBy && a._groupKey && a._groupKey !== prevGroupKey){
+      var gKey = a._groupKey;
+      var gSum = groupSums[gKey] || {count:0, profit:0, revenue:0};
+      var profitCls = gSum.profit >= 0 ? 'green' : 'red';
+      var profitStr = (gSum.profit >= 0 ? '+' : '−') + fmt(Math.abs(gSum.profit)) + ' ₽';
+      var isCollapsed = !!window._calcGroupCollapsed[gKey];
+      var hdrHtml = '<tr class="calc-group-header'+(isCollapsed?' collapsed':'')+'" data-group-header="'+escHtml(gKey)+'" onclick="toggleCalcGroup(\''+escHtml(gKey).replace(/\\/g,'\\\\').replace(/\'/g,"\\'")+'\')">'+
+        '<td colspan="20"><span class="calc-group-arrow">▼</span><span class="calc-group-name">'+escHtml(gKey)+'</span><span class="calc-group-count">('+gSum.count+' '+plural(gSum.count,'товар','товара','товаров')+')</span>'+
+        '<span class="calc-group-totals">Выплата: '+fmt(gSum.ppvz)+' ₽ · Прибыль: <span class="'+profitCls+'">'+profitStr+'</span></span>'+
+        '</td></tr>';
+      tb.insertAdjacentHTML('beforeend', hdrHtml);
+      prevGroupKey = gKey;
+    }
     var pc=prf>=0?'green':'red',ps=a.cost>0?'<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>':'<span style="color:var(--hint)">—</span>';
     // Остаток
     var st=stocksMap[a.nm_id]||null;
@@ -4258,7 +4489,12 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     var cpcHtml=a.adv>0&&a.sales>0?fmt(Math.round(cpc))+' ₽':'<span style="color:var(--hint)">—</span>';
     // CPO — стоимость рекламы на 1 заказ. У нас sales ≈ orders, поэтому CPO ≈ CPC. Покажем то же значение.
     var cpoHtml=cpcHtml;
-    tb.innerHTML+='<tr'+(a.cost>0&&prf<0?' class="loss"':'')+'>'+
+    // 🔥 v0.7.7 K4: insertAdjacentHTML вместо innerHTML+= (чтобы не терять вставленные group-headers)
+    // + data-group для скрытия при свёрнутой группе
+    var rowCls = a.cost>0&&prf<0 ? ' class="loss"' : '';
+    var dataGroup = a._groupKey ? ' data-group="'+escHtml(a._groupKey)+'"' : '';
+    var rowDisplay = (a._groupKey && window._calcGroupCollapsed[a._groupKey]) ? ' style="display:none"' : '';
+    tb.insertAdjacentHTML('beforeend', '<tr'+rowCls+dataGroup+rowDisplay+'>'+
       '<td class="cb-col"><input type="checkbox" class="cb-row" data-i="'+rows.indexOf(a)+'" onchange="onRowCheckboxChange()"></td>'+
       '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
@@ -4275,7 +4511,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       '<td class="col-cpo" style="display:none">'+cpoHtml+'</td>'+
       '<td class="col-penalty red">−'+fmt(a.pen)+' ₽</td>'+
       '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+rows.indexOf(a)+',this.value)"></td>'+
-      '<td>'+ps+'</td></tr>';
+      '<td>'+ps+'</td></tr>');
   }
   var tf=document.getElementById('tfoot');
   // Итоги: считаем общий ДРР, CPC
