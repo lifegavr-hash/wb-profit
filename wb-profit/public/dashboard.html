@@ -99,6 +99,90 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .plan-btn-current{background:#e5e7eb;color:#64748b;cursor:default}
 .plan-btn-downgrade{background:#fff;color:#64748b;border:1px solid #e5e7eb}
 .plan-btn-downgrade:hover{background:#f9fafb}
+/* 🔥 v0.7.6 G3: Toast-уведомления */
+#toastContainer{position:fixed;top:24px;right:24px;z-index:10000;display:flex;flex-direction:column;gap:8px;max-width:380px;pointer-events:none}
+.toast{background:#1a0f3c;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:auto;animation:toastIn .25s ease-out;line-height:1.4}
+.toast.success{background:#059669}
+.toast.error{background:#dc2626}
+.toast.warning{background:#d97706}
+.toast.info{background:#2563eb}
+.toast-icon{font-size:18px;flex-shrink:0}
+.toast-text{flex:1}
+.toast-close{background:transparent;border:0;color:rgba(255,255,255,.7);cursor:pointer;font-size:18px;padding:0;line-height:1}
+.toast-close:hover{color:#fff}
+@keyframes toastIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1}to{transform:translateX(40px);opacity:0}}
+.toast.exiting{animation:toastOut .25s ease-in forwards}
+@media(max-width:680px){#toastContainer{top:auto;bottom:16px;right:16px;left:16px;max-width:none}}
+/* 🔥 v0.7.6 G1: командная панель Ctrl+K */
+.cmdk-bg{position:fixed;inset:0;background:rgba(15,23,42,.6);z-index:9995;display:flex;align-items:flex-start;justify-content:center;padding-top:80px}
+.cmdk-panel{background:#fff;border-radius:14px;width:min(540px,calc(100vw - 32px));overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.cmdk-search{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e2e8f0}
+.cmdk-search input{flex:1;border:0;outline:none;font-size:15px;background:transparent;color:#1a0f3c}
+.cmdk-search-icon{color:#94a3b8;font-size:18px}
+.cmdk-kbd{font-size:10px;color:#94a3b8;background:#f1f5f9;border-radius:4px;padding:2px 6px}
+.cmdk-list{max-height:60vh;overflow-y:auto;padding:6px}
+.cmdk-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;color:#1a0f3c}
+.cmdk-item:hover,.cmdk-item.active{background:#f5f3ff;color:#7c3aed}
+.cmdk-item-icon{font-size:18px}
+.cmdk-item-text{flex:1}
+.cmdk-item-sub{font-size:11px;color:#94a3b8}
+.cmdk-empty{padding:24px;text-align:center;color:#94a3b8;font-size:13px}
+
+/* 🔥 v0.7.6 O1: визуальные иллюстрации шагов онбординга */
+.onb-visual-steps{display:flex;flex-direction:column;gap:14px;margin:14px 0;max-height:60vh;overflow-y:auto;padding-right:6px}
+.onb-visual-step{display:grid;grid-template-columns:32px 1fr;gap:12px;align-items:start}
+.onb-visual-num{width:28px;height:28px;border-radius:50%;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;margin-top:4px}
+.onb-visual-mock{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:12px;grid-column:2;max-width:100%;box-sizing:border-box}
+.onb-visual-text{grid-column:2;font-size:13px;color:#475569;line-height:1.4;margin-top:6px}
+/* Браузер mock */
+.onb-mock-browser{background:#fff;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
+.onb-mock-bar{background:#f1f5f9;padding:6px 10px;display:flex;align-items:center;gap:6px}
+.onb-mock-dot{width:8px;height:8px;border-radius:50%}
+.onb-mock-dot.r{background:#ef4444}.onb-mock-dot.y{background:#eab308}.onb-mock-dot.g{background:#22c55e}
+.onb-mock-url{background:#fff;border-radius:4px;padding:2px 8px;font-size:11px;color:#64748b;margin-left:8px;flex:1}
+.onb-mock-body{padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.onb-mock-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e2e8f0;padding-bottom:6px;font-weight:600;font-size:12px;color:#7c3aed}
+.onb-mock-avatar{font-size:18px}
+.onb-mock-pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:#7c3aed;position:absolute;top:-2px;right:-2px;animation:onbPulse 1.4s infinite}
+@keyframes onbPulse{0%{transform:scale(.8);opacity:1}100%{transform:scale(2.4);opacity:0}}
+/* Меню mock */
+.onb-mock-menu{display:flex;flex-direction:column;background:#fff;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden;width:60%;margin-left:auto}
+.onb-mock-menu-item{padding:8px 12px;font-size:12px;color:#64748b;border-bottom:1px solid #f1f5f9}
+.onb-mock-menu-item:last-child{border-bottom:0}
+.onb-mock-menu-item.highlight{background:#f5f3ff;color:#7c3aed;font-weight:600;position:relative}
+/* Tabs mock */
+.onb-mock-tabs{display:flex;gap:0;border-bottom:1px solid #e2e8f0}
+.onb-mock-tab{padding:8px 14px;font-size:12px;color:#94a3b8;border-bottom:2px solid transparent}
+.onb-mock-tab.highlight{color:#7c3aed;border-bottom-color:#7c3aed;font-weight:600;background:#f5f3ff}
+/* Form mock */
+.onb-mock-form{display:flex;flex-direction:column;gap:8px;background:#fff;border-radius:6px;padding:10px}
+.onb-mock-form-row{display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;gap:8px;flex-wrap:wrap}
+.onb-mock-label{color:#94a3b8;min-width:70px}
+.onb-mock-value{color:#1e293b;font-weight:500;text-align:right;flex:1}
+.onb-mock-chip{display:inline-block;background:#ecfdf5;color:#059669;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;margin-left:4px;margin-bottom:2px}
+.onb-mock-cta{background:#7c3aed;color:#fff;border:0;padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:default;align-self:flex-start;margin-top:4px}
+/* 🔥 v0.7.6 O2: Tooltip-туры */
+.tour-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9990;pointer-events:auto}
+.tour-spotlight{position:fixed;border:3px solid #7c3aed;border-radius:10px;box-shadow:0 0 0 9999px rgba(15,23,42,.55), 0 0 20px rgba(124,58,237,.6);z-index:9991;pointer-events:none;transition:all .3s ease;animation:tourPulse 2s infinite}
+@keyframes tourPulse{0%,100%{box-shadow:0 0 0 9999px rgba(15,23,42,.55), 0 0 20px rgba(124,58,237,.4)}50%{box-shadow:0 0 0 9999px rgba(15,23,42,.55), 0 0 30px rgba(124,58,237,.8)}}
+.tour-tip{position:fixed;background:#fff;border-radius:12px;padding:18px 20px;max-width:340px;z-index:9992;box-shadow:0 12px 40px rgba(0,0,0,.25);pointer-events:auto}
+.tour-tip-title{font-size:15px;font-weight:700;color:#1a0f3c;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+.tour-tip-text{font-size:13px;color:#475569;line-height:1.5;margin-bottom:14px}
+.tour-tip-foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tour-tip-progress{font-size:11px;color:#94a3b8}
+.tour-tip-actions{display:flex;gap:6px}
+.tour-tip-skip{background:transparent;border:0;color:#94a3b8;font-size:12px;cursor:pointer;padding:6px 10px}
+.tour-tip-skip:hover{color:#64748b}
+.tour-tip-next{background:#7c3aed;color:#fff;border:0;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer}
+.tour-tip-next:hover{background:#6d28d9}
+/* 🔥 v0.7.6 O3: Демо-кнопка в онбординге */
+.onb-demo-btn{background:transparent;color:#7c3aed;border:1px solid #ddd6fe;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;margin-top:8px}
+.onb-demo-btn:hover{background:#f5f3ff}
+.demo-mode-banner{position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg,#f59e0b,#fb923c);color:#fff;padding:8px 16px;text-align:center;font-size:13px;font-weight:600;z-index:9000;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.demo-mode-banner button{background:rgba(255,255,255,.25);color:#fff;border:0;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600}
+.demo-mode-banner button:hover{background:rgba(255,255,255,.4)}
+body.demo-mode{padding-top:36px}
 /* 🔥 v0.7.5 A3: Сравнение SKU в ABC */
 .abc-compare-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;margin-bottom:12px;flex-wrap:wrap}
 .abc-compare-info{font-size:13px;color:#6d28d9;font-weight:500;margin-right:auto}
@@ -1183,6 +1267,8 @@ tr.loss td{background:#fff5f5}
       <div class="onb-title">Добро пожаловать в WB Profit!</div>
       <div class="onb-text">Это сервис, который покажет реальную прибыль по каждому товару на Wildberries, найдёт убыточные позиции и подскажет, где утекают деньги.</div>
       <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong> с правами на чтение. Сервису нужны разделы <strong>«Статистика»</strong> (продажи, остатки) и <strong>«Продвижение»</strong> (рекламные расходы для точной прибыли).</div>
+      <div class="onb-text" style="margin-top:14px;font-size:12px;color:#94a3b8">Хотите сначала посмотреть как работает приложение?</div>
+      <div style="text-align:center;margin-top:6px"><button class="onb-demo-btn" onclick="startDemoMode()">🎭 Посмотреть демо с тестовыми данными</button></div>
       <div class="onb-actions">
         <button class="bulk-btn" onclick="closeOnboarding()">Позже</button>
         <button class="btn-primary" onclick="onbNext(2)">Дальше →</button>
@@ -1192,22 +1278,60 @@ tr.loss td{background:#fff5f5}
     <div class="onb-step" data-step="2" style="display:none">
       <div class="onb-emoji">🔑</div>
       <div class="onb-title">Как получить API токен WB</div>
-      <ol class="onb-list">
-        <li>Откройте кабинет <strong>seller.wildberries.ru</strong></li>
-        <li>В правом верхнем углу — иконка профиля → <strong>Настройки</strong></li>
-        <li>Раздел <strong>Доступ к API</strong></li>
-        <li>Кнопка <strong>«Создать новый токен»</strong></li>
-        <li>Название: «WB Profit» · Тип: <strong>Только чтение</strong></li>
-        <li>Отметьте галочками разделы:
-          <ul style="margin:6px 0 0 16px;padding:0;font-size:13px">
-            <li><strong>Статистика</strong> — продажи, заказы, остатки, отчёты</li>
-            <li><strong>Продвижение</strong> — реклама (для точного расчёта прибыли)</li>
-            <li><strong>Аналитика</strong> — финансовая отчётность</li>
-          </ul>
-        </li>
-        <li>Создать → скопировать токен</li>
-      </ol>
-      <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:10px">⚠️ Не делитесь токеном с третьими лицами. Если что — его можно отозвать в том же разделе WB.</div>
+      <!-- 🔥 v0.7.6 O1: визуальные иллюстрации шагов вместо чистого списка -->
+      <div class="onb-visual-steps">
+        <div class="onb-visual-step">
+          <div class="onb-visual-num">1</div>
+          <div class="onb-visual-mock">
+            <div class="onb-mock-browser">
+              <div class="onb-mock-bar"><span class="onb-mock-dot r"></span><span class="onb-mock-dot y"></span><span class="onb-mock-dot g"></span><span class="onb-mock-url">seller.wildberries.ru</span></div>
+              <div class="onb-mock-body">
+                <div class="onb-mock-header"><span>Wildberries</span><span class="onb-mock-avatar" style="position:relative">👤<span class="onb-mock-pulse"></span></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="onb-visual-text">Откройте <strong>seller.wildberries.ru</strong> → нажмите иконку профиля</div>
+        </div>
+        <div class="onb-visual-step">
+          <div class="onb-visual-num">2</div>
+          <div class="onb-visual-mock">
+            <div class="onb-mock-menu">
+              <div class="onb-mock-menu-item">Профиль</div>
+              <div class="onb-mock-menu-item highlight">⚙️ Настройки <span class="onb-mock-pulse" style="position:relative;display:inline-block;margin-left:6px"></span></div>
+              <div class="onb-mock-menu-item">Помощь</div>
+            </div>
+          </div>
+          <div class="onb-visual-text">В меню профиля → <strong>Настройки</strong></div>
+        </div>
+        <div class="onb-visual-step">
+          <div class="onb-visual-num">3</div>
+          <div class="onb-visual-mock">
+            <div class="onb-mock-tabs">
+              <span class="onb-mock-tab">Общие</span>
+              <span class="onb-mock-tab highlight">🔑 Доступ к API</span>
+              <span class="onb-mock-tab">Уведомления</span>
+            </div>
+          </div>
+          <div class="onb-visual-text">Найдите вкладку <strong>Доступ к API</strong></div>
+        </div>
+        <div class="onb-visual-step">
+          <div class="onb-visual-num">4</div>
+          <div class="onb-visual-mock">
+            <div class="onb-mock-form">
+              <div class="onb-mock-form-row"><span class="onb-mock-label">Название</span><span class="onb-mock-value">WB Profit</span></div>
+              <div class="onb-mock-form-row"><span class="onb-mock-label">Тип токена</span><span class="onb-mock-value">🔒 Только чтение</span></div>
+              <div class="onb-mock-form-row"><span class="onb-mock-label">Разделы</span><span class="onb-mock-value">
+                <span class="onb-mock-chip">✓ Статистика</span>
+                <span class="onb-mock-chip">✓ Продвижение</span>
+                <span class="onb-mock-chip">✓ Аналитика</span>
+              </span></div>
+              <button class="onb-mock-cta">+ Создать токен</button>
+            </div>
+          </div>
+          <div class="onb-visual-text">Название «WB Profit», тип <strong>Только чтение</strong>, отметьте 3 раздела → создать</div>
+        </div>
+      </div>
+      <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:10px;text-align:center">⚠️ Не передавайте токен третьим лицам. Можно отозвать в том же разделе WB.</div>
       <div class="onb-actions">
         <button class="bulk-btn" onclick="onbNext(1)">← Назад</button>
         <button class="btn-primary" onclick="onbNext(3)">Дальше →</button>
@@ -1257,7 +1381,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.5.1</div>
+      <div class="sidebar-version">WB Profit · v0.7.6</div>
     </div>
   </div>
 </div>
@@ -1706,6 +1830,124 @@ var rawData=[];
 var fmt=function(n){return Math.round(n).toLocaleString('ru-RU');};
 var moNames=['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
 
+// === 🔥 v0.7.6 G3: Toast-уведомления вместо alert() ===
+function showToast(text, type, duration){
+  type = type || 'info';
+  duration = duration || 4000;
+  var container = document.getElementById('toastContainer');
+  if(!container){
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    document.body.appendChild(container);
+  }
+  var icons = {success:'✅', error:'❌', warning:'⚠️', info:'ℹ️'};
+  var toast = document.createElement('div');
+  toast.className = 'toast '+type;
+  toast.innerHTML =
+    '<span class="toast-icon">'+(icons[type]||icons.info)+'</span>'+
+    '<div class="toast-text">'+text+'</div>'+
+    '<button class="toast-close">×</button>';
+  toast.querySelector('.toast-close').onclick = function(){removeToast(toast);};
+  container.appendChild(toast);
+  setTimeout(function(){removeToast(toast);}, duration);
+  return toast;
+}
+function removeToast(toast){
+  if(!toast || !toast.parentNode) return;
+  toast.classList.add('exiting');
+  setTimeout(function(){if(toast.parentNode) toast.parentNode.removeChild(toast);}, 250);
+}
+// === 🔥 v0.7.6 G1: Command Palette (Ctrl+K) ===
+var _cmdkActions = [
+  {icon:'🏠', label:'Главная', sub:'Защита от потерь, советы', action:function(){showSection('home',document.getElementById('nav-home'));}},
+  {icon:'📊', label:'Калькулятор', sub:'Прибыль по каждому товару', action:function(){showSection('calc',document.getElementById('nav-calc'));}},
+  {icon:'🔍', label:'Детализация расходов', sub:'Куда уходят деньги', action:function(){showSection('detail',document.getElementById('nav-detail'));}},
+  {icon:'📈', label:'Аналитика', sub:'Графики, ABC, тренды', action:function(){showSection('analytics',document.getElementById('nav-analytics'));}},
+  {icon:'💰', label:'Подбор товара', sub:'Расчёт прибыли до закупки', action:function(){showSection('unit',document.getElementById('nav-unit'));}},
+  {icon:'⚙️', label:'Настройки', sub:'Тарифы, токен, расходы', action:function(){showSection('settings',document.getElementById('nav-settings'));}},
+  {icon:'🎁', label:'Активировать промокод', sub:'Получить триал по коду', action:function(){showSection('promo',null);}},
+  {icon:'🚪', label:'Выйти', sub:'Завершить сессию', action:function(){if(confirm('Выйти из аккаунта?'))logout();}},
+  {icon:'🔄', label:'Обновить данные', sub:'Перезагрузить с WB', action:function(){if(typeof goFromHome==='function')goFromHome();}},
+  {icon:'🎓', label:'Запустить тур', sub:'Подсказки по приложению', action:function(){startProductTour(true);}},
+];
+function openCmdK(){
+  var bg = document.createElement('div');
+  bg.className = 'cmdk-bg';
+  bg.id = 'cmdkBg';
+  bg.innerHTML =
+    '<div class="cmdk-panel" onclick="event.stopPropagation()">'+
+      '<div class="cmdk-search"><span class="cmdk-search-icon">🔍</span><input id="cmdkInput" placeholder="Поиск действия или раздела..."><span class="cmdk-kbd">ESC</span></div>'+
+      '<div class="cmdk-list" id="cmdkList"></div>'+
+    '</div>';
+  bg.onclick = closeCmdK;
+  document.body.appendChild(bg);
+  renderCmdK('');
+  setTimeout(function(){var inp = document.getElementById('cmdkInput'); if(inp) inp.focus();}, 50);
+  document.getElementById('cmdkInput').addEventListener('input', function(e){renderCmdK(e.target.value);});
+  document.getElementById('cmdkInput').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      var first = document.querySelector('#cmdkList .cmdk-item');
+      if(first) first.click();
+    } else if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      var items = document.querySelectorAll('#cmdkList .cmdk-item');
+      var idx = Array.from(items).findIndex(function(i){return i.classList.contains('active');});
+      items.forEach(function(i){i.classList.remove('active');});
+      var nextIdx = Math.min(idx+1, items.length-1);
+      if(items[nextIdx]) items[nextIdx].classList.add('active');
+    } else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      var items = document.querySelectorAll('#cmdkList .cmdk-item');
+      var idx = Array.from(items).findIndex(function(i){return i.classList.contains('active');});
+      items.forEach(function(i){i.classList.remove('active');});
+      var prevIdx = Math.max(idx-1, 0);
+      if(items[prevIdx]) items[prevIdx].classList.add('active');
+    }
+  });
+}
+function closeCmdK(){
+  var bg = document.getElementById('cmdkBg');
+  if(bg) bg.remove();
+}
+function renderCmdK(q){
+  q = (q||'').toLowerCase().trim();
+  var filtered = _cmdkActions.filter(function(a){
+    if(!q) return true;
+    return a.label.toLowerCase().indexOf(q) !== -1 || a.sub.toLowerCase().indexOf(q) !== -1;
+  });
+  var list = document.getElementById('cmdkList');
+  if(!list) return;
+  if(!filtered.length){
+    list.innerHTML = '<div class="cmdk-empty">Ничего не найдено</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(a, i){
+    return '<div class="cmdk-item'+(i===0?' active':'')+'" onclick="closeCmdK();(_cmdkActions[_cmdkActions.indexOf(_cmdkAction'+i+')]||{}).action&&_cmdkAction'+i+'.action()">'+
+      '<span class="cmdk-item-icon">'+a.icon+'</span>'+
+      '<div class="cmdk-item-text"><div>'+a.label+'</div><div class="cmdk-item-sub">'+a.sub+'</div></div>'+
+    '</div>';
+  }).join('');
+  // Привязываем actions через данные (избегаем глобальной засрки)
+  filtered.forEach(function(a, i){
+    window['_cmdkAction'+i] = a;
+  });
+}
+// Глобальный hotkey listener — Ctrl+K / Cmd+K
+document.addEventListener('keydown', function(e){
+  // Ctrl+K / Cmd+K — command palette
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){
+    e.preventDefault();
+    if(document.getElementById('cmdkBg')) closeCmdK();
+    else openCmdK();
+  }
+  // ESC — закрыть command palette / tour / cmp modal
+  if(e.key === 'Escape'){
+    if(document.getElementById('cmdkBg')){closeCmdK();return;}
+    if(document.getElementById('tourOverlay')){skipTour();return;}
+    if(document.getElementById('abcCmpModal')){closeAbcCmp();return;}
+  }
+});
+
 async function init(){
   var r=await fetch('/api/config');
   var cfg=await r.json();
@@ -1829,6 +2071,179 @@ function onbNext(step){
     d.classList.toggle('active',parseInt(d.dataset.step,10)===step);
   });
 }
+// === 🔥 v0.7.6 O3: ДЕМО-РЕЖИМ ===
+// Генерирует тестовые данные (rows + snapshots) и подсовывает их в стандартные структуры.
+// Активируется кнопкой в онбординге. Помечает body классом demo-mode и показывает баннер сверху.
+function generateDemoData(){
+  // Демо-товары — 8 SKU
+  var demoProducts = [
+    {nm:301010101, sa:'DEMO-001', name:'Демо: Кроссовки белые', cat:'Обувь', sales:42, ret:5, ppvz:65800, del:3200, stor:480, adv:2400, pen:0, commPct:23, cost:520},
+    {nm:301010102, sa:'DEMO-002', name:'Демо: Футболка чёрная XL', cat:'Одежда', sales:128, ret:18, ppvz:54400, del:5200, stor:720, adv:1800, pen:340, commPct:25, cost:180},
+    {nm:301010103, sa:'DEMO-003', name:'Демо: Сумка кожаная', cat:'Аксессуары', sales:18, ret:1, ppvz:42600, del:1100, stor:160, adv:3200, pen:0, commPct:21, cost:980},
+    {nm:301010104, sa:'DEMO-004', name:'Демо: Носки тёплые (5 пар)', cat:'Одежда', sales:240, ret:6, ppvz:38400, del:4800, stor:1200, adv:600, pen:120, commPct:24, cost:65},
+    {nm:301010105, sa:'DEMO-005', name:'Демо: Зарядка USB-C 65W', cat:'Электроника', sales:35, ret:8, ppvz:18400, del:1400, stor:340, adv:4800, pen:0, commPct:18, cost:780},
+    {nm:301010106, sa:'DEMO-006', name:'Демо: Игрушка резиновая', cat:'Детские', sales:62, ret:3, ppvz:14200, del:1850, stor:280, adv:920, pen:0, commPct:22, cost:120},
+    {nm:301010107, sa:'DEMO-007', name:'Демо: Маска для лица крем', cat:'Красота', sales:14, ret:2, ppvz:8700, del:280, stor:120, adv:6200, pen:0, commPct:19, cost:340},
+    {nm:301010108, sa:'DEMO-008', name:'Демо: Чайник 1.5л электрический', cat:'Дом', sales:7, ret:1, ppvz:12400, del:840, stor:480, adv:1200, pen:280, commPct:21, cost:1450}
+  ];
+  // commRub для каждого
+  demoProducts.forEach(function(p){p.commRub = Math.round(p.ppvz/(100-p.commPct)*p.commPct);});
+  // Снапшоты за 30 дней
+  var demoSnapshots = [];
+  var today = new Date();
+  for(var i=29;i>=0;i--){
+    var d = new Date(today); d.setDate(d.getDate()-i);
+    var dStr = d.toISOString().slice(0,10);
+    // Симулируем дневную динамику с шумом
+    var factor = 0.6 + Math.random()*0.8; // 0.6-1.4 разброс
+    var dailySales = Math.round((25 + Math.random()*15) * factor);
+    var dailyRet = Math.round(dailySales * (0.08 + Math.random()*0.04));
+    var dailyRev = Math.round((9500 + Math.random()*3500) * factor);
+    var dailyComm = Math.round(dailyRev * 0.23);
+    var dailyLog = Math.round((600 + Math.random()*300) * factor);
+    var dailyStor = Math.round(120 + Math.random()*80);
+    var dailyAds = Math.round((600 + Math.random()*400) * factor);
+    var dailyPen = i === 7 || i === 14 ? Math.round(800 + Math.random()*500) : 0; // 2 дня со штрафами
+    var dailyCost = Math.round(dailyRev * 0.45);
+    var dailyProfit = dailyRev - dailyComm - dailyLog - dailyStor - dailyAds - dailyPen - dailyCost;
+    // Топ-3 товара дня
+    var sorted = demoProducts.slice().sort(function(){return Math.random()-0.5;}).slice(0,3);
+    var topItems = sorted.map(function(p,idx){
+      var share = idx === 0 ? 0.5 : (idx === 1 ? 0.3 : 0.2);
+      return {nm:p.nm, name:p.name, sales:Math.round(dailySales*share), profit:Math.round(dailyProfit*share), revenue:Math.round(dailyRev*share)};
+    });
+    demoSnapshots.push({
+      day:dStr, sales_count:dailySales, returns_count:dailyRet,
+      revenue:dailyRev, commission:dailyComm, payout:dailyRev-dailyComm,
+      logistics:dailyLog, storage:dailyStor, ads:dailyAds,
+      penalties:dailyPen, wb_finance:0, cost:dailyCost, profit:dailyProfit,
+      top_items:topItems, alerts:[]
+    });
+  }
+  return {rows:demoProducts, snapshots:demoSnapshots};
+}
+function startDemoMode(){
+  var demo = generateDemoData();
+  // Подставляем глобальные структуры
+  window.rows = demo.rows;
+  window._stocksMap = {};
+  window.rows.forEach(function(r){window._stocksMap[r.nm] = {avail:Math.round(Math.random()*40)+5, total:50};});
+  window._lastSnapshots = demo.snapshots;
+  window._demoMode = true;
+  localStorage.setItem('wb_demo_active','1');
+  // Баннер сверху
+  if(!document.getElementById('demoBanner')){
+    var banner = document.createElement('div');
+    banner.id = 'demoBanner';
+    banner.className = 'demo-mode-banner';
+    banner.innerHTML = '🎭 ДЕМО-РЕЖИМ: показаны тестовые данные. Для реальной аналитики введите токен WB. <button onclick="exitDemoMode()">Выйти из демо</button>';
+    document.body.appendChild(banner);
+    document.body.classList.add('demo-mode');
+  }
+  // Считаем итоги и рендерим
+  closeOnboarding();
+  showSection('home', document.getElementById('nav-home'));
+  // Запускаем рендер главной по демо-snapshots
+  if(typeof renderDashboard === 'function'){
+    setTimeout(function(){
+      try{ renderDashboard(demo.snapshots); }catch(e){console.warn(e);}
+    }, 300);
+  }
+  // Запускаем тур через 1 секунду
+  setTimeout(function(){startProductTour();}, 1200);
+}
+function exitDemoMode(){
+  window._demoMode = false;
+  window.rows = [];
+  window._lastSnapshots = [];
+  window._stocksMap = {};
+  localStorage.removeItem('wb_demo_active');
+  var banner = document.getElementById('demoBanner');
+  if(banner) banner.remove();
+  document.body.classList.remove('demo-mode');
+  // Перезагружаем страницу чтобы вернуться к обычному UI
+  location.reload();
+}
+
+// === 🔥 v0.7.6 O2: ПРОДУКТОВЫЙ ТУР ===
+// Подсвечивает ключевые элементы интерфейса с пояснениями.
+// Показывается один раз — сохраняется в localStorage. Можно отключить из настроек.
+var _tourSteps = [
+  {selector:'#nav-home', title:'🏠 Главная', text:'Здесь главное за день: защита от потерь, что сделать, прибыль сегодня. Загляните сюда утром — пара минут и видно где утекают деньги.'},
+  {selector:'#nav-calc', title:'📊 Калькулятор', text:'Самая мощная страница: реальная прибыль по каждому товару. Себестоимость, комиссии, реклама, логистика — всё уже учтено.'},
+  {selector:'#nav-detail', title:'🔍 Детализация', text:'Куда уходят деньги? Полная разбивка расходов по группам с примерами операций. И сравнение с предыдущим периодом ↑↓'},
+  {selector:'#nav-analytics', title:'📈 Аналитика', text:'Динамика прибыли, ABC-анализ товаров, лидеры роста и падения, история проблем за период.'},
+  {selector:'#nav-unit', title:'💰 Подбор товара', text:'Рассчитайте прибыль ДО закупки. Введите цену, себестоимость, габариты — получите чистую прибыль с учётом всех расходов WB.'},
+  {selector:'#globalLoadBar', title:'📥 Загрузка данных', text:'Выберите период (вчера / 7 / 30 / 90 дней) и нажмите «Загрузить» — данные подтянутся из WB API.'}
+];
+var _tourIdx = 0;
+function startProductTour(force){
+  if(!force && localStorage.getItem('wb_tour_done')) return;
+  _tourIdx = 0;
+  renderTourStep();
+}
+function renderTourStep(){
+  // Очищаем предыдущее
+  hideTourElements();
+  if(_tourIdx >= _tourSteps.length){
+    localStorage.setItem('wb_tour_done', '1');
+    return;
+  }
+  var step = _tourSteps[_tourIdx];
+  var target = document.querySelector(step.selector);
+  if(!target){_tourIdx++;return renderTourStep();}
+  var rect = target.getBoundingClientRect();
+  // Затемнение
+  var overlay = document.createElement('div');
+  overlay.className = 'tour-overlay';
+  overlay.id = 'tourOverlay';
+  overlay.onclick = function(){_tourIdx++;renderTourStep();};
+  document.body.appendChild(overlay);
+  // Подсветка
+  var spotlight = document.createElement('div');
+  spotlight.className = 'tour-spotlight';
+  spotlight.id = 'tourSpotlight';
+  spotlight.style.left = (rect.left - 4) + 'px';
+  spotlight.style.top = (rect.top - 4) + 'px';
+  spotlight.style.width = (rect.width + 8) + 'px';
+  spotlight.style.height = (rect.height + 8) + 'px';
+  document.body.appendChild(spotlight);
+  // Подсказка
+  var tip = document.createElement('div');
+  tip.className = 'tour-tip';
+  tip.id = 'tourTip';
+  tip.innerHTML =
+    '<div class="tour-tip-title">'+step.title+'</div>'+
+    '<div class="tour-tip-text">'+step.text+'</div>'+
+    '<div class="tour-tip-foot">'+
+      '<span class="tour-tip-progress">'+(_tourIdx+1)+' / '+_tourSteps.length+'</span>'+
+      '<div class="tour-tip-actions">'+
+        '<button class="tour-tip-skip" onclick="skipTour()">Пропустить тур</button>'+
+        '<button class="tour-tip-next" onclick="_tourIdx++;renderTourStep()">'+(_tourIdx === _tourSteps.length-1 ? 'Готово ✓' : 'Дальше →')+'</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(tip);
+  // Позиционируем тип — справа от подсветки, или снизу если справа не помещается
+  var tipW = 340, tipH = 160;
+  var ww = window.innerWidth, wh = window.innerHeight;
+  var tipLeft = rect.right + 20;
+  if(tipLeft + tipW > ww - 16) tipLeft = Math.max(16, rect.left + (rect.width-tipW)/2);
+  var tipTop = rect.top;
+  if(tipTop + tipH > wh - 16) tipTop = Math.max(16, wh - tipH - 16);
+  tip.style.left = tipLeft + 'px';
+  tip.style.top = tipTop + 'px';
+}
+function hideTourElements(){
+  ['tourOverlay','tourSpotlight','tourTip'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.remove();
+  });
+}
+function skipTour(){
+  hideTourElements();
+  localStorage.setItem('wb_tour_done', '1');
+}
+
 function onbFinish(){
   var tk=document.getElementById('onbToken').value.trim();
   if(!tk){alert('Вставьте токен');return;}
