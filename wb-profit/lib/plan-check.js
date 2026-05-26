@@ -1,16 +1,17 @@
 // Общая утилита для проверки тарифа пользователя на бэкенде.
-// Используется в /api/wb, /api/snapshots, /api/calcs.
-//
-// Идея: фронтенд отправляет JWT в X-User-Auth (или Authorization для endpoint'ов которые
-// принимают только наш токен). Мы по JWT находим пользователя в БД, проверяем plan и
-// plan_expires_at. Если истёк — даунгрейдим в БД и возвращаем free.
+// v0.7.1: расширена — возвращает все лимиты из таблицы `plans`, кэширует план в памяти.
 //
 // API:
-//   getUserPlan(jwt) -> {user, plan, hasPro, error}
-//   requirePro(jwt) -> {user, plan, hasPro, error}   // дополнительно проверяет hasPro
+//   extractJwt(req) — извлекает JWT из заголовков
+//   getUserPlan(jwt) — возвращает {user, plan, hasPro, expiresAt, isAdmin} (старая совместимость)
+//   getUserPlanWithLimits(jwt) — то же + plan_obj (полная запись из plans с лимитами)
+//   requirePro(jwt, featureName) — если не PRO — {error:'PRO_REQUIRED', status:403}
+//   requireFeature(jwt, featureKey) — проверяет конкретную фичу (has_detail, has_analytics и т.д.)
+//   checkPeriodLimit(jwt, dateFrom, dateTo) — проверяет что период не превышает max_period_days
+//   sendIfPlanError(res, result) — короткий ответ 4xx если в result есть error
 //
-// При ошибке возвращает {error: '...', status: 401|403}.
-// Если всё ок — {user, plan, hasPro, expiresAt}.
+// При ошибке: {error, status, message?, feature?}
+// При успехе: {user, plan, plan_obj, hasPro, expiresAt, isAdmin, limits, features}
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -21,9 +22,30 @@ function makeClient() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 }
 
-// Извлекает JWT из заголовков запроса.
-// Сначала пробует X-User-Auth (для endpoint'ов где Authorization уже занят WB-токеном),
-// потом Authorization (Bearer ...).
+// === Кэш тарифов в памяти (5 мин) ===
+// Тарифы редко меняются, нет смысла дёргать БД каждый запрос
+let _plansCache = null;
+let _plansCacheExpiry = 0;
+const PLANS_CACHE_MS = 5 * 60 * 1000;
+
+async function loadPlans() {
+  if (_plansCache && Date.now() < _plansCacheExpiry) return _plansCache;
+  const supabase = makeClient();
+  const { data, error } = await supabase.from('plans').select('*');
+  if (error || !data) {
+    console.warn('[plan-check] loadPlans failed:', error?.message);
+    return _plansCache || []; // используем последний кеш если есть
+  }
+  _plansCache = data;
+  _plansCacheExpiry = Date.now() + PLANS_CACHE_MS;
+  return data;
+}
+
+function findPlan(plans, planId) {
+  return plans.find(p => p.id === planId) || plans.find(p => p.id === 'free') || null;
+}
+
+// === Извлечение JWT из заголовков ===
 export function extractJwt(req) {
   const xUser = req.headers['x-user-auth'];
   if (xUser) return String(xUser).replace(/^Bearer\s+/i, '');
@@ -32,14 +54,28 @@ export function extractJwt(req) {
   return null;
 }
 
-// Возвращает {user, plan, hasPro, expiresAt} или {error, status}.
+// === Базовая функция (старая) — для обратной совместимости ===
 export async function getUserPlan(jwt) {
+  const r = await getUserPlanWithLimits(jwt);
+  if (r.error) return r;
+  // Возвращаем только базовые поля для совместимости
+  return {
+    user: r.user,
+    plan: r.plan,
+    hasPro: r.hasPro,
+    expiresAt: r.expiresAt,
+    isAdmin: r.isAdmin,
+  };
+}
+
+// === Полная функция с лимитами ===
+export async function getUserPlanWithLimits(jwt) {
   if (!jwt) return { error: 'Нет токена авторизации', status: 401 };
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     return { error: 'Сервер не настроен (нет SUPABASE env)', status: 500 };
   }
   const supabase = makeClient();
-  // Аутентификация
+  // Аутентификация по JWT
   const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
   if (authErr || !user) return { error: 'Неверный JWT', status: 401 };
   // Профиль
@@ -52,19 +88,45 @@ export async function getUserPlan(jwt) {
   let plan = profile.plan || 'free';
   const expiresAt = profile.plan_expires_at ? new Date(profile.plan_expires_at) : null;
   const isAdmin = !!profile.is_admin;
-  // Авто-даунгрейд если истёк (но не для админа)
-  if (!isAdmin && (plan === 'pro' || plan === 'business') && expiresAt && expiresAt.getTime() < Date.now()) {
+  // Авто-даунгрейд если истёк (не для админа)
+  if (!isAdmin && (plan === 'pro' || plan === 'business' || plan === 'start') && expiresAt && expiresAt.getTime() < Date.now()) {
     await supabase.from('profiles').update({ plan: 'free', plan_expires_at: null }).eq('id', user.id);
     plan = 'free';
   }
+  // Если админ — даём ему PRO-эквивалент с самыми высокими лимитами (business)
+  const effectivePlanId = isAdmin ? 'business' : plan;
+  // Подгружаем лимиты из таблицы plans
+  const plans = await loadPlans();
+  const planObj = findPlan(plans, effectivePlanId);
+  // Удобные алиасы — без подзапросов в каждом потребителе
+  const limits = planObj ? {
+    max_sku: planObj.max_sku,                         // null = безлимит
+    max_period_days: planObj.max_period_days,         // null = безлимит
+    max_history_days: planObj.max_history_days,       // обязательно (Free 30)
+    max_wb_accounts: planObj.max_wb_accounts || 1,
+    max_team_members: planObj.max_team_members || 1,
+  } : null;
+  const features = planObj ? {
+    detail: !!planObj.has_detail,
+    analytics: !!planObj.has_analytics,
+    unit_calc: !!planObj.has_unit_calc,
+    telegram: !!planObj.has_telegram,
+    email_alerts: !!planObj.has_email_alerts,
+    excel_export: !!planObj.has_excel_export,
+    priority_support: !!planObj.has_priority_support,
+    ai_chat: !!planObj.has_ai_chat,
+  } : null;
   const hasPro = plan === 'pro' || plan === 'business' || isAdmin;
-  return { user, plan, hasPro, expiresAt, isAdmin };
+  return {
+    user, plan, plan_obj: planObj,
+    hasPro, expiresAt, isAdmin,
+    limits, features,
+  };
 }
 
-// Если требуется PRO — возвращает {error, status:403} если нет.
-// Иначе возвращает {user, plan, hasPro, ...}.
+// === requirePro — обратная совместимость ===
 export async function requirePro(jwt, featureName) {
-  const result = await getUserPlan(jwt);
+  const result = await getUserPlanWithLimits(jwt);
   if (result.error) return result;
   if (!result.hasPro) {
     return {
@@ -77,14 +139,58 @@ export async function requirePro(jwt, featureName) {
   return result;
 }
 
-// Хелпер: отправляет 403 в ответ если PRO нужен но его нет.
-// Возвращает true если ответ отправлен (надо прервать handler), false если можно продолжать.
+// === requireFeature(jwt, 'detail' | 'analytics' | 'excel_export' | ...) ===
+// Проверяет включена ли конкретная фича в тарифе пользователя.
+// Это правильный путь — не просто "PRO/не PRO", а конкретное право.
+export async function requireFeature(jwt, featureKey, displayName) {
+  const result = await getUserPlanWithLimits(jwt);
+  if (result.error) return result;
+  if (!result.features || !result.features[featureKey]) {
+    return {
+      error: 'FEATURE_REQUIRED',
+      message: `${displayName || featureKey} недоступна на вашем тарифе`,
+      feature: featureKey,
+      status: 403,
+    };
+  }
+  return result;
+}
+
+// === checkPeriodLimit(jwt, dateFrom, dateTo) ===
+// Проверяет что период не превышает max_period_days тарифа.
+// Возвращает {ok:true, days, plan} или {error, status, ...}
+export async function checkPeriodLimit(jwt, dateFrom, dateTo) {
+  const result = await getUserPlanWithLimits(jwt);
+  if (result.error) return result;
+  const fromMs = new Date(dateFrom).getTime();
+  const toMs = new Date(dateTo).getTime();
+  if (isNaN(fromMs) || isNaN(toMs) || fromMs > toMs) {
+    return { error: 'Некорректные даты', status: 400 };
+  }
+  const days = Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
+  const maxDays = result.limits?.max_period_days; // null = безлимит
+  if (maxDays && days > maxDays) {
+    return {
+      error: 'PERIOD_LIMIT',
+      message: `Период ${days} дней превышает лимит вашего тарифа (${result.plan_obj?.name}: до ${maxDays} дней)`,
+      feature: `Период ${days} дней`,
+      maxDays,
+      currentPlan: result.plan,
+      status: 403,
+    };
+  }
+  return { ok: true, days, ...result };
+}
+
+// === Хелпер для короткого ответа из handler'а ===
 export function sendIfPlanError(res, result) {
   if (result.error) {
     res.status(result.status || 500).json({
       error: result.error,
       message: result.message,
       feature: result.feature,
+      maxDays: result.maxDays,
+      currentPlan: result.currentPlan,
     });
     return true;
   }
