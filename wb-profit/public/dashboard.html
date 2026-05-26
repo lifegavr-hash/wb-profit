@@ -1948,7 +1948,8 @@ async function loadAndRenderPlans(){
     }
   }catch(e){
     console.warn('[plans] load failed:', e);
-    gridEl.innerHTML = '<div class="plans-loading">Не удалось загрузить тарифы. Попробуйте позже.</div>';
+    _plansCache = null; // 🔥 v0.7.0 hotfix: не залипаем — следующий вызов попробует снова
+    gridEl.innerHTML = '<div class="plans-loading">Не удалось загрузить тарифы.<br><button class="btn-primary" style="margin-top:10px;padding:6px 14px;font-size:12px" onclick="loadAndRenderPlans()">Попробовать снова</button></div>';
     return;
   }
   // Подпись текущего тарифа
