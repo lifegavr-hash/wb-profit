@@ -151,7 +151,9 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .pct-good{display:inline-block;font-size:11px;font-weight:600;color:#10b981;margin-left:8px;padding:1px 6px;background:#ecfdf5;border-radius:99px;cursor:help}
 .pct-bad{display:inline-block;font-size:11px;font-weight:600;color:#dc2626;margin-left:8px;padding:1px 6px;background:#fef2f2;border-radius:99px;cursor:help}
 .pct-eq{display:inline-block;font-size:11px;color:#94a3b8;margin-left:8px;cursor:help}
-.detail-prev-period-hint{font-size:11px;color:#94a3b8;margin:8px 0 14px;padding:6px 10px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 6px 6px 0}
+.detail-prev-period-hint{font-size:11px;color:#94a3b8;margin:0 0 14px;padding:6px 10px;background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 6px 6px 0;grid-column:1/-1;width:100%;box-sizing:border-box}
+#detailPrevHint{margin:0 0 14px}
+#detailPrevHint:empty{display:none}
 /* 🔥 v0.7.3: UX-полировка Калькулятора */
 .calc-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .calc-search{position:relative;flex:1;min-width:240px;max-width:480px}
@@ -1255,7 +1257,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.5</div>
+      <div class="sidebar-version">WB Profit · v0.7.5.1</div>
     </div>
   </div>
 </div>
@@ -3311,14 +3313,16 @@ function renderDetail(){
     '<div class="m hi"><div class="ml">Чистая прибыль'+(prevT?pctChangeHtml(t.profit, prevT.profit, false):'')+'</div><div class="mv '+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
 
   // 🔥 v0.7.4: подсказка о сравнении с предыдущим периодом
+  // 🔥 v0.7.5 hotfix: рендерим её вне сетки detail-grid — в detailProtect блок снизу,
+  // ВНУТРИ formulaHtml она ломала верстку (grid auto-fit рендерил как отдельную колонку)
   var prevPeriodHint = '';
   if(prevT && prevT._range){
     prevPeriodHint = '<div class="detail-prev-period-hint">📊 Стрелки рядом с цифрами — сравнение с предыдущим периодом ('+
       shortDate(prevT._range.from)+'–'+shortDate(prevT._range.to)+
       ', '+prevT._range.days+' дн.). Зелёное — хорошо, красное — плохо.</div>';
   }
-  // Объяснение P&L формулы, чтобы пользователь мог проверить на калькуляторе
-  var formulaHtml=prevPeriodHint+'<div class="detail-formula">';
+  // Объяснение P&L формулы — БЕЗ подсказки (та идёт отдельно над gridом)
+  var formulaHtml='<div class="detail-formula">';
   formulaHtml+='<div class="detail-formula-title">Как считается прибыль</div>';
   formulaHtml+='<div class="detail-formula-row"><span>Выручка</span><span class="green">+'+fmt(t.revenue)+' ₽</span></div>';
   formulaHtml+='<div class="detail-formula-row"><span>− Комиссия WB</span><span class="red">−'+fmt(t.commission)+' ₽</span></div>';
@@ -3412,6 +3416,23 @@ function renderDetail(){
   if(detailProtectEl){
     detailProtectEl.innerHTML = protectHtml;
     detailProtectEl.style.display = protectHtml ? '' : 'none';
+  }
+  
+  // 🔥 v0.7.5 hotfix: подсказка про стрелки идёт ОТДЕЛЬНЫМ блоком прямо перед detailGrid,
+  // НЕ внутри grid (иначе auto-fit считает её отдельной колонкой)
+  var hintEl = document.getElementById('detailPrevHint');
+  if(!hintEl){
+    // Создаём контейнер один раз — над detailGrid
+    var grid = document.getElementById('detailGrid');
+    if(grid){
+      hintEl = document.createElement('div');
+      hintEl.id = 'detailPrevHint';
+      grid.parentNode.insertBefore(hintEl, grid);
+    }
+  }
+  if(hintEl){
+    hintEl.innerHTML = prevPeriodHint;
+    hintEl.style.display = prevPeriodHint ? '' : 'none';
   }
   
   document.getElementById('detailGrid').innerHTML = html;
