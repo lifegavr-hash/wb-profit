@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WB Profit — Узнайте реальную прибыль с каждого товара</title>
+<!-- 🔥 v0.7.7.6: Yandex.Metrika (плейсхолдер — подставь YM_COUNTER_ID) -->
+<script>
+(function(){
+  var id = 'YM_COUNTER_ID';
+  if(!id || id === 'YM_COUNTER_ID' || !/^\d+$/.test(String(id))) return;
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+  ym(id, "init", {clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true});
+  window._YM_ID = id;
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -244,9 +256,9 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
     <p class="hero-sub">Логистика, хранение, реклама, штрафы, кредиты ВБ — всё учтено автоматически. Узнайте реальную прибыль за 2 минуты.</p>
     <div class="hero-btns">
       <a href="/login.html" class="btn-white">Попробовать бесплатно →</a>
-      <a href="#case" class="btn-ghost">Смотреть пример</a>
+      <a href="/demo" class="btn-ghost">🎭 Демо без регистрации</a>
     </div>
-    <p class="hero-social"><span>230+</span> селлеров уже считают реальную прибыль · 14 дней бесплатно</p>
+    <p class="hero-social"><span>230+</span> селлеров уже считают реальную прибыль · 14 дней бесплатно · <a href="/demo" style="color:#a78bfa;text-decoration:none;font-weight:600">демо за 1 клик</a></p>
     <div class="hero-calc">
       <div class="hero-calc-title">⚡ Быстрый расчёт — введи свои цифры</div>
       <div class="calc-row"><span class="calc-label">Выплата от WB</span><input class="calc-input" id="cRevenue" type="number" placeholder="300 000"></div>
