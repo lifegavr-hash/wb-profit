@@ -17,6 +17,61 @@ try{
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>WB Profit — Аналитика продаж</title>
+<!-- 🔥 v0.7.7.6: ANALYTICS & ERROR TRACKING ============================== -->
+<!-- Чтобы активировать: подставь свои ID в YM_COUNTER_ID и SENTRY_DSN ниже.
+     Если оставить плейсхолдеры YM_COUNTER_ID / SENTRY_DSN — скрипты не загрузятся (no-op).
+     Демо-режим (/demo) трекается отдельно как goal "demo_view". -->
+<script>
+window.__ANALYTICS_CONFIG = {
+  YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
+  SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
+  APP_VERSION: 'v0.7.7.6'
+};
+</script>
+<!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
+<script>
+(function(){
+  var id = window.__ANALYTICS_CONFIG.YM_COUNTER_ID;
+  if(!id || id === 'YM_COUNTER_ID' || !/^\d+$/.test(String(id))) return;
+  (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+    m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+    (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+  ym(id, "init", {clickmap:true, trackLinks:true, accurateTrackBounce:true, webvisor:true});
+  window._YM_ID = id;
+  // Цель "demo_view" — если URL содержит ?demo=1 или /demo
+  if(location.search.indexOf('demo=1') !== -1 || location.pathname === '/demo'){
+    setTimeout(function(){try{ym(id,'reachGoal','demo_view');}catch(e){}}, 1000);
+  }
+})();
+</script>
+<!-- Sentry (загружается только если SENTRY_DSN валидный) -->
+<script>
+(function(){
+  var dsn = window.__ANALYTICS_CONFIG.SENTRY_DSN;
+  if(!dsn || dsn === 'SENTRY_DSN' || dsn.indexOf('http') !== 0) return;
+  var s = document.createElement('script');
+  s.src = 'https://browser.sentry-cdn.com/7.119.0/bundle.tracing.min.js';
+  s.crossOrigin = 'anonymous';
+  s.onload = function(){
+    if(!window.Sentry) return;
+    Sentry.init({
+      dsn: dsn,
+      release: window.__ANALYTICS_CONFIG.APP_VERSION,
+      tracesSampleRate: 0.1,
+      environment: location.hostname === 'wb-profit.vercel.app' ? 'production' : 'preview',
+      ignoreErrors: [
+        'ResizeObserver loop limit exceeded',
+        'Non-Error promise rejection captured',
+        'Load failed',
+        'NetworkError',
+        'AbortError'
+      ]
+    });
+  };
+  document.head.appendChild(s);
+})();
+</script>
+<!-- ===================================================================== -->
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px;--card-bg:#fff;--input-bg:#fff;--shadow:rgba(0,0,0,.06)}
@@ -1732,7 +1787,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.5</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.6</div>
     </div>
   </div>
 </div>
@@ -2360,6 +2415,13 @@ function _wbProfitHotkeys(e){
 window.addEventListener('keydown', _wbProfitHotkeys, true); // capture: true — перехватываем раньше всех
 
 async function init(){
+  // 🔥 v0.7.7.6: Публичный демо-режим через /demo URL или ?demo=1 параметр.
+  // Полностью обходим Supabase-auth — никакого fetch к /api/config, никакого редиректа на login.
+  var urlDemo = new URLSearchParams(location.search).get('demo') === '1';
+  var lsDemo = localStorage.getItem('wb_demo_active') === '1';
+  if(urlDemo || lsDemo){
+    return initDemoBypass();
+  }
   var r=await fetch('/api/config');
   var cfg=await r.json();
   sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
@@ -2467,6 +2529,71 @@ async function init(){
     setTimeout(openOnboarding,500);
   }
 }
+
+// 🔥 v0.7.7.6: ПУБЛИЧНЫЙ ДЕМО-РЕЖИМ
+// Запускается при /demo URL или wb_demo_active=1 в localStorage.
+// НЕ требует Supabase, NE требует регистрации, NE делает запросов к /api/*.
+// Просто показывает дашборд с тестовыми данными — для маркетинга/презентации.
+function initDemoBypass(){
+  // Заглушки чтобы код, ожидающий sb/profile не падал
+  window.sb = {
+    auth: {
+      getSession: function(){return Promise.resolve({data:{session:null}});},
+      signOut: function(){return Promise.resolve();},
+      onAuthStateChange: function(){return {data:{subscription:{unsubscribe:function(){}}}};}
+    },
+    from: function(){return {
+      select: function(){return {eq: function(){return {single: function(){return Promise.resolve({data:null,error:null});}};}};},
+      insert: function(){return Promise.resolve({error:null});},
+      update: function(){return {eq: function(){return Promise.resolve({error:null});}};},
+      upsert: function(){return Promise.resolve({error:null});}
+    };}
+  };
+  window.currentUser = {id:'demo-user',email:'demo@wbprofit.ru'};
+  window.currentJwt = 'demo-jwt-placeholder';
+  window.currentProfile = {
+    id: 'demo-user',
+    email: 'demo@wbprofit.ru',
+    plan: 'pro',  // показываем все возможности
+    plan_expires_at: '2099-01-01T00:00:00Z',
+    is_admin: false
+  };
+  // Лимиты PRO
+  window.PLAN_LIMITS = {plan:'pro', max_skus:9999, max_history_days:365, features:{detail:true,analytics:true,unit_picker:true,telegram:false,export:true}};
+  // Чтобы updateUI не упал, минимально протокировать данные
+  try{
+    updateUI(window.currentProfile, window.currentUser.email, 'demo-jwt');
+  }catch(e){console.warn('demo updateUI failed:', e);}
+  // Скрываем элементы которые ломаются без auth
+  setTimeout(function(){
+    // Кнопка "Выйти" — заменяем на "Зарегистрироваться"
+    var logoutBtn = document.querySelector('.logout-btn');
+    if(logoutBtn){
+      logoutBtn.textContent = '✨ Зарегистрироваться';
+      logoutBtn.onclick = function(){
+        localStorage.removeItem('wb_demo_active');
+        location.href = '/login.html';
+      };
+    }
+    // Скрываем "Настройки" и "Промокод" — там запросы к API
+    var navSettings = document.querySelector('[onclick*="showSection(\'settings\'"]');
+    if(navSettings) navSettings.style.display = 'none';
+    var navAdmin = document.querySelector('[onclick*="showSection(\'admin\'"]');
+    if(navAdmin) navAdmin.style.display = 'none';
+    // initCalc нужен чтобы калькулятор работал
+    if(typeof initCalc === 'function') try{initCalc();}catch(e){}
+    // Стартуем демо-данные (функция уже определена)
+    if(typeof startDemoMode === 'function'){
+      startDemoMode();
+    }
+    // Сразу банер
+    var banner = document.getElementById('demoBanner');
+    if(banner){
+      banner.innerHTML = '🎭 ДЕМО-РЕЖИМ: показаны тестовые данные. <a href="/login.html" style="color:#fff;text-decoration:underline;margin-left:8px;font-weight:700">Зарегистрироваться →</a>';
+    }
+  }, 100);
+}
+
 function openOnboarding(){
   document.getElementById('onbWizard').style.display='flex';
   onbNext(1);
