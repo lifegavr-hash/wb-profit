@@ -99,6 +99,14 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .plan-btn-current{background:#e5e7eb;color:#64748b;cursor:default}
 .plan-btn-downgrade{background:#fff;color:#64748b;border:1px solid #e5e7eb}
 .plan-btn-downgrade:hover{background:#f9fafb}
+/* 🔥 v0.7.6.1: кнопка быстрого поиска в шапке */
+.topbar{display:flex;align-items:center;gap:14px}
+.topbar-search-btn{margin-left:auto;display:flex;align-items:center;gap:8px;background:#f8fafc;color:#64748b;border:1px solid #e2e8f0;padding:7px 14px;border-radius:10px;font-size:13px;cursor:pointer;transition:all .15s;font-weight:500}
+.topbar-search-btn:hover{background:#f5f3ff;border-color:#ddd6fe;color:#7c3aed}
+.topbar-search-icon{font-size:14px}
+.topbar-search-text{}
+.topbar-search-kbd{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;color:#94a3b8;font-family:monospace}
+@media(max-width:680px){.topbar-search-text{display:none}.topbar-search-kbd{display:none}.topbar-search-btn{padding:7px 10px}}
 /* 🔥 v0.7.6 G3: Toast-уведомления */
 #toastContainer{position:fixed;top:24px;right:24px;z-index:10000;display:flex;flex-direction:column;gap:8px;max-width:380px;pointer-events:none}
 .toast{background:#1a0f3c;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:auto;animation:toastIn .25s ease-out;line-height:1.4}
@@ -1381,7 +1389,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.6</div>
+      <div class="sidebar-version">WB Profit · v0.7.6.1</div>
     </div>
   </div>
 </div>
@@ -1389,6 +1397,12 @@ tr.loss td{background:#fff5f5}
 <div class="main">
   <div class="topbar">
     <span class="topbar-title" id="topbarTitle">Главная</span>
+    <!-- 🔥 v0.7.6.1: кнопка быстрого поиска -->
+    <button class="topbar-search-btn" onclick="openCmdK()" title="Быстрый поиск (нажмите /) — переход между разделами и действиями">
+      <span class="topbar-search-icon">🔍</span>
+      <span class="topbar-search-text">Поиск</span>
+      <span class="topbar-search-kbd">/</span>
+    </button>
     <span class="plan-badge free" id="planBadge">Free</span>
   </div>
 
@@ -1932,21 +1946,35 @@ function renderCmdK(q){
     window['_cmdkAction'+i] = a;
   });
 }
-// Глобальный hotkey listener — Ctrl+K / Cmd+K
-document.addEventListener('keydown', function(e){
-  // Ctrl+K / Cmd+K — command palette
+// 🔥 v0.7.6.1: Глобальный hotkey listener — на window с capture:true чтобы перехватить раньше других расширений
+function _wbProfitHotkeys(e){
+  // Игнорируем если фокус в input/textarea (кроме ESC)
+  var tag = (e.target && e.target.tagName||'').toLowerCase();
+  var isInput = tag === 'input' || tag === 'textarea' || (e.target && e.target.isContentEditable);
+  // Ctrl+K / Cmd+K — command palette (работает даже в input — это его смысл)
   if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k'){
     e.preventDefault();
+    e.stopPropagation();
     if(document.getElementById('cmdkBg')) closeCmdK();
     else openCmdK();
+    return;
   }
-  // ESC — закрыть command palette / tour / cmp modal
+  // "/" — command palette (как в GitHub). Только если не в инпуте
+  if(e.key === '/' && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey){
+    if(!document.getElementById('cmdkBg')){
+      e.preventDefault();
+      openCmdK();
+    }
+    return;
+  }
+  // ESC — закрыть все модалки
   if(e.key === 'Escape'){
     if(document.getElementById('cmdkBg')){closeCmdK();return;}
     if(document.getElementById('tourOverlay')){skipTour();return;}
     if(document.getElementById('abcCmpModal')){closeAbcCmp();return;}
   }
-});
+}
+window.addEventListener('keydown', _wbProfitHotkeys, true); // capture: true — перехватываем раньше всех
 
 async function init(){
   var r=await fetch('/api/config');
