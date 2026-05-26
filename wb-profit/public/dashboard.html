@@ -99,6 +99,43 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .plan-btn-current{background:#e5e7eb;color:#64748b;cursor:default}
 .plan-btn-downgrade{background:#fff;color:#64748b;border:1px solid #e5e7eb}
 .plan-btn-downgrade:hover{background:#f9fafb}
+/* 🔥 v0.7.5 A3: Сравнение SKU в ABC */
+.abc-compare-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;margin-bottom:12px;flex-wrap:wrap}
+.abc-compare-info{font-size:13px;color:#6d28d9;font-weight:500;margin-right:auto}
+.abc-cmp-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998}
+.abc-cmp-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;padding:24px;width:min(960px,calc(100vw - 32px));max-height:90vh;overflow-y:auto;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.abc-cmp-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.abc-cmp-modal-title{font-size:18px;font-weight:600;color:#1a0f3c}
+.abc-cmp-close{width:32px;height:32px;border:0;background:#f1f5f9;border-radius:8px;cursor:pointer;font-size:20px;color:#64748b;line-height:1}
+.abc-cmp-close:hover{background:#fef2f2;color:#dc2626}
+.abc-cmp-grid{display:grid;gap:14px}
+.abc-cmp-col{background:#fafafa;border-radius:10px;padding:14px}
+.abc-cmp-name{font-size:13px;font-weight:600;color:#1e293b;margin-bottom:6px;line-height:1.3}
+.abc-cmp-cat{margin-bottom:14px}
+.abc-cmp-metric{padding:8px 0;border-bottom:1px solid #e2e8f0}
+.abc-cmp-metric:last-child{border-bottom:0}
+.abc-cmp-lbl{font-size:11px;color:#94a3b8;margin-bottom:2px;text-transform:uppercase;letter-spacing:.3px}
+.abc-cmp-val{font-size:14px;font-weight:600;color:#1e293b}
+.abc-cmp-val.best{color:#059669;background:#ecfdf5;padding:2px 8px;border-radius:6px;display:inline-block}
+.abc-cmp-val.worst{color:#dc2626;background:#fef2f2;padding:2px 8px;border-radius:6px;display:inline-block}
+.abc-cmp-legend{margin-top:14px;text-align:center;font-size:11px;color:#94a3b8}
+@media(max-width:680px){.abc-cmp-grid{grid-template-columns:1fr!important}}
+/* 🔥 v0.7.5: S1 — кнопка disabled когда нет изменений */
+.settings-save-btn:disabled{background:#e5e7eb!important;color:#94a3b8!important;cursor:not-allowed;opacity:.7}
+.settings-save-btn:disabled:hover{background:#e5e7eb!important;transform:none}
+/* 🔥 v0.7.5: S3 — подсветка незаполненных обязательных полей */
+.field-required-empty{border-color:#f59e0b!important;background:#fffbeb!important}
+.field-required-empty:focus{border-color:#f59e0b!important;box-shadow:0 0 0 3px rgba(245,158,11,.15)!important}
+.field-required-hint{font-size:11px;color:#b45309;margin-top:4px;padding:4px 8px;background:#fef3c7;border-radius:6px;display:inline-flex;align-items:center;gap:4px}
+/* 🔥 v0.7.5: шаблоны Подбора товара */
+.unit-template-btn{padding:7px 12px;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:8px;font-size:12px;cursor:pointer;transition:all .15s;font-weight:500}
+.unit-template-btn:hover{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.unit-template-btn .tpl-del{margin-left:8px;color:#cbd5e1;font-weight:400}
+.unit-template-btn:hover .tpl-del{color:rgba(255,255,255,.7)}
+/* 🔥 v0.7.5: подсветка маржи цветом в истории Подбора */
+.margin-green{color:#059669;font-weight:600;background:#ecfdf5;padding:2px 8px;border-radius:99px;font-size:12px}
+.margin-yellow{color:#d97706;font-weight:600;background:#fef3c7;padding:2px 8px;border-radius:99px;font-size:12px}
+.margin-red{color:#dc2626;font-weight:600;background:#fef2f2;padding:2px 8px;border-radius:99px;font-size:12px}
 /* 🔥 v0.7.4: Top movers в Аналитике */
 .movers-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .movers-col{background:#fafafa;border-radius:10px;padding:10px}
@@ -1218,7 +1255,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.4</div>
+      <div class="sidebar-version">WB Profit · v0.7.5</div>
     </div>
   </div>
 </div>
@@ -1305,7 +1342,7 @@ tr.loss td{background:#fff5f5}
           <input type="checkbox" id="rememberTok" style="width:auto;padding:0"> Запомнить токен
         </label>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary" id="saveTokBtn" onclick="saveTokenManual()">Сохранить токен</button>
+          <button class="btn-primary settings-save-btn" id="saveTokBtn" onclick="saveTokenManual()" disabled data-bind="tok1">Сохранить токен</button>
           <button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>
         </div>
         <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Нужны разделы: <strong>Статистика</strong>, <strong>Продвижение</strong>, <strong>Аналитика</strong>.</p>
@@ -1319,7 +1356,7 @@ tr.loss td{background:#fff5f5}
           <p class="hint" id="personalExpensesHint" style="display:none;color:var(--green);margin-top:6px">Сохранено</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary" onclick="savePersonalExpenses()">Сохранить</button>
+          <button class="btn-primary settings-save-btn" id="savePersonalBtn" onclick="savePersonalExpenses()" disabled data-bind="personalExpenses">Сохранить</button>
           <button class="bulk-btn" onclick="clearPersonalExpenses()">Удалить</button>
         </div>
         <p class="hint" style="margin-top:10px">Эта цифра <strong>хранится только в вашем браузере</strong> (localStorage) и не отправляется на сервер.</p>
@@ -1562,6 +1599,9 @@ tr.loss td{background:#fff5f5}
         <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn-primary" onclick="saveUnitCalcV2()">💾 Сохранить расчёт</button>
           <button class="bulk-btn" onclick="resetUnitFormV2()">↺ Очистить</button>
+          <!-- 🔥 v0.7.5: шаблоны параметров -->
+          <button class="bulk-btn" onclick="saveUnitTemplate()" title="Сохранить текущие параметры (категория, склад, налог, выкуп...) как шаблон">📋 Сохранить как шаблон</button>
+          <div id="unitTemplatesBar" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
         </div>
       </div>
 
@@ -1958,8 +1998,8 @@ function showSection(name,el){
   if(name==='detail') renderDetail();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
-  if(name==='settings') loadAndRenderPlans(); // 🔥 v0.7.0
-  if(name==='unit'){loadUnitHistory();offerUserAverages();}
+  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); /* v0.7.0/v0.7.5 */ }
+  if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
     var rs=document.getElementById('results');var ce=document.getElementById('calcEmpty');
@@ -2131,6 +2171,73 @@ function onSelectPlan(planId){
   showSection('promo', document.getElementById('nav-promo'));
 }
 
+// 🔥 v0.7.5: S1+S3 — отслеживание изменений в полях Настроек
+function initSettingsChangeTracking(){
+  // Запоминаем исходные значения и привязываем обработчики
+  var btns = document.querySelectorAll('.settings-save-btn[data-bind]');
+  btns.forEach(function(btn){
+    var inputId = btn.getAttribute('data-bind');
+    var input = document.getElementById(inputId);
+    if(!input) return;
+    var orig = input.value || '';
+    // Сохраняем original в data-attr
+    btn.setAttribute('data-orig', orig);
+    btn.disabled = true;
+    // Подписка на input
+    input.removeEventListener('input', input._settingsTracker);
+    input._settingsTracker = function(){
+      var cur = input.value || '';
+      btn.disabled = (cur === btn.getAttribute('data-orig'));
+      // S3: подсветка обязательных полей
+      if(inputId === 'tok1'){
+        // Токен — обязателен. Если пуст и не сохранён — подсветка
+        var savedTok = localStorage.getItem('wb_token');
+        if(!cur && !savedTok){
+          input.classList.add('field-required-empty');
+        } else {
+          input.classList.remove('field-required-empty');
+        }
+      }
+    };
+    input.addEventListener('input', input._settingsTracker);
+    // Запускаем сразу для подсветки незаполненных
+    input._settingsTracker();
+  });
+  // Проверка незаполненного токена (если пуст и нет сохранённого)
+  var tok = document.getElementById('tok1');
+  if(tok){
+    var savedTok = localStorage.getItem('wb_token');
+    if(!tok.value && !savedTok){
+      tok.classList.add('field-required-empty');
+      // Добавляем подсказку под полем если её нет
+      if(!document.getElementById('tokRequiredHint')){
+        var hint = document.createElement('div');
+        hint.id = 'tokRequiredHint';
+        hint.className = 'field-required-hint';
+        hint.innerHTML = '⚠️ Без токена приложение не сможет загружать данные WB';
+        tok.parentNode.insertBefore(hint, tok.nextSibling);
+      }
+    } else {
+      var oldHint = document.getElementById('tokRequiredHint');
+      if(oldHint) oldHint.remove();
+    }
+  }
+}
+// После успешного сохранения — снова отключаем кнопку и убираем подсветку
+function markSettingsSaved(btnId){
+  var btn = document.getElementById(btnId);
+  if(!btn) return;
+  var inputId = btn.getAttribute('data-bind');
+  var input = document.getElementById(inputId);
+  if(input){
+    btn.setAttribute('data-orig', input.value || '');
+    input.classList.remove('field-required-empty');
+    var oldHint = document.getElementById('tokRequiredHint');
+    if(oldHint) oldHint.remove();
+  }
+  btn.disabled = true;
+}
+
 function saveTokenManual(){
   // Будем вызывать loadSellerName() после успешного сохранения
 
@@ -2145,6 +2252,7 @@ function saveTokenManual(){
   var btn=document.getElementById('saveTokBtn');
   if(btn){var orig=btn.textContent;btn.textContent='✓ Сохранено';setTimeout(function(){btn.textContent=orig;},1500);}
   var sh=document.getElementById('savedHint');if(sh)sh.style.display='block';
+  if(typeof markSettingsSaved==='function') markSettingsSaved('saveTokBtn');
 }
 // === ЛИЧНЫЕ РАСХОДЫ (для алерта о кассовом разрыве) ===
 function savePersonalExpenses(){
@@ -2155,6 +2263,7 @@ function savePersonalExpenses(){
   localStorage.setItem('wb_personal_expenses',String(v));
   var hint=document.getElementById('personalExpensesHint');
   if(hint){hint.style.display='block';hint.textContent='Сохранено: '+v.toLocaleString('ru-RU')+' ₽/мес';}
+  if(typeof markSettingsSaved==='function') markSettingsSaved('savePersonalBtn');
 }
 function clearPersonalExpenses(){
   localStorage.removeItem('wb_personal_expenses');
@@ -4054,6 +4163,90 @@ function calcUnitV2() {
   };
 }
 
+// 🔥 v0.7.5: U2 — шаблоны параметров Подбора товара
+function getUnitTemplates(){
+  try{return JSON.parse(localStorage.getItem('unit_templates')||'[]');}catch(e){return [];}
+}
+function saveUnitTemplate(){
+  var name = prompt('Название шаблона (например «Москва FBO средние»):', '');
+  if(!name) return;
+  // Собираем все значимые параметры формы
+  var tpl = {
+    name: name.slice(0, 50),
+    warehouse: document.getElementById('unitWarehouse')?.value || 'auto',
+    model: window._unitState?.model || 'fbo',
+    redemption: document.getElementById('unitRedemption')?.value || '80',
+    adPct: document.getElementById('unitAdPct')?.value || '5',
+    fbsShipHours: document.getElementById('unitFbsShipHours')?.value || '24',
+    taxPct: document.getElementById('unitTaxPct')?.value || '7',
+    acquiringPct: document.getElementById('unitAcquiringPct')?.value || '1.5',
+    volume: document.getElementById('unitVolume')?.value || '1',
+    weight: document.getElementById('unitWeight')?.value || '0.5',
+    // Категорию тоже сохраняем — частый кейс
+    subjectId: window._unitState?.subjectId || null,
+    subjectName: window._unitState?.subjectName || null,
+    categoryName: document.getElementById('unitCategorySearch')?.value || '',
+  };
+  var tpls = getUnitTemplates();
+  // Удаляем существующий с тем же именем
+  tpls = tpls.filter(function(t){return t.name !== tpl.name;});
+  tpls.push(tpl);
+  tpls = tpls.slice(-10); // максимум 10
+  localStorage.setItem('unit_templates', JSON.stringify(tpls));
+  renderUnitTemplates();
+  // Уведомление
+  var btn = event.target;
+  var orig = btn.textContent;
+  btn.textContent = '✓ Сохранён: '+tpl.name;
+  setTimeout(function(){btn.textContent = orig;}, 1800);
+}
+function applyUnitTemplate(idx){
+  var tpls = getUnitTemplates();
+  var t = tpls[idx];
+  if(!t) return;
+  if(document.getElementById('unitWarehouse')) document.getElementById('unitWarehouse').value = t.warehouse;
+  if(document.getElementById('unitRedemption')) document.getElementById('unitRedemption').value = t.redemption;
+  if(document.getElementById('unitAdPct')) document.getElementById('unitAdPct').value = t.adPct;
+  if(document.getElementById('unitFbsShipHours')) document.getElementById('unitFbsShipHours').value = t.fbsShipHours;
+  if(document.getElementById('unitTaxPct')) document.getElementById('unitTaxPct').value = t.taxPct;
+  if(document.getElementById('unitAcquiringPct')) document.getElementById('unitAcquiringPct').value = t.acquiringPct;
+  if(document.getElementById('unitVolume')) document.getElementById('unitVolume').value = t.volume;
+  if(document.getElementById('unitWeight')) document.getElementById('unitWeight').value = t.weight;
+  // Категория
+  if(t.subjectId && t.subjectName && window._unitState){
+    window._unitState.subjectId = t.subjectId;
+    window._unitState.subjectName = t.subjectName;
+    var chosen = document.getElementById('unitCategoryChosen');
+    if(chosen){chosen.style.display=''; chosen.textContent = '✓ '+t.subjectName;}
+    var srch = document.getElementById('unitCategorySearch');
+    if(srch) srch.value = t.categoryName || t.subjectName;
+  }
+  // Модель
+  if(t.model && typeof setUnitModel === 'function') setUnitModel(t.model);
+  // Пересчёт
+  if(typeof calcUnitV2 === 'function') calcUnitV2();
+}
+function deleteUnitTemplate(idx, name){
+  if(!confirm('Удалить шаблон «'+name+'»?')) return;
+  var tpls = getUnitTemplates();
+  tpls.splice(idx, 1);
+  localStorage.setItem('unit_templates', JSON.stringify(tpls));
+  renderUnitTemplates();
+}
+function renderUnitTemplates(){
+  var bar = document.getElementById('unitTemplatesBar');
+  if(!bar) return;
+  var tpls = getUnitTemplates();
+  var h = '';
+  tpls.forEach(function(t, i){
+    h += '<button class="unit-template-btn" onclick="applyUnitTemplate('+i+')" title="Кликните чтобы применить параметры шаблона">'+
+      escHtml(t.name)+
+      '<span class="tpl-del" onclick="event.stopPropagation();deleteUnitTemplate('+i+', '+JSON.stringify(t.name)+')" title="Удалить шаблон">×</span>'+
+    '</button>';
+  });
+  bar.innerHTML = h;
+}
+
 function resetUnitFormV2() {
   ['unitName','unitRetailPriceSeen','unitCostPrice','unitDimL','unitDimW','unitDimH','unitCategorySearch'].forEach(function(id){
     const el = document.getElementById(id); if (el) el.value = '';
@@ -4184,7 +4377,11 @@ async function loadUnitHistory() {
         '<td style="padding:8px 10px"><span style="background:#ede7ff;color:#5b3aff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">' + modelLabel + '</span></td>' +
         '<td style="padding:8px 10px;text-align:right">' + fmt(c.retail_price) + '</td>' +
         '<td style="padding:8px 10px;text-align:right;font-weight:700;color:' + profColor + '">' + (p >= 0 ? '+' : '−') + fmt(Math.abs(p)) + ' ₽</td>' +
-        '<td style="padding:8px 10px;text-align:right">' + m.toFixed(1) + '%</td>' +
+        // 🔥 v0.7.5: U3 — подсветка маржи цветом
+        '<td style="padding:8px 10px;text-align:right">' + (function(){
+          var mClass = m >= 30 ? 'margin-green' : (m >= 10 ? 'margin-yellow' : 'margin-red');
+          return '<span class="'+mClass+'">'+m.toFixed(1)+'%</span>';
+        })() + '</td>' +
         '<td style="padding:8px 10px;text-align:right">' + roi.toFixed(1) + '%</td>' +
         '<td style="padding:8px 10px;color:#888">' + dateStr + '</td>' +
         '<td style="padding:8px 10px;text-align:right"><button class="unit-history-action" title="Загрузить" onclick="loadUnitFromHistory(\'' + c.id + '\')">↩</button> <button class="unit-history-action danger" title="Удалить" onclick="deleteUnitCalc(\'' + c.id + '\')">×</button></td>' +
@@ -6991,8 +7188,14 @@ function renderABC(snaps){
   var profitA=sumProfit(groupA),profitB=sumProfit(groupB),profitC=sumProfit(groupC);
   var total=items.length;
 
+  // 🔥 v0.7.5 A3: панель сравнения SKU — появляется когда выбраны 2+ товара
+  var h='<div id="abcCompareBar" class="abc-compare-bar" style="display:none">'+
+    '<span class="abc-compare-info"><span id="abcCompareCount">0</span> товаров выбрано</span>'+
+    '<button class="bulk-btn" onclick="clearAbcCompare()">Снять выбор</button>'+
+    '<button class="btn-primary" onclick="showAbcComparison()">📊 Сравнить выбранные</button>'+
+  '</div>';
   // Краткая сводка сверху
-  var h='<div class="abc-summary">';
+  h+='<div class="abc-summary">';
   h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat A">A</span> Фокус</div><div class="abc-sum-val">'+groupA.length+'</div><div class="abc-sum-pct">'+(total?Math.round(groupA.length/total*100):0)+'% товаров → '+Math.round(profitA/totalProfit*100)+'% прибыли</div></div>';
   h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat B">B</span> Стабильные</div><div class="abc-sum-val">'+groupB.length+'</div><div class="abc-sum-pct">'+(total?Math.round(groupB.length/total*100):0)+'% товаров → '+Math.round(profitB/totalProfit*100)+'% прибыли</div></div>';
   h+='<div class="abc-sum-item"><div class="abc-sum-cat"><span class="abc-cat C">C</span> Балласт</div><div class="abc-sum-val">'+groupC.length+'</div><div class="abc-sum-pct">'+(total?Math.round(groupC.length/total*100):0)+'% товаров → '+Math.round(profitC/totalProfit*100)+'% прибыли</div></div>';
@@ -7015,8 +7218,9 @@ function renderABC(snaps){
     list.forEach(function(it){
       var pct=(it.profit/totalProfit*100).toFixed(1);
       // 🔥 v0.5.7: через itemHtml
+      var itemKey = it.nm ? 'nm:'+it.nm : 'name:'+(it.name||'').slice(0,40);
       s+='<tr>'+
-        '<td>'+itemHtml(it.name, it.nm)+'</td>'+
+        '<td><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" class="abc-cmp-cb" data-key="'+escHtml(itemKey)+'" data-name="'+escHtml(it.name||'')+'" data-nm="'+(it.nm||'')+'" data-sales="'+it.sales+'" data-profit="'+it.profit+'" data-revenue="'+(it.revenue||0)+'" data-cat="'+cat+'" onchange="onAbcCompareToggle()" style="width:auto;margin:0">'+itemHtml(it.name, it.nm)+'</label></td>'+
         '<td style="text-align:right">'+fmt(it.sales)+'</td>'+
         '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+' ₽</td>'+
         '<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'+
@@ -7038,6 +7242,84 @@ function renderABC(snaps){
     h+='<div class="an-insight">Все товары работают эффективно — категории C нет.</div>';
   }
   return h;
+}
+
+// 🔥 v0.7.5 A3: Сравнение выбранных SKU из ABC-анализа
+function onAbcCompareToggle(){
+  var checked = document.querySelectorAll('.abc-cmp-cb:checked');
+  // Лимит 6 — больше в модал не влезет
+  if(checked.length > 6){
+    var evt = event.target;
+    if(evt && evt.checked){
+      evt.checked = false;
+      alert('Максимум 6 товаров для сравнения');
+      return;
+    }
+  }
+  var bar = document.getElementById('abcCompareBar');
+  var cnt = document.getElementById('abcCompareCount');
+  if(bar){
+    bar.style.display = checked.length >= 2 ? '' : 'none';
+  }
+  if(cnt) cnt.textContent = checked.length;
+}
+function clearAbcCompare(){
+  document.querySelectorAll('.abc-cmp-cb:checked').forEach(function(cb){cb.checked=false;});
+  onAbcCompareToggle();
+}
+function showAbcComparison(){
+  var checked = Array.from(document.querySelectorAll('.abc-cmp-cb:checked'));
+  if(checked.length < 2){alert('Выберите минимум 2 товара');return;}
+  var items = checked.map(function(cb){
+    return {
+      key: cb.getAttribute('data-key'),
+      name: cb.getAttribute('data-name'),
+      nm: cb.getAttribute('data-nm'),
+      sales: Number(cb.getAttribute('data-sales')||0),
+      profit: Number(cb.getAttribute('data-profit')||0),
+      revenue: Number(cb.getAttribute('data-revenue')||0),
+      cat: cb.getAttribute('data-cat')
+    };
+  });
+  // Считаем средние и подсвечиваем лучшего/худшего по каждой метрике
+  var bestSales = items.reduce(function(a,b){return a.sales>b.sales?a:b;});
+  var bestProfit = items.reduce(function(a,b){return a.profit>b.profit?a:b;});
+  var worstProfit = items.reduce(function(a,b){return a.profit<b.profit?a:b;});
+  // Профит на 1 продажу — KPI эффективности
+  items.forEach(function(it){it.profitPerSale = it.sales>0 ? it.profit/it.sales : 0;});
+  var bestPPS = items.reduce(function(a,b){return a.profitPerSale>b.profitPerSale?a:b;});
+  // Маржа от выручки
+  items.forEach(function(it){it.marginPct = it.revenue>0 ? it.profit/it.revenue*100 : 0;});
+  var bestMargin = items.reduce(function(a,b){return a.marginPct>b.marginPct?a:b;});
+  // Рендер модала
+  var h = '<div class="abc-cmp-modal-bg" onclick="closeAbcCmp()"></div>';
+  h += '<div class="abc-cmp-modal">';
+  h += '<div class="abc-cmp-modal-head"><div class="abc-cmp-modal-title">📊 Сравнение '+items.length+' '+plural(items.length,'товара','товаров','товаров')+'</div>';
+  h += '<button class="abc-cmp-close" onclick="closeAbcCmp()">×</button></div>';
+  h += '<div class="abc-cmp-grid" style="grid-template-columns:repeat('+items.length+',1fr)">';
+  items.forEach(function(it){
+    h += '<div class="abc-cmp-col">';
+    h += '<div class="abc-cmp-name">'+itemHtml(it.name, it.nm)+'</div>';
+    h += '<div class="abc-cmp-cat"><span class="abc-cat '+it.cat+'">'+it.cat+'</span></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Продажи</div><div class="abc-cmp-val '+(it===bestSales?'best':'')+'">'+fmt(it.sales)+' шт</div></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Выручка</div><div class="abc-cmp-val">'+fmtR(it.revenue)+' ₽</div></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Чистая прибыль</div><div class="abc-cmp-val '+(it===bestProfit?'best':(it===worstProfit?'worst':''))+'">+'+fmtR(it.profit)+' ₽</div></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Прибыль с 1 шт</div><div class="abc-cmp-val '+(it===bestPPS?'best':'')+'">'+fmt(Math.round(it.profitPerSale))+' ₽</div></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Маржа</div><div class="abc-cmp-val '+(it===bestMargin?'best':'')+'">'+it.marginPct.toFixed(1)+'%</div></div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  h += '<div class="abc-cmp-legend">🟢 — лучший по метрике · 🔴 — худший</div>';
+  h += '</div>';
+  // Вставляем в body
+  var wrap = document.createElement('div');
+  wrap.id = 'abcCmpModal';
+  wrap.innerHTML = h;
+  document.body.appendChild(wrap);
+}
+function closeAbcCmp(){
+  var m = document.getElementById('abcCmpModal');
+  if(m) m.remove();
 }
 
 // Раскрытие/сворачивание группы ABC
