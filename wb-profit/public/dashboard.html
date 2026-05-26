@@ -506,7 +506,38 @@ tr.loss td{background:#fff5f5}
 .home-greet{font-size:14px;color:var(--muted);margin-bottom:14px}
 .home-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 @media(max-width:768px){.home-grid-2{grid-template-columns:1fr}}
-.home-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px}
+.home-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;position:relative}
+/* 🔥 v0.7.2: кликабельные заголовки секций (сворачивание + кнопка обновить) */
+.home-card-title-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;user-select:none}
+.home-card-title-row .home-card-title{margin:0;flex:1;cursor:pointer}
+.home-card-collapse-icon{display:inline-block;width:14px;font-size:11px;color:#94a3b8;cursor:pointer;text-align:center}
+.home-card-refresh{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:transparent;border:0;cursor:pointer;color:#94a3b8;font-size:13px;transition:all .15s}
+.home-card-refresh:hover{background:#f5f3ff;color:#7c3aed}
+.home-card-refresh.spinning{animation:spin 0.8s linear infinite}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+/* H2: кнопка ❌ на алертах */
+.home-alert,.rich-alert,.home-action{position:relative}
+.alert-close-btn{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:6px;background:transparent;border:0;cursor:pointer;color:#94a3b8;font-size:14px;line-height:1;opacity:0;transition:all .15s;padding:0;display:flex;align-items:center;justify-content:center}
+.home-alert:hover .alert-close-btn,.rich-alert:hover .alert-close-btn,.home-action:hover .alert-close-btn{opacity:1}
+.alert-close-btn:hover{background:#fef2f2;color:#dc2626}
+/* H3: кнопка "не показывать для товара" — выглядит как ссылка под алертом */
+.alert-mute-btn{display:inline-block;font-size:11px;color:#94a3b8;cursor:pointer;margin-top:6px;text-decoration:underline;opacity:.7}
+.alert-mute-btn:hover{color:#7c3aed;opacity:1}
+/* H6: чекбоксы выполненных советов и прогресс-бар */
+.home-action{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:8px 30px 8px 0;border-bottom:1px solid #f1f5f9;transition:opacity .15s}
+.home-action:last-child{border-bottom:0}
+.home-action-check{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border:2px solid #cbd5e1;border-radius:6px;flex-shrink:0;color:transparent;font-size:13px;font-weight:700;line-height:1;cursor:pointer;transition:all .15s;margin-top:1px;background:#fff}
+.home-action-check.done{background:#10b981;border-color:#10b981;color:#fff}
+.home-action.done{opacity:.55}
+.home-action.done .home-action-text{text-decoration:line-through;color:#64748b}
+.home-action-text{flex:1;line-height:1.5}
+.home-progress{margin:12px 0 6px;display:flex;align-items:center;gap:10px;font-size:12px;color:#64748b}
+.home-progress-bar{flex:1;height:6px;background:#f1f5f9;border-radius:99px;overflow:hidden}
+.home-progress-fill{height:100%;background:linear-gradient(90deg,#10b981 0%,#34d399 100%);transition:width .3s;border-radius:99px}
+/* Уведомление о приглушенных алертах */
+.home-muted-info{font-size:11px;color:#94a3b8;margin-top:8px;text-align:right}
+.home-muted-info a{color:#7c3aed;cursor:pointer;text-decoration:none}
+.home-muted-info a:hover{text-decoration:underline}
 .home-card-title{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);margin-bottom:12px;text-transform:uppercase}
 .home-big{font-size:32px;font-weight:700;line-height:1.1;margin-bottom:4px}
 .home-big.green{color:#22c55e}.home-big.red{color:#ef4444}
@@ -1140,7 +1171,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.1</div>
+      <div class="sidebar-version">WB Profit · v0.7.2</div>
     </div>
   </div>
 </div>
@@ -4729,21 +4760,34 @@ function renderRichAlertsBlock(){
   var alerts=window._richAlerts||[];
   var totalLoss=alerts.filter(function(a){return a.severity==='critical';})
     .reduce(function(sum,a){return sum+(Number(a.loss)||0);},0);
-  var h='<div class="home-card protect-card">';
-  h+='<div class="home-card-title">🛡️ ЗАЩИТА ОТ ПОТЕРЬ';
+  // 🔥 v0.7.2: фильтруем скрытые и приглушенные товары
+  alerts = alerts.filter(function(a){
+    var pureName = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
+    var hash = homeAlertHash(pureName+'|'+(a.msg||''));
+    if(isAlertHidden(hash)) return false;
+    if(a.nm && isNmMuted(a.nm)) return false;
+    return true;
+  });
+  // Пересчёт totalLoss после фильтрации
+  totalLoss = alerts.filter(function(a){return a.severity==='critical';})
+    .reduce(function(sum,a){return sum+(Number(a.loss)||0);},0);
+  var titleText = '🛡️ ЗАЩИТА ОТ ПОТЕРЬ';
   if(totalLoss>=100){
-    h+='<span class="protect-total">~'+fmtRub(totalLoss)+' ₽ потенциальных потерь</span>';
+    titleText += '<span class="protect-total">~'+fmtRub(totalLoss)+' ₽ потенциальных потерь</span>';
   }
-  h+='</div>';
+  var h='<div class="home-card protect-card">'+homeCardTitle('protect','🛡️','ЗАЩИТА ОТ ПОТЕРЬ'+(totalLoss>=100?' <span class="protect-total">~'+fmtRub(totalLoss)+' ₽ потенциальных потерь</span>':''))+homeCardBodyStart('protect');
   if(!alerts.length){
     h+='<div class="home-empty-mini">✅ Серьёзных рисков не обнаружено. Магазин в порядке.</div>';
-    h+='</div>';
+    h+='</div></div>';
     return h;
   }
-  // 🔥 v0.5.8: лимит 3 риска на Главной (было 5), полная картина — в Детализации
+  // 🔥 v0.5.8: лимит 3 риска на Главной, полная картина — в Детализации
   alerts.slice(0,3).forEach(function(a){
     var sevCls=a.severity==='critical'?'rich-alert-crit':(a.severity==='warning'?'rich-alert-warn':'rich-alert-info');
+    var pureName2 = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
+    var hash = homeAlertHash(pureName2+'|'+(a.msg||''));
     h+='<div class="rich-alert '+sevCls+'">';
+    h+='<button class="alert-close-btn" onclick="hideAlert(\''+hash+'\')" title="Скрыть этот риск на 14 дней">✕</button>';
     h+='<div class="rich-alert-head">';
     h+='<span class="rich-alert-icon">'+a.icon+'</span>';
     h+='<span class="rich-alert-title">'+escHtml(a.title)+'</span>';
@@ -4751,17 +4795,18 @@ function renderRichAlertsBlock(){
       h+='<span class="rich-alert-loss">~'+fmtRub(a.loss)+' ₽</span>';
     }
     h+='</div>';
-    // 🔥 v0.5.7: через itemHtml (resolveNm найдёт артикул из кеша)
-    var pureName2 = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
     h+='<div class="rich-alert-name">'+itemHtml(pureName2)+'</div>';
     h+='<div class="rich-alert-msg">'+escHtml(a.msg)+'</div>';
     if(a.hint){h+='<div class="rich-alert-hint">💡 '+escHtml(a.hint)+'</div>';}
+    if(a.nm){
+      h+='<div class="alert-mute-btn" onclick="muteNm(\''+a.nm+'\')">🙈 не показывать для этого товара</div>';
+    }
     h+='</div>';
   });
   if(alerts.length>3){
     h+='<div class="rich-alert-more"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" style="color:#7c3aed;text-decoration:none;font-weight:600">+'+(alerts.length-3)+' '+plural(alerts.length-3,'риск','риска','рисков')+' — смотреть в Детализации →</a></div>';
   }
-  h+='</div>';
+  h+='</div></div>';
   return h;
 }
 
@@ -4940,6 +4985,107 @@ function maybeAutoRefresh(snapshots){
   setPeriod(7); // 7 дней, чтобы быстро (1 запрос обычно покрывает)
   goFromHome().finally(function(){window._autoRefreshing=false;});
 }
+// === v0.7.2: UX-полировка Главной ===
+// H2/H3: скрытые алерты — храним хеш алерта в localStorage
+function homeAlertHash(text){
+  var h=0;for(var i=0;i<text.length;i++){h=((h<<5)-h)+text.charCodeAt(i);h|=0;}
+  return 'a'+Math.abs(h).toString(36);
+}
+function getHiddenAlerts(){
+  try{return JSON.parse(localStorage.getItem('home_hidden_alerts')||'{}');}catch(e){return {};}
+}
+function isAlertHidden(hash){
+  var hidden = getHiddenAlerts();
+  if(!hidden[hash]) return false;
+  // Авто-сброс через 14 дней (а то накопится)
+  if(Date.now() - hidden[hash] > 14*24*60*60*1000){
+    delete hidden[hash];
+    localStorage.setItem('home_hidden_alerts', JSON.stringify(hidden));
+    return false;
+  }
+  return true;
+}
+function hideAlert(hash){
+  var hidden = getHiddenAlerts();
+  hidden[hash] = Date.now();
+  localStorage.setItem('home_hidden_alerts', JSON.stringify(hidden));
+  loadHomeData(); // перерендер
+}
+// H3: «не показывать для этого товара» — список nm
+function getMutedNms(){
+  try{return JSON.parse(localStorage.getItem('home_muted_nms')||'[]');}catch(e){return [];}
+}
+function isNmMuted(nm){
+  if(!nm) return false;
+  return getMutedNms().indexOf(String(nm)) !== -1;
+}
+function muteNm(nm){
+  if(!nm) return;
+  var muted = getMutedNms();
+  if(muted.indexOf(String(nm))===-1) muted.push(String(nm));
+  localStorage.setItem('home_muted_nms', JSON.stringify(muted));
+  loadHomeData();
+}
+function unmuteAllNms(){
+  localStorage.removeItem('home_muted_nms');
+  loadHomeData();
+}
+// H1: сворачивание секций
+function getCollapsedSections(){
+  try{return JSON.parse(localStorage.getItem('home_collapsed_sections')||'{}');}catch(e){return {};}
+}
+function toggleSection(sectionId){
+  var collapsed = getCollapsedSections();
+  collapsed[sectionId] = !collapsed[sectionId];
+  localStorage.setItem('home_collapsed_sections', JSON.stringify(collapsed));
+  // Меняем DOM без полного перерендера
+  var body = document.querySelector('[data-section-body="'+sectionId+'"]');
+  var icon = document.querySelector('[data-section-icon="'+sectionId+'"]');
+  if(body) body.style.display = collapsed[sectionId] ? 'none' : '';
+  if(icon) icon.textContent = collapsed[sectionId] ? '▶' : '▼';
+}
+// H6: прогресс реализации советов
+function getDoneActions(){
+  try{return JSON.parse(localStorage.getItem('home_done_actions')||'{}');}catch(e){return {};}
+}
+function isActionDone(hash){
+  var done = getDoneActions();
+  if(!done[hash]) return false;
+  // Авто-сброс через 7 дней (советы быстро устаревают)
+  if(Date.now() - done[hash] > 7*24*60*60*1000){
+    delete done[hash];
+    localStorage.setItem('home_done_actions', JSON.stringify(done));
+    return false;
+  }
+  return true;
+}
+function toggleActionDone(hash){
+  var done = getDoneActions();
+  if(done[hash]) delete done[hash];
+  else done[hash] = Date.now();
+  localStorage.setItem('home_done_actions', JSON.stringify(done));
+  loadHomeData();
+}
+
+// Хелпер: заголовок карточки с возможностью свернуть и кнопкой обновить
+// sectionId — уникальный ID секции (для localStorage), icon — '🔥' / '📈' и т.д., text — текст заголовка
+function homeCardTitle(sectionId, icon, text, opts){
+  opts = opts || {};
+  var collapsed = getCollapsedSections()[sectionId];
+  var ic = collapsed ? '▶' : '▼';
+  var refreshBtn = opts.noRefresh ? '' :
+    '<button class="home-card-refresh" onclick="event.stopPropagation();var b=this;b.classList.add(\'spinning\');loadHomeData().finally(function(){setTimeout(function(){b.classList.remove(\'spinning\');},300);});" title="Обновить блок">🔄</button>';
+  return '<div class="home-card-title-row" onclick="toggleSection(\''+sectionId+'\')">'+
+    '<span class="home-card-collapse-icon" data-section-icon="'+sectionId+'">'+ic+'</span>'+
+    '<div class="home-card-title">'+icon+' '+text+'</div>'+
+    refreshBtn+
+    '</div>';
+}
+function homeCardBodyStart(sectionId){
+  var collapsed = getCollapsedSections()[sectionId];
+  return '<div data-section-body="'+sectionId+'"'+(collapsed?' style="display:none"':'')+'>';
+}
+
 function renderDashboard(snapshots){
   var el=document.getElementById('homeContent');
   if(!el||!snapshots.length){renderHomeIdle();return;}
@@ -4955,7 +5101,7 @@ function renderDashboard(snapshots){
   // Текстовый блок «Здравствуйте, Чиркова А. В. Вы заработали...»
   h+=renderHomeIntro(last,prev);
   h+='<div class="home-grid-2">';
-  h+='<div class="home-card"><div class="home-card-title">🔥 '+fmtRusDate(last.day).toUpperCase()+'</div>';
+  h+='<div class="home-card">'+homeCardTitle('today','🔥',fmtRusDate(last.day).toUpperCase())+homeCardBodyStart('today');
   var profit=Number(last.profit||0);
   h+='<div class="home-big '+(profit>=0?'green':'red')+'">'+(profit>=0?'+':'−')+fmtR(Math.abs(profit))+'</div>';
   h+='<div class="home-sub">чистая прибыль за день</div>';
@@ -4974,25 +5120,25 @@ function renderDashboard(snapshots){
     h+='<div class="home-delta '+(diff>=0?'green':'red')+'">'+(diff>=0?'↑':'↓')+' '+pctTxt+' vs '+fmtRusDate(prev.day)+'</div>';
   }
   h+='<div class="home-meta">Продано: '+(last.sales_count||0)+' шт · Возвратов: '+(last.returns_count||0)+'</div>';
-  h+='</div>';
+  h+='</div></div>';
   // График
   var chartDays=snapshots.slice(-14);
-  h+='<div class="home-card"><div class="home-card-title">📈 ПОСЛЕДНИЕ '+chartDays.length+' ДНЕЙ</div>';
+  h+='<div class="home-card">'+homeCardTitle('chart','📈','ПОСЛЕДНИЕ '+chartDays.length+' ДНЕЙ')+homeCardBodyStart('chart');
   h+=renderMiniChart(chartDays);
   if(chartDays.length){
     var best=chartDays.reduce(function(a,b){return Number(a.profit||0)>Number(b.profit||0)?a:b;});
     var worst=chartDays.reduce(function(a,b){return Number(a.profit||0)<Number(b.profit||0)?a:b;});
     h+='<div class="home-meta" style="margin-top:8px">Лучший день: '+shortDate(best.day)+' ('+fmtRSign(best.profit)+') · Худший: '+shortDate(worst.day)+' ('+fmtRSign(worst.profit)+')</div>';
   }
-  h+='</div>';
+  h+='</div></div>';
   h+='</div>';
   // Block 3: Куда ушли деньги — за день
-  h+='<div class="home-card"><div class="home-card-title">⚖️ КУДА УШЛИ ДЕНЬГИ '+fmtRusDate(last.day).toUpperCase()+'</div>';
+  h+='<div class="home-card">'+homeCardTitle('moneyflow','⚖️','КУДА УШЛИ ДЕНЬГИ '+fmtRusDate(last.day).toUpperCase())+homeCardBodyStart('moneyflow');
   h+=renderMoneyFlow(last);
-  h+='</div>';
+  h+='</div></div>';
   // Block 4+5: Топ + Тревоги
   h+='<div class="home-grid-2">';
-  h+='<div class="home-card"><div class="home-card-title">🏆 ТОП-3 '+fmtRusDate(last.day).toUpperCase()+'</div>';
+  h+='<div class="home-card">'+homeCardTitle('top3','🏆','ТОП-3 '+fmtRusDate(last.day).toUpperCase())+homeCardBodyStart('top3');
   var top=Array.isArray(last.top_items)?last.top_items:[];
   if(top.length){
     top.slice(0,3).forEach(function(it,i){
@@ -5004,7 +5150,7 @@ function renderDashboard(snapshots){
   } else {
     h+='<div class="home-empty-mini">Нет данных по товарам</div>';
   }
-  h+='</div>';
+  h+='</div></div>';
   // 🔥 v0.5.9: Главная нацелена на вчера — показываем алерты за последний день (вчера).
   // Для трендов (возвраты/продажи/логистика) collectWeekAlertsForYesterday использует
   // последние 7 дней как baseline, а товарные алерты берёт ТОЛЬКО за вчера.
@@ -5017,47 +5163,81 @@ function renderDashboard(snapshots){
       yesterdayLabel = ' ('+lastDay.getDate()+' '+months[lastDay.getMonth()]+')';
     }catch(e){}
   }
-  h+='<div class="home-card"><div class="home-card-title">🎯 НА ЧТО ОБРАТИТЬ ВНИМАНИЕ'+yesterdayLabel+'</div>';
+  h+='<div class="home-card">'+homeCardTitle('attention','🎯','НА ЧТО ОБРАТИТЬ ВНИМАНИЕ'+yesterdayLabel)+homeCardBodyStart('attention');
   var weekAlerts=collectWeekAlertsForYesterday(alertDays);
   // 🔥 v0.5.9 fix: советы должны учитывать ВЕСЬ период, а не только вчера.
-  // Если вчера всё спокойно, советы по убыточным товарам/высокому ДРР всё равно нужны.
   var allPeriodAlerts=collectWeekAlerts(alertDays);
-  if(weekAlerts.length){
-    weekAlerts.slice(0,3).forEach(function(a){
-      // 🔥 v0.5.7: универсальный itemHtml — гарантирует артикул
-      // Извлекаем "чистое" имя из a.name (могло быть "имя (арт. NNN)")
+  // 🔥 v0.7.2: фильтруем скрытые алерты и приглушенные товары
+  var visibleAlerts = weekAlerts.filter(function(a){
+    var pureName = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
+    var hash = homeAlertHash(pureName+'|'+(a.msg||''));
+    if(isAlertHidden(hash)) return false;
+    if(a.nm && isNmMuted(a.nm)) return false;
+    return true;
+  });
+  if(visibleAlerts.length){
+    visibleAlerts.slice(0,3).forEach(function(a){
       var pureName = (a.name||'').replace(/\s*\(арт\.\s*\d+\)\s*$/,'').trim();
       var alertNameHtml = itemHtml(pureName, a.nm);
-      // В msg тоже оборачиваем все упоминания (арт.) в art-tag для согласованности
       var alertMsg = (a.msg||'').replace(/\(арт\.\s*(\d+)\)/g, '<span class="art-tag" title="Скопируйте артикул">$1</span>');
-      h+='<div class="home-alert"><div class="alert-name">'+alertNameHtml+'</div><div class="alert-msg">'+alertMsg+'</div></div>';
+      var hash = homeAlertHash(pureName+'|'+(a.msg||''));
+      var muteHtml = a.nm ? '<div class="alert-mute-btn" onclick="muteNm(\''+a.nm+'\')">🙈 не показывать для этого товара</div>' : '';
+      h+='<div class="home-alert">'+
+        '<button class="alert-close-btn" onclick="hideAlert(\''+hash+'\')" title="Скрыть этот алерт на 14 дней">✕</button>'+
+        '<div class="alert-name">'+alertNameHtml+'</div>'+
+        '<div class="alert-msg">'+alertMsg+'</div>'+
+        muteHtml+
+      '</div>';
     });
+  } else if(weekAlerts.length > 0) {
+    h+='<div class="home-empty-mini">Все алерты скрыты. <a onclick="localStorage.removeItem(\'home_hidden_alerts\');loadHomeData()" style="color:#7c3aed;cursor:pointer">Показать снова</a></div>';
   } else {
     h+='<div class="home-empty-mini">Всё спокойно</div>';
   }
-  h+='</div>';
+  // Если есть приглушенные товары — небольшое уведомление
+  var mutedCount = getMutedNms().length;
+  if(mutedCount > 0){
+    h+='<div class="home-muted-info">🙈 Скрыто товаров: '+mutedCount+' · <a onclick="unmuteAllNms()">показать все</a></div>';
+  }
+  h+='</div></div>';
   h+='</div>';
   // ═════ ЗАЩИТА ОТ ПОТЕРЬ (rich alerts) ═════
   h+=renderRichAlertsBlock();
-  // Block 6: Что сделать
-  h+='<div class="home-card"><div class="home-card-title">💡 ЧТО СДЕЛАТЬ СЕГОДНЯ</div>';
-  // 🔥 v0.5.9 fix: советы строим из всех алертов периода, не только вчерашних
+  // Block 6: Что сделать — с чекбоксами выполненных и прогресс-баром
+  h+='<div class="home-card">'+homeCardTitle('actions','💡','ЧТО СДЕЛАТЬ СЕГОДНЯ')+homeCardBodyStart('actions');
+  // 🔥 v0.5.9 fix: советы строим из всех алертов периода
   var actions=buildActions(alertDays,allPeriodAlerts);
+  // 🔥 v0.7.2: считаем сколько выполнено для прогресс-бара
+  var topActions = actions.slice(0,3);
+  var doneCount = topActions.filter(function(a){return isActionDone(homeAlertHash(a));}).length;
   if(actions.length){
-    // 🔥 v0.5.8: лимит 3 совета на Главной (было всё), остальное — в Детализации
-    actions.slice(0,3).forEach(function(a,i){
-      // 🔥 v0.5.7: оборачиваем все (арт. NNN) в art-tag + ищем потерянные nm в кеше
+    if(topActions.length){
+      // Прогресс-бар сверху
+      var pct = topActions.length ? Math.round(doneCount/topActions.length*100) : 0;
+      h+='<div class="home-progress">'+
+        '<span>Выполнено: '+doneCount+' из '+topActions.length+'</span>'+
+        '<div class="home-progress-bar"><div class="home-progress-fill" style="width:'+pct+'%"></div></div>'+
+        '<span>'+pct+'%</span>'+
+      '</div>';
+    }
+    topActions.forEach(function(a,i){
       var actionHtml = a.replace(/\(арт\.\s*(\d+)\)/g, '<span class="art-tag" title="Скопируйте артикул">$1</span>');
-      h+='<div class="home-action">'+(i+1)+'. '+actionHtml+'</div>';
+      var hash = homeAlertHash(a);
+      var done = isActionDone(hash);
+      h+='<div class="home-action'+(done?' done':'')+'" onclick="event.stopPropagation();if(event.target.classList.contains(\'art-tag\'))return;toggleActionDone(\''+hash+'\')">'+
+        '<span class="home-action-check'+(done?' done':'')+'">'+(done?'✓':'')+'</span>'+
+        '<span class="home-action-text">'+(i+1)+'. '+actionHtml+'</span>'+
+        '<button class="alert-close-btn" onclick="event.stopPropagation();hideAlert(\''+hash+'\')" title="Скрыть совет на 14 дней">✕</button>'+
+      '</div>';
     });
     if(actions.length>3){
-      h+='<div class="home-action" style="border-bottom:0;padding-top:10px"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" style="color:#7c3aed;text-decoration:none;font-weight:600">+'+(actions.length-3)+' '+plural(actions.length-3,'совет','совета','советов')+' — смотреть в Детализации →</a></div>';
+      h+='<div class="home-action" style="border-bottom:0;padding-top:10px;cursor:default"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" style="color:#7c3aed;text-decoration:none;font-weight:600">+'+(actions.length-3)+' '+plural(actions.length-3,'совет','совета','советов')+' — смотреть в Детализации →</a></div>';
     }
   } else {
     h+='<div class="home-empty-mini">Конкретных рекомендаций нет — продолжайте в том же духе!</div>';
   }
   h+='<div style="margin-top:14px;text-align:right"><a href="#" onclick="showSection(\'detail\',document.getElementById(\'nav-detail\'));return false;" class="home-link">Открыть детали в Детализации →</a></div>';
-  h+='</div>';
+  h+='</div></div>';
   el.innerHTML=h;
 }
 
