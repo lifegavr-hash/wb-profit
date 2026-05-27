@@ -70,17 +70,17 @@
           "name": "Free",
           "price": "0",
           "priceCurrency": "RUB",
-          "description": "Базовая аналитика за 30 дней"
+          "description": "Базовая аналитика для знакомства с продуктом"
         },
         {
           "@type": "Offer",
-          "name": "Бизнес",
-          "price": "690",
+          "name": "Старт",
+          "price": "490",
           "priceCurrency": "RUB",
-          "description": "Все функции аналитики, безлимит периода",
+          "description": "Для одного магазина: калькулятор до 50 SKU, период 30 дней",
           "priceSpecification": {
             "@type": "UnitPriceSpecification",
-            "price": "690",
+            "price": "490",
             "priceCurrency": "RUB",
             "unitText": "MONTH"
           }
@@ -88,12 +88,25 @@
         {
           "@type": "Offer",
           "name": "PRO",
-          "price": "890",
+          "price": "990",
           "priceCurrency": "RUB",
-          "description": "Бизнес + AI советник + прогноз прибыли + сравнение периодов",
+          "description": "Безлимит SKU, период 365 дней, полная аналитика, подбор товара, Telegram",
           "priceSpecification": {
             "@type": "UnitPriceSpecification",
-            "price": "890",
+            "price": "990",
+            "priceCurrency": "RUB",
+            "unitText": "MONTH"
+          }
+        },
+        {
+          "@type": "Offer",
+          "name": "Бизнес",
+          "price": "1990",
+          "priceCurrency": "RUB",
+          "description": "Всё что в PRO + 2 кабинета WB, совместный доступ, Excel, приоритетная поддержка, AI-чат",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "1990",
             "priceCurrency": "RUB",
             "unitText": "MONTH"
           }
@@ -483,7 +496,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   <div class="ai-inner">
     <div class="ai-badge">PRO — AI советник</div>
     <h2>Не просто цифры — конкретные советы</h2>
-    <p>AI анализирует ваши данные и говорит что нужно изменить. Как личный финансовый директор за 890 ₽ в месяц.</p>
+    <p>AI анализирует ваши данные и говорит что нужно изменить. Как личный финансовый директор за 990 ₽ в месяц.</p>
     <div class="ai-example">Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Рекомендую перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит около 2 800 ₽/мес.</div>
   </div>
 </section>
@@ -501,31 +514,40 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   <div class="section-h2">Простые цены</div>
   <div class="pricing-grid">
     <div class="plan">
-      <div class="plan-badge starter">Старт</div>
-      <div class="plan-name">Базовый</div>
-      <div class="plan-price-main">490 <span>₽/мес</span></div>
-      <div class="plan-price-sub">690 ₽/мес без годовой подписки</div>
-      <div class="plan-desc">Для малого бизнеса</div>
-      <ul class="plan-features"><li>Калькулятор прибыли</li><li>Учёт рекламы и штрафов</li><li>График по месяцам</li><li>Уведомления об убытках</li><li>До 50 товаров</li></ul>
+      <div class="plan-badge starter">Free</div>
+      <div class="plan-name">Free</div>
+      <div class="plan-price-main">0 <span>₽/мес</span></div>
+      <div class="plan-price-sub">Бесплатно навсегда</div>
+      <div class="plan-desc">Базовая аналитика для знакомства с продуктом</div>
+      <ul class="plan-features"><li>Калькулятор до 30 SKU</li><li>Период до 30 дней</li><li>Главная и защита от потерь</li><li>1 кабинет WB</li></ul>
       <a href="/login.html" class="plan-btn outline">Начать бесплатно</a>
     </div>
+    <div class="plan">
+      <div class="plan-badge starter">Старт</div>
+      <div class="plan-name">Старт</div>
+      <div class="plan-price-main">490 <span>₽/мес</span></div>
+      <div class="plan-price-sub">Для одного магазина</div>
+      <div class="plan-desc">Для малого бизнеса</div>
+      <ul class="plan-features"><li>Калькулятор до 50 SKU</li><li>Период до 30 дней</li><li>Главная: защита от потерь и советы</li><li>Email-уведомления раз в день</li><li>1 кабинет WB</li><li>История 30 дней</li></ul>
+      <a href="/login.html" class="plan-btn outline">Выбрать Старт</a>
+    </div>
     <div class="plan popular">
-      <div class="plan-badge biz">Популярный</div>
-      <div class="plan-name">Бизнес</div>
-      <div class="plan-price-main">690 <span>₽/мес</span></div>
-      <div class="plan-price-sub">890 ₽/мес без годовой подписки</div>
-      <div class="plan-desc">Для среднего бизнеса</div>
-      <ul class="plan-features"><li>Всё из Базового</li><li>Умные алерты</li><li>ДРР по товарам</li><li>Экспорт в Excel</li><li>До 150 товаров</li></ul>
-      <a href="/login.html" class="plan-btn filled">Выбрать Бизнес</a>
+      <div class="plan-badge pro">Популярный</div>
+      <div class="plan-name">PRO</div>
+      <div class="plan-price-main">990 <span>₽/мес</span></div>
+      <div class="plan-price-sub">Безлимит и все возможности</div>
+      <div class="plan-desc">Для серьёзного селлера</div>
+      <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>Telegram-уведомления</li><li>1 кабинет WB</li><li>История 1 год</li></ul>
+      <a href="/login.html" class="plan-btn filled">Выбрать PRO</a>
     </div>
     <div class="plan">
-      <div class="plan-badge pro">PRO</div>
-      <div class="plan-name">PRO</div>
-      <div class="plan-price-main">890 <span>₽/мес</span></div>
-      <div class="plan-price-sub">1 090 ₽/мес без годовой подписки</div>
-      <div class="plan-desc">Для серьёзного бизнеса + AI</div>
-      <ul class="plan-features"><li>Всё из Бизнеса</li><li>AI советник</li><li>Прогноз прибыли</li><li>Сравнение периодов</li><li>Безлимит товаров</li></ul>
-      <a href="/login.html" class="plan-btn outline">Выбрать PRO</a>
+      <div class="plan-badge biz">Бизнес</div>
+      <div class="plan-name">Бизнес</div>
+      <div class="plan-price-main">1 990 <span>₽/мес</span></div>
+      <div class="plan-price-sub">Для команды и нескольких магазинов</div>
+      <div class="plan-desc">Команда + AI-чат</div>
+      <ul class="plan-features"><li>Всё что в PRO</li><li>2 кабинета WB (доп = 490 ₽/мес)</li><li>Совместный доступ — 3 пользователя</li><li>Экспорт в Excel/CSV</li><li>Приоритетная поддержка (4 часа)</li><li>AI-чат с магазином (скоро)</li><li>История 2 года</li></ul>
+      <a href="/login.html" class="plan-btn outline">Выбрать Бизнес</a>
     </div>
   </div>
   <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px;">14 дней бесплатно на любом тарифе · Карта не нужна · Отмена в любой момент</p>
