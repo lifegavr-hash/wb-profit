@@ -351,7 +351,7 @@
 .intro-stage.exiting{opacity:0;transform:translate(-50%,calc(-50% - 30px)) scale(.95);transition:opacity .35s ease,transform .35s ease}
 
 .intro-label{font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;letter-spacing:.4em;color:rgba(167,139,250,.7);text-transform:uppercase;margin-bottom:18px}
-.intro-number-big{font-family:'Manrope',sans-serif;font-size:clamp(48px,10vw,108px);font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 0 60px rgba(124,58,237,.4),0 0 100px rgba(167,139,250,.2)}
+.intro-number-big{font-family:'Manrope',sans-serif;font-size:clamp(48px,10vw,108px);font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 0 60px rgba(124,58,237,.4),0 0 100px rgba(167,139,250,.2);white-space:nowrap}
 .intro-number-big.intro-profit{background:linear-gradient(135deg,#34d399 0%,#a7f3d0 50%,#34d399 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:profitSheen 2s ease infinite;text-shadow:0 0 80px rgba(52,211,153,.45)}
 @keyframes profitSheen{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 .intro-currency{font-size:.55em;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.05em}
@@ -359,7 +359,7 @@
 
 /* Стадия 2 — зачёркивание */
 .intro-strike{position:relative;display:inline-block}
-.intro-strike-text{font-family:'Manrope',sans-serif;font-size:clamp(36px,7vw,72px);font-weight:800;color:#f87171;letter-spacing:-.03em;line-height:1;position:relative;text-shadow:0 0 40px rgba(248,113,113,.35)}
+.intro-strike-text{font-family:'Manrope',sans-serif;font-size:clamp(36px,7vw,72px);font-weight:800;color:#f87171;letter-spacing:-.03em;line-height:1;position:relative;text-shadow:0 0 40px rgba(248,113,113,.35);white-space:nowrap}
 .intro-strike.show .intro-strike-text::after{content:'';position:absolute;top:50%;left:-10%;right:-10%;height:4px;background:linear-gradient(90deg,transparent,#f87171 20%,#f87171 80%,transparent);transform:scaleX(0);transform-origin:left;animation:strikeLine .55s cubic-bezier(.76,0,.24,1) .2s forwards}
 @keyframes strikeLine{to{transform:scaleX(1)}}
 .intro-strike-label{font-family:'Manrope',sans-serif;font-size:14px;font-weight:500;color:rgba(248,113,113,.6);margin-top:14px;letter-spacing:.3em;text-transform:uppercase}
@@ -745,17 +745,17 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   <div class="intro-content">
     <div class="intro-stage" id="introStage1">
       <div class="intro-label">ВЫПЛАТА ОТ WB</div>
-      <div class="intro-number-big">380 000 <span class="intro-currency">₽</span></div>
+      <div class="intro-number-big">380&nbsp;000 <span class="intro-currency">₽</span></div>
     </div>
     <div class="intro-stage" id="introStage2">
       <div class="intro-strike">
-        <div class="intro-strike-text">−357 000 ₽</div>
+        <div class="intro-strike-text">−357&nbsp;000 ₽</div>
         <div class="intro-strike-label">скрытых расходов</div>
       </div>
     </div>
     <div class="intro-stage" id="introStage3">
       <div class="intro-label">РЕАЛЬНАЯ ПРИБЫЛЬ</div>
-      <div class="intro-number-big intro-profit">23 000 <span class="intro-currency">₽</span></div>
+      <div class="intro-number-big intro-profit">23&nbsp;000 <span class="intro-currency">₽</span></div>
     </div>
     <div class="intro-stage" id="introStage4">
       <div class="intro-logo">
