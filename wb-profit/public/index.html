@@ -26,6 +26,128 @@
 <meta name="twitter:title" content="WB Profit — реальная прибыль на Wildberries">
 <meta name="twitter:description" content="Аналитика продаж WB с учётом всех расходов. Демо без регистрации.">
 <meta name="twitter:image" content="https://wb-profit.vercel.app/og-image.svg">
+
+<!-- 🔥 v0.7.7.14: Structured Data (JSON-LD) для Google/Yandex rich snippets -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://wb-profit.vercel.app/#organization",
+      "name": "WB Profit",
+      "url": "https://wb-profit.vercel.app/",
+      "logo": "https://wb-profit.vercel.app/favicon.svg",
+      "description": "Сервис аналитики продаж Wildberries: реальная прибыль с учётом всех расходов, алерты о потерях, ДРР по товарам.",
+      "email": "ooovsktrans@mail.ru",
+      "areaServed": "RU",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Customer Support",
+        "email": "ooovsktrans@mail.ru",
+        "availableLanguage": ["ru"]
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://wb-profit.vercel.app/#website",
+      "url": "https://wb-profit.vercel.app/",
+      "name": "WB Profit",
+      "description": "Аналитика продаж Wildberries",
+      "publisher": {"@id": "https://wb-profit.vercel.app/#organization"},
+      "inLanguage": "ru-RU"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "WB Profit",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "url": "https://wb-profit.vercel.app/",
+      "description": "Калькулятор чистой прибыли селлера Wildberries. Учитывает комиссии, логистику, рекламу, себестоимость. Алерты о потерях и кассовый разрыв.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free",
+          "price": "0",
+          "priceCurrency": "RUB",
+          "description": "Базовая аналитика за 30 дней"
+        },
+        {
+          "@type": "Offer",
+          "name": "Бизнес",
+          "price": "690",
+          "priceCurrency": "RUB",
+          "description": "Все функции аналитики, безлимит периода",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "690",
+            "priceCurrency": "RUB",
+            "unitText": "MONTH"
+          }
+        },
+        {
+          "@type": "Offer",
+          "name": "PRO",
+          "price": "890",
+          "priceCurrency": "RUB",
+          "description": "Бизнес + AI советник + прогноз прибыли + сравнение периодов",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "890",
+            "priceCurrency": "RUB",
+            "unitText": "MONTH"
+          }
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Это безопасно — давать API токен?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "API токен WB даёт право только на чтение данных — мы не можем совершать действия в вашем кабинете. Данные хранятся в зашифрованном виде."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем отличается от отчётов самого WB?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "WB показывает выплаты и продажи отдельно. Мы сводим всё в одну картину: выплата минус все расходы = реальная прибыль по каждому товару. Плюс ДРР, алерты и AI советы."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли что-то устанавливать?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. Работает в браузере — открыли сайт, вставили токен, смотрите данные."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как отменить подписку?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В любой момент в личном кабинете. Никаких штрафов и скрытых условий."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "За какой период загружаются данные?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "За последние 12 месяцев. Данные обновляются автоматически каждый день."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <!-- 🔥 v0.7.7.6: Yandex.Metrika (плейсхолдер — подставь YM_COUNTER_ID) -->
 <script>
 (function(){
