@@ -1,9 +1,12 @@
 // /api/snapshots
-// POST: { snapshots: [{day, sales_count, ...}, ...] }  — сохранить снапшоты (без лимита, пусть копится)
-// GET  ?days=7                                        — отдать последние N дней, обрезается до max_history_days тарифа
+// POST: { snapshots: [...], wb_account_id? }  — сохранить снапшоты для активного кабинета
+// GET  ?days=7&wb_account_id=xxx              — отдать последние N дней для кабинета
+//
+// v0.7.7.30: данные разделены по wb_account_id. Если клиент не передал — используется default.
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
+import { resolveWbAccountId } from '../lib/wb-account.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -14,7 +17,6 @@ export default async function handler(req, res) {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ error: 'Нет токена' });
 
-  // v0.7.1: получаем план + лимиты из БД (с кешем 5 минут)
   const planResult = await getUserPlanWithLimits(token);
   if (planResult.error) {
     return res.status(planResult.status || 500).json({ error: planResult.error, message: planResult.message });
@@ -22,9 +24,20 @@ export default async function handler(req, res) {
   const user = planResult.user;
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+  // 🔥 v0.7.7.30: разрешаем wb_account_id из query (GET) или body (POST)
+  const providedWbId = req.query.wb_account_id 
+    || (req.body && req.body.wb_account_id) 
+    || null;
+  const wbResolve = await resolveWbAccountId(user.id, providedWbId);
+  if (!wbResolve.ok) {
+    return res.status(wbResolve.status).json({ 
+      error: wbResolve.error, 
+      message: wbResolve.message 
+    });
+  }
+  const wbAccountId = wbResolve.wb_account_id;
+
   if (req.method === 'GET') {
-    // 🔥 v0.7.1: лимит истории берётся из таблицы plans (max_history_days)
-    // Free/Start: 30, PRO: 365, Business: 730. Админ — без лимита.
     const requested = parseInt(req.query.days || '7', 10);
     const maxHistory = planResult.isAdmin
       ? 99999
@@ -40,13 +53,16 @@ export default async function handler(req, res) {
       .from('daily_snapshots')
       .select('*')
       .eq('user_id', user.id)
+      .eq('wb_account_id', wbAccountId)
       .gte('day', sinceIso)
       .order('day', { ascending: true });
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Если фронт запросил больше чем тариф позволяет — добавим info в ответ
-    const response = { snapshots: data || [] };
+    const response = { 
+      snapshots: data || [],
+      wb_account_id: wbAccountId,
+    };
     if (wasTrimmed) {
       response.warning = {
         type: 'HISTORY_LIMIT',
@@ -64,9 +80,9 @@ export default async function handler(req, res) {
     const snapshots = Array.isArray(body.snapshots) ? body.snapshots : [];
     if (!snapshots.length) return res.status(400).json({ error: 'snapshots пустой' });
 
-    // Запись — без лимита. Пусть копится: при апгрейде сразу видна вся история.
     const rows = snapshots.map((s) => ({
       user_id: user.id,
+      wb_account_id: wbAccountId,
       day: s.day,
       sales_count: s.sales_count || 0,
       returns_count: s.returns_count || 0,
@@ -86,12 +102,17 @@ export default async function handler(req, res) {
       updated_at: new Date().toISOString(),
     }));
 
+    // onConflict теперь (user_id, wb_account_id, day) — новый PK
     const { error } = await supabase
       .from('daily_snapshots')
-      .upsert(rows, { onConflict: 'user_id,day' });
+      .upsert(rows, { onConflict: 'user_id,wb_account_id,day' });
 
     if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({ success: true, saved: rows.length });
+    return res.status(200).json({ 
+      success: true, 
+      saved: rows.length,
+      wb_account_id: wbAccountId,
+    });
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.29'
+  APP_VERSION: 'v0.7.7.30'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -518,7 +518,7 @@ html[data-theme="dark"] .expired-banner-text b{color:#f87171}
 .topbar-search-kbd{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;color:#94a3b8;font-family:monospace}
 @media(max-width:680px){.topbar-search-text{display:none}.topbar-search-kbd{display:none}.topbar-search-btn{padding:7px 10px}}
 
-/* 🔥 v0.7.7.29: Переключатель кабинетов WB в topbar */
+/* 🔥 v0.7.7.30: Переключатель кабинетов WB в topbar */
 .wb-switcher{position:relative}
 .wb-switcher-btn{display:flex;align-items:center;gap:6px;background:#f8fafc;color:#1a0f3c;border:1px solid #e2e8f0;padding:7px 12px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
 .wb-switcher-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
@@ -1873,7 +1873,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.29</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.30</div>
     </div>
   </div>
 </div>
@@ -1887,7 +1887,7 @@ tr.loss td{background:#fff5f5}
       <span class="topbar-search-text">Поиск</span>
       <span class="topbar-search-kbd">/</span>
     </button>
-    <!-- 🔥 v0.7.7.29: Переключатель кабинетов (показывается если >1 кабинет) -->
+    <!-- 🔥 v0.7.7.30: Переключатель кабинетов (показывается если >1 кабинет) -->
     <div class="wb-switcher" id="wbSwitcher" style="display:none">
       <button class="wb-switcher-btn" onclick="toggleWbSwitcher()" id="wbSwitcherBtn">
         <span class="wb-switcher-icon">🏪</span>
@@ -1997,7 +1997,7 @@ tr.loss td{background:#fff5f5}
           </button>
         </div>
       </div>
-      <!-- 🔥 v0.7.7.29: Кабинеты WB (множественные на Бизнес-тарифе) -->
+      <!-- 🔥 v0.7.7.30: Кабинеты WB (множественные на Бизнес-тарифе) -->
       <div class="card" style="margin-top:14px" id="wbAccountsCard">
         <div class="ct">Кабинеты WB
           <span id="wbAccountsLimitHint" style="font-weight:400;color:var(--muted);font-size:12px;margin-left:6px"></span>
@@ -2624,7 +2624,7 @@ async function init(){
   // Фронтовый profile из Supabase больше не источник истины для лимитов —
   // источник: /api/profile (там JOIN с таблицей plans, с проверкой подписи JWT).
   fetchPlanLimits(session.access_token);
-  // 🔥 v0.7.7.29: подтягиваем кабинеты WB (и мигрируем localStorage.wb_token если нужно)
+  // 🔥 v0.7.7.30: подтягиваем кабинеты WB (и мигрируем localStorage.wb_token если нужно)
   if(typeof loadWbAccounts === 'function') loadWbAccounts();
   // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
   // (_currentPeriod уже подтянулся из localStorage)
@@ -3541,7 +3541,7 @@ function saveTokenManual(){
 }
 
 // =====================================================================
-// 🔥 v0.7.7.29: Управление кабинетами WB (Бизнес-тариф — до 2 кабинетов)
+// 🔥 v0.7.7.30: Управление кабинетами WB (Бизнес-тариф — до 2 кабинетов)
 // =====================================================================
 
 window._wbAccounts = [];

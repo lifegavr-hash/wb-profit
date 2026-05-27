@@ -1,10 +1,13 @@
 // /api/calcs — CRUD истории подборов товаров v0.4.1
-// GET    — список всех подборов пользователя (с фильтрами/сортировкой)
-// POST   — создать или обновить (если есть id)
-// DELETE — удалить (нужен ?id=...)
+// GET    ?wb_account_id=xxx   — список подборов для кабинета (фильтры/сорт)
+// POST   { ..., wb_account_id }  — создать (с учётом активного кабинета) или обновить (по id)
+// DELETE ?id=...                  — удалить (id уникален, кабинет проверяется RLS+FK)
+//
+// v0.7.7.30: данные разделены по wb_account_id.
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlan } from '../lib/plan-check.js';
+import { resolveWbAccountId } from '../lib/wb-account.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,6 +25,22 @@ export default async function handler(req, res) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return res.status(401).json({ error: 'Неверный токен' });
 
+  // 🔥 v0.7.7.30: разрешаем wb_account_id (DELETE может без него — id уникален)
+  const providedWbId = req.query.wb_account_id 
+    || (req.body && req.body.wb_account_id) 
+    || null;
+  let wbAccountId = null;
+  if (req.method !== 'DELETE') {
+    const wbResolve = await resolveWbAccountId(user.id, providedWbId);
+    if (!wbResolve.ok) {
+      return res.status(wbResolve.status).json({ 
+        error: wbResolve.error, 
+        message: wbResolve.message 
+      });
+    }
+    wbAccountId = wbResolve.wb_account_id;
+  }
+
   // ───── GET — список подборов ─────
   if (req.method === 'GET') {
     const { sort = 'created_desc', q = '', minMargin, model, source } = req.query;
@@ -29,6 +48,7 @@ export default async function handler(req, res) {
       .from('unit_calc_history')
       .select('*')
       .eq('user_id', user.id)
+      .eq('wb_account_id', wbAccountId)   // 🔥 v0.7.7.30
       .limit(200);
 
     if (q) query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%,subject_name.ilike.%${q}%,notes.ilike.%${q}%`);
@@ -49,7 +69,7 @@ export default async function handler(req, res) {
 
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
-    return res.status(200).json({ calcs: data || [] });
+    return res.status(200).json({ calcs: data || [], wb_account_id: wbAccountId });
   }
 
   // ───── POST — создать или обновить ─────
@@ -75,6 +95,7 @@ export default async function handler(req, res) {
 
     const row = {
       user_id: user.id,
+      wb_account_id: wbAccountId,   // 🔥 v0.7.7.30
       name: String(b.name || 'Без названия').slice(0, 200),
       category: b.category || null,
       retail_price: Number(b.retail_price) || 0,
@@ -92,7 +113,6 @@ export default async function handler(req, res) {
       profit: Number(b.profit) || 0,
       margin_pct: Number(b.margin_pct) || 0,
       roi_pct: Number(b.roi_pct) || 0,
-      // 🆕 v0.4
       subject_id: b.subject_id ? Number(b.subject_id) : null,
       subject_name: b.subject_name || null,
       model: ['fbo','fbs','dbs'].includes(b.model) ? b.model : 'fbo',
@@ -107,9 +127,11 @@ export default async function handler(req, res) {
     };
 
     if (b.id) {
+      // UPDATE: НЕ меняем wb_account_id при редактировании (запись остаётся в своём кабинете)
+      const { wb_account_id, ...updateRow } = row;
       const { data, error } = await supabase
         .from('unit_calc_history')
-        .update(row)
+        .update(updateRow)
         .eq('id', b.id)
         .eq('user_id', user.id)
         .select()
