@@ -295,32 +295,34 @@
     }
     draw();
 
-    // Остановить когда intro закончится (через 4 сек)
-    setTimeout(function(){ stopped = true; }, 4200);
+    // Остановить когда intro закончится
+    setTimeout(function(){ stopped = true; }, 7500);
   }
 
   // === Последовательность стадий ===
   function runIntroSequence(){
-    var stages = ['introStage1', 'introStage2', 'introStage3', 'introStage4'];
+    var stages = ['introStage1', 'introStage2', 'introStage3', 'introStage4', 'introStage5'];
     var els = stages.map(function(id){ return document.getElementById(id); });
     if(els.some(function(e){ return !e; })) return; // если HTML не загрузился — выйти
 
-    // Таймлайн (миллисекунды от начала):
-    //   0ms     → stage1 show (380 000 ₽)
-    //   900ms   → stage1 exit, stage2 show (зачёркивание)
-    //   1700ms  → stage2 exit, stage3 show (23 000 ₽ profit)
-    //   2600ms  → stage3 exit, stage4 show (логотип)
-    //   3400ms  → CSS animation introOut запускается
-    //   4100ms  → DOM убирается
+    // 🔥 v0.7.7.25: Замедленный таймлайн (миллисекунды от начала):
+    //   0ms     → stage1 show: 380 000 ₽ + "Так показывает кабинет продавца"
+    //   1500ms  → stage1 exit, stage2 show: −357 000 ₽ + "Логистика, реклама..."
+    //   3000ms  → stage2 exit, stage3 show: 23 000 ₽ + "Вот сколько вы заработали"
+    //   4500ms  → stage3 exit, stage4 show: цитата "Считай каждый рубль..."
+    //   5600ms  → stage4 exit, stage5 show: WB Profit логотип + tagline
+    //   6500ms  → CSS animation introOut (0.8s)
+    //   7300ms  → localStorage флаг + DOM hide
     setTimeout(function(){ els[0].classList.add('show'); }, 0);
-    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 900);
-    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 1700);
-    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 2600);
+    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 1500);
+    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 3000);
+    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 4500);
+    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 5600);
     setTimeout(function(){
       try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
       var ov = document.getElementById('introOverlay');
       if(ov) ov.classList.add('intro-hidden');
-    }, 4200);
+    }, 7300);
   }
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -335,7 +337,7 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 /* 🔥 v0.7.7.24: Intro Matrix-rain заставка — перебивает всё на странице */
-.intro-overlay{position:fixed;inset:0;background:#0a0a14;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 0.7s cubic-bezier(.76,0,.24,1) 3.4s forwards;will-change:opacity,visibility}
+.intro-overlay{position:fixed;inset:0;background:#0a0a14;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 0.8s cubic-bezier(.76,0,.24,1) 6.5s forwards;will-change:opacity,visibility}
 .intro-overlay.intro-skipped{animation:introOut 0.35s ease forwards;animation-delay:0s}
 @keyframes introOut{
   0%{opacity:1;visibility:visible;backdrop-filter:blur(0)}
@@ -346,16 +348,35 @@
 .intro-content{position:relative;z-index:3;text-align:center;padding:20px;max-width:90vw}
 
 /* Стадии — все скрыты, показываются через .show */
-.intro-stage{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.16,1,.3,1)}
+.intro-stage{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;opacity:0;transition:opacity .6s ease,transform .6s cubic-bezier(.16,1,.3,1)}
 .intro-stage.show{opacity:1}
-.intro-stage.exiting{opacity:0;transform:translate(-50%,calc(-50% - 30px)) scale(.95);transition:opacity .35s ease,transform .35s ease}
+.intro-stage.exiting{opacity:0;transform:translate(-50%,calc(-50% - 30px)) scale(.95);transition:opacity .45s ease,transform .45s ease}
 
 .intro-label{font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;letter-spacing:.4em;color:rgba(167,139,250,.7);text-transform:uppercase;margin-bottom:18px}
+.intro-label-green{color:rgba(52,211,153,.85)}
 .intro-number-big{font-family:'Manrope',sans-serif;font-size:clamp(48px,10vw,108px);font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 0 60px rgba(124,58,237,.4),0 0 100px rgba(167,139,250,.2);white-space:nowrap}
-.intro-number-big.intro-profit{background:linear-gradient(135deg,#34d399 0%,#a7f3d0 50%,#34d399 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:profitSheen 2s ease infinite;text-shadow:0 0 80px rgba(52,211,153,.45)}
-@keyframes profitSheen{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+/* 🔥 v0.7.7.25: ЧЁТКАЯ зелёная цифра — solid color + drop-shadow glow вокруг,
+   без background-clip:text (тот размывал текст на retina + text-shadow blur).
+   Shimmer через пульсацию drop-shadow яркости. */
+.intro-number-big.intro-profit{
+  color:#10b981;
+  text-shadow:none;
+  animation:profitGlowPulse 2.2s ease-in-out infinite;
+}
+@keyframes profitGlowPulse{
+  0%,100%{filter:drop-shadow(0 0 24px rgba(52,211,153,.5)) drop-shadow(0 0 50px rgba(52,211,153,.25))}
+  50%{filter:drop-shadow(0 0 36px rgba(52,211,153,.75)) drop-shadow(0 0 80px rgba(52,211,153,.4))}
+}
 .intro-currency{font-size:.55em;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.05em}
-.intro-number-big.intro-profit .intro-currency{color:rgba(167,243,208,.7)}
+.intro-number-big.intro-profit .intro-currency{color:rgba(167,243,208,.85)}
+
+/* 🔥 v0.7.7.25: Мотивационная подпись под каждой стадией */
+.intro-motiv{font-family:'Manrope',sans-serif;font-size:clamp(14px,1.7vw,18px);font-weight:500;color:rgba(255,255,255,.55);margin-top:24px;letter-spacing:.005em;line-height:1.45;max-width:600px;margin-left:auto;margin-right:auto}
+.intro-motiv-red{color:rgba(248,113,113,.6)}
+.intro-motiv-green{color:rgba(167,243,208,.7);font-weight:600}
+
+/* 🔥 v0.7.7.25: Стадия с цитатой/мотивацией */
+.intro-quote{font-family:'Manrope',sans-serif;font-size:clamp(22px,3.5vw,42px);font-weight:700;color:#fff;line-height:1.3;letter-spacing:-.02em;max-width:780px;margin:0 auto;font-style:italic;text-shadow:0 0 40px rgba(124,58,237,.35)}
 
 /* Стадия 2 — зачёркивание */
 .intro-strike{position:relative;display:inline-block}
@@ -746,18 +767,25 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
     <div class="intro-stage" id="introStage1">
       <div class="intro-label">ВЫПЛАТА ОТ WB</div>
       <div class="intro-number-big">380&nbsp;000 <span class="intro-currency">₽</span></div>
+      <div class="intro-motiv">Так показывает кабинет продавца</div>
     </div>
     <div class="intro-stage" id="introStage2">
       <div class="intro-strike">
         <div class="intro-strike-text">−357&nbsp;000 ₽</div>
         <div class="intro-strike-label">скрытых расходов</div>
       </div>
+      <div class="intro-motiv intro-motiv-red">Логистика, реклама, штрафы, хранение, возвраты…</div>
     </div>
     <div class="intro-stage" id="introStage3">
-      <div class="intro-label">РЕАЛЬНАЯ ПРИБЫЛЬ</div>
+      <div class="intro-label intro-label-green">РЕАЛЬНАЯ ПРИБЫЛЬ</div>
       <div class="intro-number-big intro-profit">23&nbsp;000 <span class="intro-currency">₽</span></div>
+      <div class="intro-motiv intro-motiv-green">Вот сколько вы заработали на самом деле</div>
     </div>
     <div class="intro-stage" id="introStage4">
+      <div class="intro-quote">«Считай каждый рубль —<br>и каждый рубль будет работать на тебя»</div>
+      <div class="intro-motiv">Управляй прибылью осознанно</div>
+    </div>
+    <div class="intro-stage" id="introStage5">
       <div class="intro-logo">
         <span class="intro-logo-wb">WB</span>
         <span class="intro-logo-profit">Profit</span>
