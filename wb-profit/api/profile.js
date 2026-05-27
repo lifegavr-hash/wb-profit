@@ -1,9 +1,14 @@
-// /api/profile — возвращает полный профиль пользователя с лимитами и фичами тарифа.
-// Фронт использует для отображения значков 🔒 на запрещённых функциях.
-// ВАЖНО: фронтовый currentProfile теперь только UX-помощник — реальные проверки на бэке.
+// /api/profile — возвращает полный профиль + управление WB-кабинетами.
 //
-// GET    — профиль с лимитами тарифа
-// DELETE — удаление аккаунта пользователя (с подтверждением паролем) — v0.7.7.13
+// === Основные endpoints ===
+// GET    /api/profile                    — профиль с лимитами тарифа
+// DELETE /api/profile                    — удалить аккаунт (с паролем)
+//
+// === WB-кабинеты (v0.7.7.29) ===
+// GET    /api/profile?resource=wb-accounts            — список кабинетов
+// POST   /api/profile?resource=wb-accounts            — создать кабинет
+// PATCH  /api/profile?resource=wb-accounts&id=xxx     — обновить (name/is_default/last_used_at)
+// DELETE /api/profile?resource=wb-accounts&id=xxx     — удалить кабинет
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
@@ -11,17 +16,234 @@ import { audit } from '../lib/audit-log.js';
 
 export const config = { maxDuration: 30 };
 
+function makeServiceClient() {
+  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+
+// ====== Sub-router: WB-аккаунты ======
+async function handleWbAccounts(req, res, jwt) {
+  const planResult = await getUserPlanWithLimits(jwt);
+  if (planResult.error) {
+    return res.status(planResult.status || 500).json({ error: planResult.error, message: planResult.message });
+  }
+  const user = planResult.user;
+  const supa = makeServiceClient();
+
+  // GET — список кабинетов пользователя
+  if (req.method === 'GET') {
+    const { data, error } = await supa
+      .from('wb_accounts')
+      .select('id, name, is_default, position, last_used_at, created_at, updated_at')
+      .eq('user_id', user.id)
+      .order('position', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    return res.status(200).json({
+      accounts: data || [],
+      limits: {
+        max_wb_accounts: planResult.limits?.max_wb_accounts || 1,
+        current_count: data?.length || 0,
+      },
+    });
+  }
+
+  // POST — создать новый кабинет
+  if (req.method === 'POST') {
+    let body = {};
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    } catch (_) { body = {}; }
+
+    const name = String(body.name || '').trim();
+    const token = String(body.wb_token || '').trim();
+    const isDefault = !!body.is_default;
+
+    if (!name || name.length > 100) {
+      return res.status(400).json({ error: 'INVALID_NAME', message: 'Название должно быть 1-100 символов' });
+    }
+    if (!token || !/^[A-Za-z0-9._-]+$/.test(token) || token.length < 50) {
+      return res.status(400).json({ error: 'INVALID_TOKEN', message: 'WB-токен невалидный (только латинские буквы/цифры/.-_, минимум 50 символов)' });
+    }
+
+    // Проверка лимита (есть и триггер в БД, но даём более понятный 403 в API)
+    const { count: currentCount } = await supa
+      .from('wb_accounts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    const maxAllowed = planResult.limits?.max_wb_accounts || 1;
+    if (!planResult.isAdmin && currentCount >= maxAllowed) {
+      return res.status(403).json({
+        error: 'WB_ACCOUNTS_LIMIT_REACHED',
+        message: `На вашем тарифе максимум ${maxAllowed} кабинет(ов) WB. Сейчас уже: ${currentCount}.`,
+        current_count: currentCount,
+        max_allowed: maxAllowed,
+      });
+    }
+
+    // Если это default — сбрасываем предыдущий default
+    if (isDefault) {
+      await supa
+        .from('wb_accounts')
+        .update({ is_default: false })
+        .eq('user_id', user.id)
+        .eq('is_default', true);
+    }
+
+    // Auto-default если это первый кабинет
+    const finalIsDefault = isDefault || (currentCount === 0);
+
+    const { data, error } = await supa
+      .from('wb_accounts')
+      .insert({
+        user_id: user.id,
+        name,
+        wb_token: token,
+        is_default: finalIsDefault,
+        position: currentCount || 0,
+        last_used_at: finalIsDefault ? new Date().toISOString() : null,
+      })
+      .select('id, name, is_default, position, last_used_at, created_at')
+      .single();
+
+    if (error) {
+      // Если упёрлись в триггер БД — возвращаем 403
+      if (String(error.message || '').includes('WB_ACCOUNTS_LIMIT_REACHED')) {
+        return res.status(403).json({ error: 'WB_ACCOUNTS_LIMIT_REACHED', message: error.message });
+      }
+      return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    }
+
+    await audit(req, user.id, user.email, 'wb_account_added', 'success', { name, account_id: data.id });
+    return res.status(200).json({ ok: true, account: data });
+  }
+
+  // PATCH — обновить кабинет (поля: name, is_default, last_used_at)
+  if (req.method === 'PATCH') {
+    const id = req.query?.id || req.query?.account_id;
+    if (!id) return res.status(400).json({ error: 'MISSING_ID' });
+
+    let body = {};
+    try {
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    } catch (_) { body = {}; }
+
+    // Что разрешено обновлять
+    const update = {};
+    if (typeof body.name === 'string') {
+      const name = body.name.trim();
+      if (!name || name.length > 100) {
+        return res.status(400).json({ error: 'INVALID_NAME' });
+      }
+      update.name = name;
+    }
+    if (typeof body.is_default === 'boolean') {
+      update.is_default = body.is_default;
+    }
+    if (body.touch_last_used === true) {
+      update.last_used_at = new Date().toISOString();
+    }
+    if (typeof body.wb_token === 'string' && body.wb_token.trim()) {
+      const t = body.wb_token.trim();
+      if (!/^[A-Za-z0-9._-]+$/.test(t) || t.length < 50) {
+        return res.status(400).json({ error: 'INVALID_TOKEN' });
+      }
+      update.wb_token = t;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
+    }
+
+    // Если назначаем как default — снимаем default с других
+    if (update.is_default === true) {
+      await supa
+        .from('wb_accounts')
+        .update({ is_default: false })
+        .eq('user_id', user.id)
+        .eq('is_default', true)
+        .neq('id', id);
+    }
+
+    const { data, error } = await supa
+      .from('wb_accounts')
+      .update(update)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select('id, name, is_default, position, last_used_at')
+      .single();
+
+    if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    if (!data) return res.status(404).json({ error: 'NOT_FOUND' });
+
+    return res.status(200).json({ ok: true, account: data });
+  }
+
+  // DELETE — удалить кабинет
+  if (req.method === 'DELETE') {
+    const id = req.query?.id || req.query?.account_id;
+    if (!id) return res.status(400).json({ error: 'MISSING_ID' });
+
+    // Сначала находим кабинет чтобы узнать был ли он default
+    const { data: acc } = await supa
+      .from('wb_accounts')
+      .select('id, name, is_default')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .single();
+    if (!acc) return res.status(404).json({ error: 'NOT_FOUND' });
+
+    const { error: delError } = await supa
+      .from('wb_accounts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+    if (delError) return res.status(500).json({ error: 'DB_ERROR', message: delError.message });
+
+    // Если удалили default — назначаем default другому (первому по позиции)
+    if (acc.is_default) {
+      const { data: remaining } = await supa
+        .from('wb_accounts')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true })
+        .limit(1);
+      if (remaining && remaining.length > 0) {
+        await supa
+          .from('wb_accounts')
+          .update({ is_default: true })
+          .eq('id', remaining[0].id);
+      }
+    }
+
+    await audit(req, user.id, user.email, 'wb_account_removed', 'success', { account_id: id, name: acc.name });
+    return res.status(200).json({ ok: true });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed for wb-accounts' });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET' && req.method !== 'DELETE') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
 
   const jwt = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!jwt) return res.status(401).json({ error: 'Нет токена авторизации' });
+
+  // 🔥 v0.7.7.29: sub-router для wb-accounts
+  const resource = req.query?.resource;
+  if (resource === 'wb-accounts') {
+    return handleWbAccounts(req, res, jwt);
+  }
+
+  // Основной маршрут — GET профиль / DELETE аккаунт
+  if (req.method !== 'GET' && req.method !== 'DELETE') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   // === GET — текущий профиль ===
   if (req.method === 'GET') {
