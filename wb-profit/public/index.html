@@ -219,18 +219,40 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .nav-links a{color:rgba(255,255,255,.65);font-size:14px;text-decoration:none;font-weight:500}
 .nav-cta{background:#fff;color:#1a0f3c!important;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none}
 .hero{min-height:100vh;background:linear-gradient(155deg,#1a0f3c 0%,#2d1a7a 45%,#3d24a0 75%,#5433c6 100%);display:flex;align-items:center;justify-content:center;padding:100px 5% 60px;position:relative;overflow:hidden}
-.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,var(--surface));pointer-events:none}
-.hero-inner{max-width:780px;width:100%;text-align:center}
-.hero-badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:12px;font-weight:600;padding:5px 14px;border-radius:99px;letter-spacing:.05em;margin-bottom:24px}
-.hero h1{font-size:clamp(28px,5vw,56px);font-weight:800;color:#fff;line-height:1.12;letter-spacing:-.03em;margin-bottom:8px}
-.hero h1 em{font-style:normal;color:#c4b5fd}
-.hero-sub{font-size:clamp(14px,2vw,17px);color:rgba(255,255,255,.65);max-width:480px;margin:16px auto 32px}
-.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
-.btn-white{background:#fff;color:#1a0f3c;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.25)}
-.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none}
-.hero-social{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:40px}
+.hero::after{content:'';position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,var(--surface));pointer-events:none;z-index:2}
+
+/* 🔥 v0.7.7.23: Плавающие gradient blobs */
+.hero-blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.5;pointer-events:none;z-index:0;will-change:transform}
+.hero-blob-1{width:480px;height:480px;background:radial-gradient(circle,#a78bfa 0%,transparent 70%);top:-120px;left:-100px;animation:floatBlob 22s ease-in-out infinite}
+.hero-blob-2{width:380px;height:380px;background:radial-gradient(circle,#f472b6 0%,transparent 70%);bottom:-80px;right:-80px;animation:floatBlob 28s ease-in-out infinite reverse;animation-delay:-7s}
+.hero-blob-3{width:280px;height:280px;background:radial-gradient(circle,#60a5fa 0%,transparent 70%);top:35%;right:15%;animation:floatBlob 18s ease-in-out infinite;animation-delay:-3s;opacity:.35}
+@keyframes floatBlob{
+  0%,100%{transform:translate(0,0) scale(1)}
+  33%{transform:translate(60px,-40px) scale(1.08)}
+  66%{transform:translate(-40px,30px) scale(.95)}
+}
+
+.hero-inner{max-width:780px;width:100%;text-align:center;position:relative;z-index:1;animation:heroFadeIn .9s cubic-bezier(.16,1,.3,1)}
+@keyframes heroFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* Stagger для элементов внутри hero */
+.hero-badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:12px;font-weight:600;padding:5px 14px;border-radius:99px;letter-spacing:.05em;margin-bottom:24px;animation:heroStagger .8s cubic-bezier(.16,1,.3,1) .1s both;backdrop-filter:blur(8px)}
+.hero h1{font-size:clamp(28px,5vw,56px);font-weight:800;color:#fff;line-height:1.12;letter-spacing:-.03em;margin-bottom:8px;animation:heroStagger .8s cubic-bezier(.16,1,.3,1) .2s both}
+.hero h1 em{font-style:normal;background:linear-gradient(135deg,#c4b5fd 0%,#a78bfa 50%,#c4b5fd 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;background-size:200% auto;animation:gradientShift 4s ease infinite}
+@keyframes gradientShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes heroStagger{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.hero-sub{font-size:clamp(14px,2vw,17px);color:rgba(255,255,255,.65);max-width:480px;margin:16px auto 32px;animation:heroStagger .8s cubic-bezier(.16,1,.3,1) .3s both}
+.hero-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;animation:heroStagger .8s cubic-bezier(.16,1,.3,1) .4s both}
+.btn-white{background:#fff;color:#1a0f3c;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.25);transition:all .25s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.btn-white:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.btn-white::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(124,58,237,.2),transparent 60%);opacity:0;transition:opacity .25s}
+.btn-white:hover::after{opacity:1}
+.btn-ghost{background:transparent;border:1.5px solid rgba(255,255,255,.35);color:#fff;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none;transition:all .25s cubic-bezier(.4,0,.2,1);backdrop-filter:blur(4px)}
+.btn-ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.55);transform:translateY(-2px)}
+.hero-social{font-size:13px;color:rgba(255,255,255,.45);margin-bottom:40px;animation:heroStagger .8s cubic-bezier(.16,1,.3,1) .5s both}
 .hero-social span{color:rgba(255,255,255,.75);font-weight:600}
-.hero-calc{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:24px 28px;max-width:480px;margin:0 auto;text-align:left}
+.hero-calc{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:24px 28px;max-width:480px;margin:0 auto;text-align:left;backdrop-filter:blur(12px);animation:heroStagger .9s cubic-bezier(.16,1,.3,1) .6s both;transition:all .3s ease}
+.hero-calc:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.22)}
 .hero-calc-title{font-size:13px;font-weight:700;color:rgba(255,255,255,.7);margin-bottom:16px;text-align:center;letter-spacing:.02em}
 .calc-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
 .calc-label{font-size:13px;color:rgba(255,255,255,.6);white-space:nowrap;min-width:120px}
@@ -256,28 +278,66 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .pain-card.good .pain-card-label{color:#16a34a}
 .pain-card p{font-size:14px;line-height:1.7;color:var(--text)}
 .case{background:var(--bg);padding:72px 5%}
-.case-inner{max-width:800px;margin:0 auto;background:var(--surface);border-radius:20px;padding:40px;border:1px solid var(--border)}
+.case-inner{max-width:1100px;margin:0 auto;text-align:center}
 .case-badge{display:inline-block;background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:.05em;margin-bottom:20px}
-.case h3{font-size:clamp(18px,2.5vw,26px);font-weight:800;letter-spacing:-.02em;margin-bottom:24px}
-.case-numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
-.case-num{text-align:center;padding:20px 12px;border-radius:12px;background:var(--bg)}
-.case-num-val{font-size:clamp(18px,3vw,26px);font-weight:800;letter-spacing:-.02em}
+.case h3{font-size:clamp(20px,3vw,30px);font-weight:800;letter-spacing:-.02em;margin-bottom:36px;max-width:720px;margin-left:auto;margin-right:auto;line-height:1.25}
+.cases-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;text-align:left;margin-bottom:24px}
+.case-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.case-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#7c3aed,#a78bfa);transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.4,0,.2,1)}
+.case-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(124,58,237,.1),0 4px 12px rgba(0,0,0,.06);border-color:#c4b5fd}
+.case-card:hover::before{transform:scaleX(1)}
+.case-card-icon{font-size:28px;margin-bottom:12px;display:inline-block;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.case-card:hover .case-card-icon{transform:scale(1.15) rotate(-8deg)}
+.case-card-tag{display:inline-block;background:#f1f5f9;color:#64748b;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.case-card h4{font-size:17px;font-weight:700;margin-bottom:18px;letter-spacing:-.01em}
+.case-card .case-numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.case-num{text-align:center;padding:14px 6px;border-radius:10px;background:var(--bg)}
+.case-num-val{font-size:clamp(14px,2vw,18px);font-weight:800;letter-spacing:-.02em}
 .case-num-val.red{color:#dc2626}
 .case-num-val.green{color:#16a34a}
-.case-num-label{font-size:12px;color:var(--muted);margin-top:4px}
+.case-num-label{font-size:11px;color:var(--muted);margin-top:3px}
+.case-card .case-quote{font-size:13px;color:var(--muted);font-style:italic;border-left:3px solid #7c3aed;padding-left:14px;line-height:1.65;margin:0}
+.case-disclaimer{font-size:12px;color:var(--muted);margin-top:24px;font-style:italic;max-width:600px;margin-left:auto;margin-right:auto}
+
+/* Trust signals */
+.trust{background:var(--bg);padding:72px 5%}
+.trust-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;max-width:1000px;margin:0 auto}
+.trust-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all .25s cubic-bezier(.4,0,.2,1)}
+.trust-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.06),0 2px 6px rgba(124,58,237,.06);border-color:#c4b5fd}
+.trust-icon{font-size:28px;margin-bottom:14px;display:inline-block}
+.trust-card h4{font-size:15px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+.trust-card p{font-size:13px;color:var(--muted);line-height:1.6;margin:0}
+
 .case-quote{font-size:14px;color:var(--muted);font-style:italic;border-left:3px solid #5433c6;padding-left:16px;line-height:1.7}
 .stats{background:var(--surface);padding:64px 5%;text-align:center}
 .stats-grid{display:flex;justify-content:center;gap:72px;flex-wrap:wrap;max-width:800px;margin:0 auto}
-.stat-num{font-size:clamp(36px,5vw,52px);font-weight:800;color:#5433c6;letter-spacing:-.03em}
+.stat-num{font-size:clamp(36px,5vw,52px);font-weight:800;color:#5433c6;letter-spacing:-.03em;background:linear-gradient(135deg,#5433c6 0%,#a78bfa 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
 .stat-label{font-size:14px;color:var(--muted);margin-top:4px}
 .features{background:var(--bg);padding:72px 5%}
 .section-label{text-align:center;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
 .section-h2{text-align:center;font-size:clamp(22px,3.5vw,38px);font-weight:800;letter-spacing:-.02em;margin-bottom:48px}
 .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;max-width:960px;margin:0 auto}
-.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px}
-.feat-icon{font-size:26px;margin-bottom:14px;display:block}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;transition:all .25s cubic-bezier(.4,0,.2,1)}
+.feat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.06),0 2px 6px rgba(124,58,237,.06);border-color:#c4b5fd}
+.feat-icon{font-size:26px;margin-bottom:14px;display:inline-block;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+.feat-card:hover .feat-icon{transform:scale(1.18) rotate(-5deg)}
 .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
 .feat-card p{font-size:13px;color:var(--muted);line-height:1.65}
+
+/* 🔥 v0.7.7.23: Smooth scroll + scroll-reveal */
+html{scroll-behavior:smooth}
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.in-view{opacity:1;transform:translateY(0)}
+.reveal[data-reveal-delay="100"]{transition-delay:.1s}
+.reveal[data-reveal-delay="200"]{transition-delay:.2s}
+.reveal[data-reveal-delay="300"]{transition-delay:.3s}
+.reveal[data-reveal-delay="400"]{transition-delay:.4s}
+/* Reduce motion для users с preference */
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  .hero-blob{animation:none}
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
 .ai-section{background:#1a0f3c;padding:72px 5%}
 .ai-inner{max-width:860px;margin:0 auto}
 .ai-badge{display:inline-block;background:linear-gradient(90deg,#7c3aed,#5433c6);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:99px;letter-spacing:.08em;margin-bottom:20px}
@@ -294,21 +354,28 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .pricing{background:var(--bg);padding:72px 5%}
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:1000px;margin:0 auto}
 
-/* 🔥 v0.7.7.22: Маркетинговый баннер скидки */
-.pricing-promo{display:flex;align-items:center;justify-content:center;gap:8px;max-width:560px;margin:0 auto 20px;padding:14px 20px;background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:1px solid #fbbf24;border-radius:12px;font-size:14px;color:#78350f}
-.pricing-promo-fire{font-size:20px}
-.pricing-promo b{color:#92400e}
+/* 🔥 v0.7.7.23: Скидка интегрирована в цены, никакого отдельного баннера */
+.plan-price-wrap{margin:14px 0 4px}
+.price-old{display:none;font-size:16px;color:#94a3b8;text-decoration:line-through;font-weight:500;margin-bottom:4px;transition:opacity .25s}
+.pricing.show-yearly .price-old{display:block;animation:fadeInDown .35s ease}
+@keyframes fadeInDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.price-save{display:none;font-size:12px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 9px;border-radius:6px;margin-top:6px;letter-spacing:.02em}
+.pricing.show-yearly .price-save{display:inline-block;animation:fadeInUp .35s ease .1s both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
-/* Переключатель Месяц/Год */
-.billing-toggle{display:inline-flex;gap:0;margin:0 auto 32px;background:#f1f5f9;border-radius:12px;padding:4px;border:1px solid #e2e8f0;position:relative;left:50%;transform:translateX(-50%)}
-.billing-btn{padding:10px 24px;background:transparent;border:0;border-radius:9px;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+/* Переключатель Месяц/Год — современный полированный */
+.billing-toggle{display:inline-flex;gap:0;margin:0 auto 36px;background:#f1f5f9;border-radius:14px;padding:5px;border:1px solid #e2e8f0;position:relative;left:50%;transform:translateX(-50%);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.billing-btn{padding:11px 28px;background:transparent;border:0;border-radius:10px;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;transition:all .25s cubic-bezier(.4,0,.2,1);display:inline-flex;align-items:center;gap:8px;position:relative}
 .billing-btn:hover{color:#1a0f3c}
-.billing-btn.active{background:#fff;color:#1a0f3c;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.billing-save{font-size:11px;background:#ef4444;color:#fff;padding:2px 7px;border-radius:5px;font-weight:700}
+.billing-btn.active{background:#fff;color:#1a0f3c;box-shadow:0 2px 8px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04)}
+.billing-save{font-size:11px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;padding:3px 8px;border-radius:6px;font-weight:700;letter-spacing:.04em;box-shadow:0 2px 4px rgba(220,38,38,.3)}
 
-/* Зачёркнутая старая цена (показывается только в yearly режиме) */
-.price-old{display:none;font-size:18px;color:#94a3b8;text-decoration:line-through;font-weight:500;margin-right:8px}
-.pricing.show-yearly .price-old{display:inline}
+/* Hover lift на карточках */
+.plan{transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
+.plan:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(124,58,237,.12),0 4px 12px rgba(0,0,0,.08)}
+.plan.popular{position:relative}
+.plan.popular::before{content:'';position:absolute;inset:-2px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:18px;z-index:-1;opacity:.35;filter:blur(8px);transition:opacity .25s}
+.plan.popular:hover::before{opacity:.55}
 .plan{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:28px 24px}
 .plan.popular{border-color:#5433c6;box-shadow:0 0 0 4px rgba(84,51,198,.08)}
 .plan-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.05em;margin-bottom:14px}
@@ -439,11 +506,27 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   .lead-form button{width:100%}
 
   /* 🔥 v0.7.7.22: Pricing mobile */
-  .pricing-promo{font-size:13px;padding:12px 14px}
   .billing-toggle{margin-bottom:24px}
   .billing-btn{padding:9px 18px;font-size:13px}
   .billing-save{font-size:10px;padding:2px 6px}
   .price-old{font-size:14px;display:block;margin-bottom:2px}
+
+  /* 🔥 v0.7.7.23: новые блоки на мобиле */
+  .case{padding:48px 4%}
+  .case h3{font-size:18px}
+  .cases-grid{gap:14px}
+  .case-card{padding:20px}
+  .case-card h4{font-size:15px}
+  .case-card .case-numbers{gap:6px}
+  .case-num{padding:10px 4px}
+  .trust{padding:48px 4%}
+  .trust-grid{gap:12px}
+  .trust-card{padding:20px}
+  /* Слабее анимация blobs на мобиле — сильно нагружает GPU */
+  .hero-blob{filter:blur(60px);opacity:.4}
+  .hero-blob-1{width:340px;height:340px}
+  .hero-blob-2{width:260px;height:260px}
+  .hero-blob-3{display:none}
 }
 
 /* Средние Android — 390-480px */
@@ -483,6 +566,9 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   </div>
 </nav>
 <section class="hero">
+  <div class="hero-blob hero-blob-1" aria-hidden="true"></div>
+  <div class="hero-blob hero-blob-2" aria-hidden="true"></div>
+  <div class="hero-blob hero-blob-3" aria-hidden="true"></div>
   <div class="hero-inner">
     <div class="hero-badge">Для селлеров Wildberries</div>
     <h1>WB показывает выплату.<br><em>Мы покажем что от неё осталось.</em></h1>
@@ -518,92 +604,166 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
 </section>
 <section class="case" id="case">
   <div class="case-inner">
-    <div class="case-badge">Реальный кейс</div>
-    <h3>Думал что зарабатывает 80 000 ₽. WB Profit показал правду.</h3>
-    <div class="case-numbers">
-      <div class="case-num"><div class="case-num-val">380 000 ₽</div><div class="case-num-label">Выплата от WB</div></div>
-      <div class="case-num"><div class="case-num-val red">−357 000 ₽</div><div class="case-num-label">Скрытые расходы</div></div>
-      <div class="case-num"><div class="case-num-val green">23 000 ₽</div><div class="case-num-label">Реальная прибыль</div></div>
+    <div class="case-badge reveal">Реальные сценарии</div>
+    <h3 class="reveal" data-reveal-delay="100">Что показывает WB Profit вместо привычных «выплат»</h3>
+    <div class="cases-grid">
+      <div class="case-card reveal" data-reveal-delay="100">
+        <div class="case-card-icon">💄</div>
+        <div class="case-card-tag">Косметика</div>
+        <h4>Думал что зарабатывает 80 000 ₽</h4>
+        <div class="case-numbers">
+          <div class="case-num"><div class="case-num-val">380 000 ₽</div><div class="case-num-label">Выплата</div></div>
+          <div class="case-num"><div class="case-num-val red">−357 000 ₽</div><div class="case-num-label">Расходы</div></div>
+          <div class="case-num"><div class="case-num-val green">23 000 ₽</div><div class="case-num-label">Прибыль</div></div>
+        </div>
+        <p class="case-quote">Реклама съедала треть выплаты. После отключения 4 неэффективных кампаний прибыль выросла вдвое за месяц.</p>
+      </div>
+      <div class="case-card reveal" data-reveal-delay="200">
+        <div class="case-card-icon">👕</div>
+        <div class="case-card-tag">Одежда</div>
+        <h4>Логистика превысила выручку</h4>
+        <div class="case-numbers">
+          <div class="case-num"><div class="case-num-val">120 000 ₽</div><div class="case-num-label">Выплата</div></div>
+          <div class="case-num"><div class="case-num-val red">−138 000 ₽</div><div class="case-num-label">Расходы</div></div>
+          <div class="case-num"><div class="case-num-val red">−18 000 ₽</div><div class="case-num-label">Убыток</div></div>
+        </div>
+        <p class="case-quote">3 артикула с логистикой 35% от цены товара. WB Profit нашёл их за минуту — перенесли на FBS, вернулись в плюс.</p>
+      </div>
+      <div class="case-card reveal" data-reveal-delay="300">
+        <div class="case-card-icon">🎯</div>
+        <div class="case-card-tag">Электроника</div>
+        <h4>50 SKU без понимания ДРР</h4>
+        <div class="case-numbers">
+          <div class="case-num"><div class="case-num-val">890 000 ₽</div><div class="case-num-label">Выручка</div></div>
+          <div class="case-num"><div class="case-num-val red">187 000 ₽</div><div class="case-num-label">Реклама</div></div>
+          <div class="case-num"><div class="case-num-val green">+42 000 ₽</div><div class="case-num-label">Экономия/мес</div></div>
+        </div>
+        <p class="case-quote">7 товаров с ДРР 40%+. Отключили — прибыль выросла, продажи остались на том же уровне.</p>
+      </div>
     </div>
-    <p class="case-quote">«Я думал что зарабатываю нормально. WB Profit показал что реклама съедает треть выплаты. Отключил 4 неэффективных кампании — прибыль выросла вдвое за месяц.»<br><br>— Алексей, продавец косметики, Москва</p>
+    <p class="case-disclaimer">Сценарии составлены на основе типовых проблем селлеров, которые WB Profit находит автоматически.</p>
   </div>
 </section>
 <section class="stats">
   <div class="stats-grid">
-    <div><div class="stat-num">100%</div><div class="stat-label">Автоматически из WB API</div></div>
-    <div><div class="stat-num">41+</div><div class="stat-label">Статей расходов</div></div>
-    <div><div class="stat-num">2 мин</div><div class="stat-label">До первого отчёта</div></div>
+    <div class="reveal"><div class="stat-num" data-count-to="100" data-count-suffix="%">0%</div><div class="stat-label">Автоматически из WB API</div></div>
+    <div class="reveal" data-reveal-delay="100"><div class="stat-num" data-count-to="41" data-count-suffix="+">0+</div><div class="stat-label">Статей расходов</div></div>
+    <div class="reveal" data-reveal-delay="200"><div class="stat-num" data-count-to="2" data-count-suffix=" мин">0 мин</div><div class="stat-label">До первого отчёта</div></div>
   </div>
 </section>
 <section class="features" id="features">
-  <div class="section-label">Всё что влияет на прибыль — в одном месте</div>
-  <div class="section-h2">Возможности</div>
+  <div class="section-label reveal">Всё что влияет на прибыль — в одном месте</div>
+  <div class="section-h2 reveal" data-reveal-delay="100">Возможности</div>
   <div class="features-grid">
-    <div class="feat-card"><span class="feat-icon">📊</span><h3>Реальная прибыль</h3><p>Выплата WB минус логистика, хранение, реклама, штрафы и себестоимость</p></div>
-    <div class="feat-card"><span class="feat-icon">📈</span><h3>График по месяцам</h3><p>Динамика прибыли, выручки, рекламы и возвратов в разрезе</p></div>
-    <div class="feat-card"><span class="feat-icon">⚡</span><h3>Живые данные</h3><p>Подключается к кабинету WB через API. Данные всегда актуальны</p></div>
-    <div class="feat-card"><span class="feat-icon">📉</span><h3>ДРР по товарам</h3><p>Доля рекламных расходов по каждому артикулу — видите что работает</p></div>
-    <div class="feat-card"><span class="feat-icon">🔔</span><h3>Умные алерты</h3><p>Уведомляет об убыточных товарах, росте штрафов и аномалиях</p></div>
-    <div class="feat-card"><span class="feat-icon">🤖</span><h3>AI советник</h3><p>Анализирует данные и даёт конкретные советы что изменить</p></div>
+    <div class="feat-card reveal"><span class="feat-icon">📊</span><h3>Реальная прибыль</h3><p>Выплата WB минус логистика, хранение, реклама, штрафы и себестоимость</p></div>
+    <div class="feat-card reveal" data-reveal-delay="100"><span class="feat-icon">📈</span><h3>График по месяцам</h3><p>Динамика прибыли, выручки, рекламы и возвратов в разрезе</p></div>
+    <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">⚡</span><h3>Живые данные</h3><p>Подключается к кабинету WB через API. Данные всегда актуальны</p></div>
+    <div class="feat-card reveal"><span class="feat-icon">📉</span><h3>ДРР по товарам</h3><p>Доля рекламных расходов по каждому артикулу — видите что работает</p></div>
+    <div class="feat-card reveal" data-reveal-delay="100"><span class="feat-icon">🔔</span><h3>Умные алерты</h3><p>Уведомляет об убыточных товарах, росте штрафов и аномалиях</p></div>
+    <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">🤖</span><h3>AI советник</h3><p>Анализирует данные и даёт конкретные советы что изменить</p></div>
+  </div>
+</section>
+
+<!-- 🔥 v0.7.7.23: Trust signals — доверие через факты, не фейковые отзывы -->
+<section class="trust">
+  <div class="section-label reveal">Прозрачность и безопасность</div>
+  <div class="section-h2 reveal" data-reveal-delay="100">Почему данные у нас в безопасности</div>
+  <div class="trust-grid">
+    <div class="trust-card reveal">
+      <div class="trust-icon">🔐</div>
+      <h4>Официальный WB API</h4>
+      <p>Подключение только через официальный API Wildberries по вашему токену. Никаких парсеров.</p>
+    </div>
+    <div class="trust-card reveal" data-reveal-delay="100">
+      <div class="trust-icon">🛡️</div>
+      <h4>HTTPS + TLS 1.3</h4>
+      <p>Все соединения зашифрованы. HSTS preload, Content Security Policy, защита от XSS.</p>
+    </div>
+    <div class="trust-card reveal" data-reveal-delay="200">
+      <div class="trust-icon">📜</div>
+      <h4>152-ФЗ</h4>
+      <p>Обработка персональных данных в соответствии с законодательством РФ. Согласие пользователя.</p>
+    </div>
+    <div class="trust-card reveal">
+      <div class="trust-icon">⚙️</div>
+      <h4>RLS на уровне БД</h4>
+      <p>Postgres Row Level Security. Каждый пользователь видит только свои данные. Защита и от ошибок кода.</p>
+    </div>
+    <div class="trust-card reveal" data-reveal-delay="100">
+      <div class="trust-icon">📋</div>
+      <h4>Публичная оферта</h4>
+      <p>Чёткие условия, цены, реквизиты ИП. Никаких скрытых платежей. Отмена подписки в один клик.</p>
+    </div>
+    <div class="trust-card reveal" data-reveal-delay="200">
+      <div class="trust-icon">🧾</div>
+      <h4>Чеки по 54-ФЗ</h4>
+      <p>Электронный чек на email после каждого платежа. Платежи через ЮKassa — сертификат PCI DSS Level 1.</p>
+    </div>
   </div>
 </section>
 <section class="ai-section">
   <div class="ai-inner">
-    <div class="ai-badge">PRO — AI советник</div>
-    <h2>Не просто цифры — конкретные советы</h2>
-    <p>AI анализирует ваши данные и говорит что нужно изменить. Как личный финансовый директор за 990 ₽ в месяц.</p>
-    <div class="ai-example">Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Рекомендую перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит около 2 800 ₽/мес.</div>
+    <div class="ai-badge reveal">PRO — AI советник</div>
+    <h2 class="reveal" data-reveal-delay="100">Не просто цифры — конкретные советы</h2>
+    <p class="reveal" data-reveal-delay="200">AI анализирует ваши данные и говорит что нужно изменить. Как личный финансовый директор за 990 ₽ в месяц.</p>
+    <div class="ai-example reveal" data-reveal-delay="300">Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Рекомендую перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит около 2 800 ₽/мес.</div>
   </div>
 </section>
 <section class="steps">
-  <div class="section-label">Как начать</div>
-  <div class="section-h2">Три шага до реальной прибыли</div>
+  <div class="section-label reveal">Как начать</div>
+  <div class="section-h2 reveal" data-reveal-delay="100">Три шага до реальной прибыли</div>
   <div class="steps-grid">
-    <div class="step"><div class="step-num">1</div><h3>Регистрация</h3><p>Создайте аккаунт за 30 секунд. Нужен только email.</p></div>
-    <div class="step"><div class="step-num">2</div><h3>Подключите WB</h3><p>Вставьте API токен из кабинета продавца. Это 1 минута.</p></div>
-    <div class="step"><div class="step-num">3</div><h3>Смотрите прибыль</h3><p>Данные загружаются автоматически. Первый отчёт через 2 минуты.</p></div>
+    <div class="step reveal"><div class="step-num">1</div><h3>Регистрация</h3><p>Создайте аккаунт за 30 секунд. Нужен только email.</p></div>
+    <div class="step reveal" data-reveal-delay="100"><div class="step-num">2</div><h3>Подключите WB</h3><p>Вставьте API токен из кабинета продавца. Это 1 минута.</p></div>
+    <div class="step reveal" data-reveal-delay="200"><div class="step-num">3</div><h3>Смотрите прибыль</h3><p>Данные загружаются автоматически. Первый отчёт через 2 минуты.</p></div>
   </div>
 </section>
 <section class="pricing" id="pricing">
-  <div class="section-label">Выберите тариф</div>
-  <div class="section-h2">Простые цены</div>
+  <div class="section-label reveal">Выберите тариф</div>
+  <div class="section-h2 reveal" data-reveal-delay="100">Простые цены</div>
 
-  <!-- 🔥 v0.7.7.22: Маркетинговый баннер скидки -->
-  <div class="pricing-promo">
-    <span class="pricing-promo-fire">🔥</span>
-    <span><b>−30% при оплате за год</b> — для первых клиентов до повышения цен</span>
-  </div>
-
-  <!-- 🔥 v0.7.7.22: Переключатель Месяц/Год -->
+  <!-- 🔥 v0.7.7.23: умный переключатель — скидка интегрирована в цены, не отдельным баннером -->
   <div class="billing-toggle">
-    <button type="button" class="billing-btn active" id="billBtnMonth" onclick="setBilling('monthly')">Месяц</button>
-    <button type="button" class="billing-btn" id="billBtnYear" onclick="setBilling('yearly')">Год <span class="billing-save">−30%</span></button>
+    <button type="button" class="billing-btn active" id="billBtnMonth" onclick="setBilling('monthly')">Помесячно</button>
+    <button type="button" class="billing-btn" id="billBtnYear" onclick="setBilling('yearly')">За год <span class="billing-save">−30%</span></button>
   </div>
 
   <div class="pricing-grid">
-    <div class="plan">
+    <div class="plan reveal" data-reveal-delay="0">
       <div class="plan-badge starter">Старт</div>
       <div class="plan-name">Старт</div>
-      <div class="plan-price-main"><span class="price-old" data-old="" data-show="yearly">5 880 ₽</span><span class="price-now" data-monthly="490" data-yearly="4100">490</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
-      <div class="plan-price-sub" data-monthly="Для одного магазина" data-yearly="При оплате за год — 342 ₽/мес">Для одного магазина</div>
+      <div class="plan-price-wrap">
+        <span class="price-old" data-monthly-old="" data-yearly-old="5 880 ₽">5 880 ₽</span>
+        <div class="plan-price-main"><span class="price-now" data-monthly="490" data-yearly="4 100">490</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+        <div class="price-save" data-monthly="" data-yearly="Экономия 1 780 ₽">Экономия 1 780 ₽</div>
+      </div>
+      <div class="plan-price-sub" data-monthly="Для одного магазина" data-yearly="Эффективно 342 ₽/мес">Для одного магазина</div>
       <div class="plan-desc">Для малого бизнеса</div>
       <ul class="plan-features"><li>Калькулятор до 50 SKU</li><li>Период до 30 дней</li><li>Главная: защита от потерь и советы</li><li>Email-уведомления раз в день</li><li>1 кабинет WB</li><li>История 30 дней</li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Старт</a>
     </div>
-    <div class="plan popular">
+    <div class="plan popular reveal" data-reveal-delay="100">
       <div class="plan-badge pro">⭐ Популярный</div>
       <div class="plan-name">PRO</div>
-      <div class="plan-price-main"><span class="price-old" data-old="" data-show="yearly">11 880 ₽</span><span class="price-now" data-monthly="990" data-yearly="8300">990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
-      <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="При оплате за год — 692 ₽/мес">Безлимит и все возможности</div>
+      <div class="plan-price-wrap">
+        <span class="price-old" data-monthly-old="" data-yearly-old="11 880 ₽">11 880 ₽</span>
+        <div class="plan-price-main"><span class="price-now" data-monthly="990" data-yearly="8 300">990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+        <div class="price-save" data-monthly="" data-yearly="Экономия 3 580 ₽">Экономия 3 580 ₽</div>
+      </div>
+      <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="Эффективно 692 ₽/мес">Безлимит и все возможности</div>
       <div class="plan-desc">Для серьёзного селлера</div>
       <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>Telegram-уведомления</li><li>1 кабинет WB</li><li>История 1 год</li></ul>
       <a href="/login.html" class="plan-btn filled">Начать 14 дней бесплатно</a>
     </div>
-    <div class="plan">
+    <div class="plan reveal" data-reveal-delay="200">
       <div class="plan-badge biz">Бизнес</div>
       <div class="plan-name">Бизнес</div>
-      <div class="plan-price-main"><span class="price-old" data-old="" data-show="yearly">23 880 ₽</span><span class="price-now" data-monthly="1990" data-yearly="16700">1 990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
-      <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="При оплате за год — 1 392 ₽/мес">Для команды и нескольких магазинов</div>
+      <div class="plan-price-wrap">
+        <span class="price-old" data-monthly-old="" data-yearly-old="23 880 ₽">23 880 ₽</span>
+        <div class="plan-price-main"><span class="price-now" data-monthly="1 990" data-yearly="16 700">1 990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+        <div class="price-save" data-monthly="" data-yearly="Экономия 7 180 ₽">Экономия 7 180 ₽</div>
+      </div>
+      <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="Эффективно 1 392 ₽/мес">Для команды и нескольких магазинов</div>
       <div class="plan-desc">Команда + AI-чат</div>
       <ul class="plan-features"><li>Всё что в PRO</li><li>2 кабинета WB (доп = 490 ₽/мес)</li><li>Совместный доступ — 3 пользователя</li><li>Экспорт в Excel/CSV</li><li>Приоритетная поддержка (4 часа)</li><li>AI-чат с магазином (скоро)</li><li>История 2 года</li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Бизнес</a>
@@ -675,26 +835,92 @@ async function updateNav(){
 updateNav();
 document.getElementById('cRevenue').addEventListener('keyup',function(e){if(e.key==='Enter')calcProfit();});
 
+// 🔥 v0.7.7.23: Scroll-reveal через IntersectionObserver
+(function initScrollReveal(){
+  if(!('IntersectionObserver' in window)){
+    // Fallback: показать всё сразу
+    document.querySelectorAll('.reveal').forEach(el => el.classList.add('in-view'));
+    return;
+  }
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        entry.target.classList.add('in-view');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.12,
+    rootMargin: '0px 0px -50px 0px'
+  });
+  document.querySelectorAll('.reveal').forEach(function(el){ observer.observe(el); });
+})();
+
+// 🔥 v0.7.7.23: Count-up для статистических цифр
+(function initCountUp(){
+  if(!('IntersectionObserver' in window)) return;
+  function animateCountUp(el){
+    var target = parseFloat(el.getAttribute('data-count-to'));
+    var suffix = el.getAttribute('data-count-suffix') || '';
+    if(isNaN(target)) return;
+    var duration = 1400;
+    var start = performance.now();
+    function tick(now){
+      var elapsed = now - start;
+      var progress = Math.min(elapsed / duration, 1);
+      // easeOutExpo
+      var eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      var current = target * eased;
+      var display = target >= 10 ? Math.round(current) : current.toFixed(0);
+      el.textContent = display + suffix;
+      if(progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  var observer = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        animateCountUp(entry.target);
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.5 });
+  document.querySelectorAll('[data-count-to]').forEach(function(el){ observer.observe(el); });
+})();
+
+// 🔥 v0.7.7.23: Ripple effect на главных кнопках Hero (mouse position)
+(function initButtonRipple(){
+  document.querySelectorAll('.btn-white').forEach(function(btn){
+    btn.addEventListener('mousemove', function(e){
+      var rect = btn.getBoundingClientRect();
+      var x = ((e.clientX - rect.left) / rect.width) * 100;
+      var y = ((e.clientY - rect.top) / rect.height) * 100;
+      btn.style.setProperty('--mx', x + '%');
+      btn.style.setProperty('--my', y + '%');
+    });
+  });
+})();
+
 // 🔥 v0.7.7.22: переключатель Месяц/Год для тарифов
 function fmtRub(n) {
   return Math.round(n).toLocaleString('ru-RU');
 }
 
 function setBilling(period) {
-  // Toggle active state на кнопках
   document.getElementById('billBtnMonth').classList.toggle('active', period === 'monthly');
   document.getElementById('billBtnYear').classList.toggle('active', period === 'yearly');
-  // Toggle .show-yearly класс на pricing-секции (для зачёркнутой цены)
   document.querySelector('.pricing').classList.toggle('show-yearly', period === 'yearly');
-  // Обновляем цены и подзаголовки
+  // Цифры цен (приходят уже отформатированными в data-atrs)
   document.querySelectorAll('.price-now').forEach(function(el) {
     var v = el.getAttribute('data-' + period);
-    if(v) el.textContent = fmtRub(Number(v));
+    if(v) el.textContent = v;
   });
+  // Единицы (₽/мес → ₽/год)
   document.querySelectorAll('.price-unit').forEach(function(el) {
     var v = el.getAttribute('data-' + period);
     if(v) el.textContent = v;
   });
+  // Подзаголовки
   document.querySelectorAll('.plan-price-sub[data-monthly]').forEach(function(el) {
     var v = el.getAttribute('data-' + period);
     if(v) el.textContent = v;
