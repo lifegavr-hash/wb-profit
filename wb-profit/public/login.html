@@ -70,6 +70,16 @@ input:focus{border-color:var(--purple)}
     <div class="field"><label>Пароль</label><input type="password" id="loginPass" placeholder="••••••••"></div>
     <button class="btn" id="loginBtn" onclick="login()">Войти</button>
     <div class="err" id="loginErr"></div>
+    <p style="text-align:center;margin-top:1rem;font-size:13px"><a href="#" onclick="showForgot();return false" style="color:var(--purple);text-decoration:none">Забыли пароль?</a></p>
+  </div>
+
+  <div id="formForgot" style="display:none">
+    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;line-height:1.5">Введите email — отправим ссылку для восстановления пароля.</p>
+    <div class="field"><label>Email</label><input type="email" id="forgotEmail" placeholder="you@example.com"></div>
+    <button class="btn" id="forgotBtn" onclick="sendReset()">Отправить ссылку</button>
+    <div class="err" id="forgotErr"></div>
+    <div class="ok" id="forgotOk">Письмо отправлено. Проверьте почту (включая «Спам»).</div>
+    <p style="text-align:center;margin-top:1rem;font-size:13px"><a href="#" onclick="showTab('login');return false" style="color:var(--purple);text-decoration:none">← Вернуться к входу</a></p>
   </div>
 
   <div id="formReg" style="display:none">
@@ -118,8 +128,45 @@ initSupabase();
 function showTab(t) {
   document.getElementById('formLogin').style.display = t==='login'?'block':'none';
   document.getElementById('formReg').style.display = t==='reg'?'block':'none';
+  var fForgot = document.getElementById('formForgot');
+  if(fForgot) fForgot.style.display = 'none';
   document.getElementById('tabLogin').className = 'tab'+(t==='login'?' active':'');
   document.getElementById('tabReg').className = 'tab'+(t==='reg'?' active':'');
+}
+
+function showForgot(){
+  document.getElementById('formLogin').style.display='none';
+  document.getElementById('formReg').style.display='none';
+  document.getElementById('formForgot').style.display='block';
+  // Префиллим email если уже введён
+  var le = document.getElementById('loginEmail').value.trim();
+  if(le) document.getElementById('forgotEmail').value = le;
+  document.getElementById('forgotEmail').focus();
+}
+
+async function sendReset(){
+  var email = document.getElementById('forgotEmail').value.trim();
+  var err = document.getElementById('forgotErr');
+  var ok = document.getElementById('forgotOk');
+  var btn = document.getElementById('forgotBtn');
+  err.style.display='none'; ok.style.display='none';
+  if(!email || !/.+@.+\..+/.test(email)){
+    err.textContent='Введите корректный email';
+    err.style.display='block';
+    return;
+  }
+  btn.disabled=true; btn.textContent='Отправляем...';
+  var res = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/reset-password.html'
+  });
+  if(res.error){
+    err.textContent = res.error.message;
+    err.style.display='block';
+    btn.disabled=false; btn.textContent='Отправить ссылку';
+  } else {
+    ok.style.display='block';
+    btn.disabled=false; btn.textContent='Отправить ссылку';
+  }
 }
 
 async function login() {
