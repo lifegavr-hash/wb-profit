@@ -221,6 +221,9 @@
     document.addEventListener('DOMContentLoaded', function(){
       var ov = document.getElementById('introOverlay');
       if(ov) ov.classList.add('intro-hidden');
+      // 🔥 v0.7.7.26: hero сразу видим (без задержки) если intro не показываем
+      var hero = document.querySelector('.hero-inner');
+      if(hero) hero.classList.add('hero-immediate');
     });
     return;
   }
@@ -230,10 +233,13 @@
     var ov = document.getElementById('introOverlay');
     if(!ov) return;
     ov.classList.add('intro-skipped');
+    // 🔥 v0.7.7.26: hero показываем сразу при skip — синхронно с fade-out
+    var hero = document.querySelector('.hero-inner');
+    if(hero) hero.classList.add('hero-show');
     setTimeout(function(){
       ov.classList.add('intro-hidden');
       try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
-    }, 400);
+    }, 500);
   };
 
   // === Matrix rain canvas ===
@@ -259,10 +265,16 @@
     window.addEventListener('resize', resize);
 
     var stopped = false;
+    var fadeStart = 0;
     function draw(){
       if(stopped) return;
       // Полупрозрачный фон — даёт trailing-эффект
-      ctx.fillStyle = 'rgba(10, 10, 20, 0.08)';
+      // Усиливаем затухание в финале (после 8.5с) для плавного исчезновения rain
+      var fadeBoost = 0;
+      if(fadeStart && performance.now() - fadeStart > 0){
+        fadeBoost = Math.min((performance.now() - fadeStart) / 1400, 1) * 0.25;
+      }
+      ctx.fillStyle = 'rgba(10, 10, 20, ' + (0.08 + fadeBoost) + ')';
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
       ctx.font = '600 ' + fontSize + 'px Manrope, monospace';
 
@@ -295,34 +307,43 @@
     }
     draw();
 
-    // Остановить когда intro закончится
-    setTimeout(function(){ stopped = true; }, 7500);
+    // 🔥 v0.7.7.26: Плавное затухание matrix rain параллельно с fade-out overlay
+    setTimeout(function(){ fadeStart = performance.now(); }, 8800);
+    // Полная остановка после окончания overlay fade-out
+    setTimeout(function(){ stopped = true; }, 10500);
   }
 
   // === Последовательность стадий ===
   function runIntroSequence(){
     var stages = ['introStage1', 'introStage2', 'introStage3', 'introStage4', 'introStage5'];
     var els = stages.map(function(id){ return document.getElementById(id); });
-    if(els.some(function(e){ return !e; })) return; // если HTML не загрузился — выйти
+    if(els.some(function(e){ return !e; })) return;
 
-    // 🔥 v0.7.7.25: Замедленный таймлайн (миллисекунды от начала):
-    //   0ms     → stage1 show: 380 000 ₽ + "Так показывает кабинет продавца"
-    //   1500ms  → stage1 exit, stage2 show: −357 000 ₽ + "Логистика, реклама..."
-    //   3000ms  → stage2 exit, stage3 show: 23 000 ₽ + "Вот сколько вы заработали"
-    //   4500ms  → stage3 exit, stage4 show: цитата "Считай каждый рубль..."
-    //   5600ms  → stage4 exit, stage5 show: WB Profit логотип + tagline
-    //   6500ms  → CSS animation introOut (0.8s)
-    //   7300ms  → localStorage флаг + DOM hide
+    // 🔥 v0.7.7.26: ещё медленнее (особенно цитата и логотип):
+    //   0ms     → stage1 show: 380 000 ₽ + 'Так показывает кабинет'    [1.7с]
+    //   1700ms  → stage2 show: −357 000 ₽ + 'Логистика, реклама...'    [1.6с]
+    //   3300ms  → stage3 show: 23 000 ₽ + 'Вот сколько вы заработали'  [1.7с]
+    //   5000ms  → stage4 show: цитата 'Считай каждый рубль...'         [2.0с]
+    //   7000ms  → stage5 show: WB Profit логотип + tagline             [1.8с]
+    //   8500ms  → ПАРАЛЛЕЛЬНО: hero лендинга начинает fade-in (1.2s)
+    //   8800ms  → CSS animation introOut (1.4с плавный scale+blur)
+    //   10200ms → localStorage + DOM hide
     setTimeout(function(){ els[0].classList.add('show'); }, 0);
-    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 1500);
-    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 3000);
-    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 4500);
-    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 5600);
+    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 1700);
+    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 3300);
+    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 5000);
+    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 7000);
+    // 🔥 v0.7.7.26: Hero лендинга начинает появляться ЗА 300мс до fade-out overlay
+    // — даёт ощущение, что лендинг проявляется сквозь intro, а не появляется грубо после
+    setTimeout(function(){
+      var hero = document.querySelector('.hero-inner');
+      if(hero) hero.classList.add('hero-show');
+    }, 8500);
     setTimeout(function(){
       try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
       var ov = document.getElementById('introOverlay');
       if(ov) ov.classList.add('intro-hidden');
-    }, 7300);
+    }, 10200);
   }
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -337,11 +358,12 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 /* 🔥 v0.7.7.24: Intro Matrix-rain заставка — перебивает всё на странице */
-.intro-overlay{position:fixed;inset:0;background:#0a0a14;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 0.8s cubic-bezier(.76,0,.24,1) 6.5s forwards;will-change:opacity,visibility}
-.intro-overlay.intro-skipped{animation:introOut 0.35s ease forwards;animation-delay:0s}
+.intro-overlay{position:fixed;inset:0;background:#0a0a14;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 1.4s cubic-bezier(.22,.8,.24,1) 8.8s forwards;will-change:opacity,visibility,transform,filter}
+.intro-overlay.intro-skipped{animation:introOut 0.5s cubic-bezier(.22,.8,.24,1) forwards;animation-delay:0s}
 @keyframes introOut{
-  0%{opacity:1;visibility:visible;backdrop-filter:blur(0)}
-  100%{opacity:0;visibility:hidden;backdrop-filter:blur(20px)}
+  0%{opacity:1;visibility:visible;transform:scale(1);filter:blur(0)}
+  60%{opacity:.6;transform:scale(1.04);filter:blur(6px)}
+  100%{opacity:0;visibility:hidden;transform:scale(1.08);filter:blur(14px)}
 }
 .intro-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
 .intro-scrim{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(10,10,20,.55) 0%,rgba(10,10,20,.85) 60%,#0a0a14 100%);z-index:2;pointer-events:none}
@@ -433,8 +455,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
   66%{transform:translate(-40px,30px) scale(.95)}
 }
 
-.hero-inner{max-width:780px;width:100%;text-align:center;position:relative;z-index:1;animation:heroFadeIn .9s cubic-bezier(.16,1,.3,1)}
-@keyframes heroFadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.hero-inner{max-width:780px;width:100%;text-align:center;position:relative;z-index:1;opacity:0;transform:translateY(20px);transition:opacity 1.2s cubic-bezier(.22,.8,.24,1),transform 1.2s cubic-bezier(.22,.8,.24,1)}
+.hero-inner.hero-show,.hero-inner.hero-immediate{opacity:1;transform:translateY(0)}
+.hero-inner.hero-immediate{transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1)}
 
 /* Stagger для элементов внутри hero */
 .hero-badge{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.9);font-size:12px;font-weight:600;padding:5px 14px;border-radius:99px;letter-spacing:.05em;margin-bottom:24px;animation:heroStagger .8s cubic-bezier(.16,1,.3,1) .1s both;backdrop-filter:blur(8px)}
