@@ -440,6 +440,28 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .sidebar-version{margin-top:6px;font-size:9px;color:rgba(255,255,255,.55);letter-spacing:.3px}
 .main{overflow:hidden;display:flex;flex-direction:column}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+/* 🔥 v0.7.7.22: Trial и Expired баннеры */
+.trial-banner,.expired-banner{display:flex;align-items:center;gap:14px;padding:14px 1.5rem;border-bottom:1px solid var(--border);font-size:14px}
+.trial-banner{background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);color:#78350f}
+.trial-banner-icon,.expired-banner-icon{font-size:24px;flex-shrink:0}
+.trial-banner-text,.expired-banner-text{flex:1;line-height:1.4}
+.trial-banner-text b,.expired-banner-text b{color:#92400e}
+.trial-banner-btn,.expired-banner-btn{padding:8px 16px;background:#92400e;color:#fff;border:0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s}
+.trial-banner-btn:hover{background:#78350f}
+.expired-banner{background:linear-gradient(135deg,#fee2e2 0%,#fecaca 100%);color:#7f1d1d}
+.expired-banner-text b{color:#991b1b}
+.expired-banner-btn{background:#dc2626}
+.expired-banner-btn:hover{background:#b91c1c}
+/* Dark theme */
+html[data-theme="dark"] .trial-banner{background:linear-gradient(135deg,rgba(146,64,14,.2) 0%,rgba(120,53,15,.2) 100%);color:#fde68a;border-bottom-color:rgba(251,191,36,.3)}
+html[data-theme="dark"] .trial-banner-text b{color:#fbbf24}
+html[data-theme="dark"] .trial-banner-btn{background:#fbbf24;color:#1a0f3c}
+html[data-theme="dark"] .trial-banner-btn:hover{background:#f59e0b}
+html[data-theme="dark"] .expired-banner{background:linear-gradient(135deg,rgba(220,38,38,.15) 0%,rgba(185,28,28,.15) 100%);color:#fecaca;border-bottom-color:rgba(248,113,113,.3)}
+html[data-theme="dark"] .expired-banner-text b{color:#f87171}
+
+.content{padding:1.5rem;overflow-y:auto;flex:1}
 .topbar-title{font-size:16px;font-weight:500}
 .plan-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:#EEEDFE;color:#3C3489}
 .plan-badge.free{background:#f1efe8;color:#5f5e5a}
@@ -453,7 +475,6 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .free-limit-warn{background:linear-gradient(135deg,#fef3c7,#fff);border:1px solid #f5c842;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13px;color:#7a5c00}
 .free-limit-warn a{color:#7c3aed;font-weight:600;text-decoration:none;margin-left:6px}
 .free-limit-warn a:hover{text-decoration:underline}
-.content{padding:1.5rem;overflow-y:auto;flex:1}
 .section{display:none}
 .section.active{display:block}
 .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem}
@@ -1461,6 +1482,10 @@ tr.loss td{background:#fff5f5}
   /* ─── ВЕРХНЯЯ ПАНЕЛЬ ЗАГРУЗКИ ─── */
   /* Уже сделано в v0.4.5, дополним: */
   .load-bar-title{font-size:13px!important;font-weight:600!important}
+  /* 🔥 v0.7.7.22: Trial/Expired баннеры на мобильном */
+  .trial-banner,.expired-banner{padding:12px;font-size:13px;flex-wrap:wrap}
+  .trial-banner-text,.expired-banner-text{font-size:13px;min-width:0}
+  .trial-banner-btn,.expired-banner-btn{padding:7px 14px;font-size:12px}
   .period-picker{flex-wrap:wrap!important;justify-content:stretch!important;gap:4px!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important}
   .period-pill{flex:none!important;min-width:0!important;font-size:10px!important;padding:8px 2px!important;text-align:center;white-space:nowrap}
   /* Кнопка "Загрузить" full-width */
@@ -1817,6 +1842,24 @@ tr.loss td{background:#fff5f5}
       <span class="topbar-search-kbd">/</span>
     </button>
     <span class="plan-badge free" id="planBadge">Free</span>
+  </div>
+
+  <!-- 🔥 v0.7.7.22: Trial-баннер (показывается через JS если is_trial=true) -->
+  <div id="trialBanner" class="trial-banner" style="display:none">
+    <div class="trial-banner-icon">🎁</div>
+    <div class="trial-banner-text">
+      <b>Trial PRO активен:</b> осталось <span id="trialDaysLeft">14</span> дн. После — доступ только к Главной без оплаты.
+    </div>
+    <button class="trial-banner-btn" onclick="showSection('settings', null); window.scrollTo({top:0,behavior:'smooth'})">Оплатить →</button>
+  </div>
+
+  <!-- 🔥 v0.7.7.22: Expired-баннер (показывается через JS если is_expired=true) -->
+  <div id="expiredBanner" class="expired-banner" style="display:none">
+    <div class="expired-banner-icon">⏰</div>
+    <div class="expired-banner-text">
+      <b>Подписка истекла.</b> Доступна только Главная. Чтобы вернуть полный доступ — оплатите тариф.
+    </div>
+    <button class="expired-banner-btn" onclick="showSection('settings', null); window.scrollTo({top:0,behavior:'smooth'})">Возобновить →</button>
   </div>
 
   <div class="content">
@@ -2860,8 +2903,19 @@ async function fetchPlanLimits(jwt){
     var d = await r.json();
     window._planLimits = d.limits || null;
     window._planFeatures = d.features || null;
-    window._planObj = { id: d.plan, name: d.plan_name, price: d.plan_price };
-    console.log('[plan-limits] loaded:', d.plan, d.features);
+    window._planObj = { id: d.plan, name: d.plan_name, price: d.plan_price, price_yearly: d.plan_price_yearly };
+    // 🔥 v0.7.7.22: расширенные поля для trial/expired баннеров
+    window.__profileExtended = {
+      is_trial: !!d.is_trial,
+      trial_days_left: d.trial_days_left || 0,
+      trial_until: d.trial_until || null,
+      billing_period: d.billing_period || 'monthly',
+      is_expired: !!d.is_expired,
+      effective_plan_id: d.effective_plan_id || d.plan
+    };
+    // Сразу обновляем баннеры если функция уже определена
+    if(typeof updateTrialExpiredBanners === 'function') updateTrialExpiredBanners();
+    console.log('[plan-limits] loaded:', d.plan, d.features, 'trial:', d.is_trial, 'expired:', d.is_expired);
   }catch(e){
     console.warn('[plan-limits] fetch error:', e);
   }
@@ -2938,6 +2992,36 @@ function updateUI(profile,email,token){
     el.style.display=hasPro?'none':'inline';
   });
   // Прячем нав-пункты которые недоступны на free? Нет — пусть видят, но при клике увидят модал
+
+  // 🔥 v0.7.7.22: Trial и Expired баннеры (используют поля из /api/profile)
+  updateTrialExpiredBanners();
+}
+
+// 🔥 v0.7.7.22: Управление trial/expired-баннерами
+function updateTrialExpiredBanners(){
+  var trialBanner = document.getElementById('trialBanner');
+  var expiredBanner = document.getElementById('expiredBanner');
+  if(!trialBanner || !expiredBanner) return;
+  // Берём расширенные поля из window.__profileExtended (заполняется в loadPlanLimits)
+  var ext = window.__profileExtended || {};
+  // Админу — никаких баннеров
+  if(currentProfile && currentProfile.is_admin){
+    trialBanner.style.display='none';
+    expiredBanner.style.display='none';
+    return;
+  }
+  if(ext.is_expired){
+    trialBanner.style.display='none';
+    expiredBanner.style.display='flex';
+  } else if(ext.is_trial){
+    var daysEl = document.getElementById('trialDaysLeft');
+    if(daysEl) daysEl.textContent = ext.trial_days_left || 0;
+    trialBanner.style.display='flex';
+    expiredBanner.style.display='none';
+  } else {
+    trialBanner.style.display='none';
+    expiredBanner.style.display='none';
+  }
 }
 
 async function logout(){
@@ -3050,6 +3134,16 @@ function toggleMobMenu(force){
 function showSection(name,el){
   // На мобиле — закрываем меню при выборе
   toggleMobMenu(false);
+  // 🔥 v0.7.7.22: При expired доступ только к Главной и Настройкам (для оплаты)
+  var ext = window.__profileExtended || {};
+  var isAdmin = currentProfile && currentProfile.is_admin;
+  if(ext.is_expired && !isAdmin && name!=='home' && name!=='settings'){
+    showInfoModal('⏰ Подписка истекла', 
+      '<p>Вы можете просматривать только <b>Главную</b>. Чтобы вернуть полный доступ — оплатите тариф в <b>Настройках</b>.</p>'+
+      '<p style="margin-top:14px"><button class="btn-primary" style="width:100%" onclick="closeInfoModal();showSection(\'settings\',null)">Открыть Настройки</button></p>'
+    );
+    return;
+  }
   // PRO-only разделы
   if((name==='detail'||name==='analytics')&&!hasPRO()){
     var featureName=name==='detail'?'Детализация расходов':'Аналитика';
