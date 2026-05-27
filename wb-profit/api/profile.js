@@ -104,11 +104,10 @@ async function handleWbAccounts(req, res, jwt) {
         position: currentCount || 0,
         last_used_at: finalIsDefault ? new Date().toISOString() : null,
       })
-      .select('id, name, is_default, position, last_used_at, created_at')
+      .select('id, name, is_default, position, last_used_at, created_at, wb_token')
       .single();
 
     if (error) {
-      // Если упёрлись в триггер БД — возвращаем 403
       if (String(error.message || '').includes('WB_ACCOUNTS_LIMIT_REACHED')) {
         return res.status(403).json({ error: 'WB_ACCOUNTS_LIMIT_REACHED', message: error.message });
       }
@@ -116,7 +115,21 @@ async function handleWbAccounts(req, res, jwt) {
     }
 
     await audit(req, user.id, user.email, 'wb_account_added', 'success', { name, account_id: data.id });
-    return res.status(200).json({ ok: true, account: data });
+
+    // 🔥 v0.7.7.29: токен возвращаем ТОЛЬКО если это default (его нужно записать в localStorage сразу)
+    const safeData = {
+      id: data.id,
+      name: data.name,
+      is_default: data.is_default,
+      position: data.position,
+      last_used_at: data.last_used_at,
+      created_at: data.created_at,
+    };
+    if (finalIsDefault) {
+      safeData.wb_token = data.wb_token;
+    }
+
+    return res.status(200).json({ ok: true, account: safeData });
   }
 
   // PATCH — обновить кабинет (поля: name, is_default, last_used_at)
@@ -171,13 +184,26 @@ async function handleWbAccounts(req, res, jwt) {
       .update(update)
       .eq('id', id)
       .eq('user_id', user.id)
-      .select('id, name, is_default, position, last_used_at')
+      .select('id, name, is_default, position, last_used_at, wb_token')
       .single();
 
     if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
     if (!data) return res.status(404).json({ error: 'NOT_FOUND' });
 
-    return res.status(200).json({ ok: true, account: data });
+    // 🔥 v0.7.7.29: токен возвращаем ТОЛЬКО когда явно делаем switch (is_default=true + touch_last_used=true).
+    // В обычных PATCH (rename, etc) скрываем чтобы не светить лишний раз.
+    const safeData = {
+      id: data.id,
+      name: data.name,
+      is_default: data.is_default,
+      position: data.position,
+      last_used_at: data.last_used_at,
+    };
+    if (update.is_default === true && body.touch_last_used === true) {
+      safeData.wb_token = data.wb_token;
+    }
+
+    return res.status(200).json({ ok: true, account: safeData });
   }
 
   // DELETE — удалить кабинет

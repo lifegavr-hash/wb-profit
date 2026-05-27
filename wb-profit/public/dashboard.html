@@ -517,6 +517,52 @@ html[data-theme="dark"] .expired-banner-text b{color:#f87171}
 .topbar-search-text{}
 .topbar-search-kbd{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;color:#94a3b8;font-family:monospace}
 @media(max-width:680px){.topbar-search-text{display:none}.topbar-search-kbd{display:none}.topbar-search-btn{padding:7px 10px}}
+
+/* 🔥 v0.7.7.29: Переключатель кабинетов WB в topbar */
+.wb-switcher{position:relative}
+.wb-switcher-btn{display:flex;align-items:center;gap:6px;background:#f8fafc;color:#1a0f3c;border:1px solid #e2e8f0;padding:7px 12px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.wb-switcher-btn:hover{background:#f1f5f9;border-color:#cbd5e1}
+.wb-switcher-icon{font-size:14px}
+.wb-switcher-name{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-switcher-caret{font-size:10px;color:#64748b}
+html[data-theme="dark"] .wb-switcher-btn{background:#1f1430;color:#fff;border-color:rgba(255,255,255,.12)}
+html[data-theme="dark"] .wb-switcher-btn:hover{background:#2a1d40;border-color:rgba(255,255,255,.2)}
+.wb-switcher-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:6px;box-shadow:0 8px 28px rgba(0,0,0,.12);z-index:300}
+html[data-theme="dark"] .wb-switcher-menu{background:#1f1430;border-color:rgba(255,255,255,.12)}
+.wb-switcher-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;font-size:13px;cursor:pointer;transition:background .15s;color:#1a0f3c}
+.wb-switcher-item:hover{background:#f1f5f9}
+.wb-switcher-item.active{background:#ede9fe;color:#5b21b6;font-weight:600}
+html[data-theme="dark"] .wb-switcher-item{color:#fff}
+html[data-theme="dark"] .wb-switcher-item:hover{background:rgba(255,255,255,.06)}
+html[data-theme="dark"] .wb-switcher-item.active{background:rgba(124,58,237,.25);color:#c4b5fd}
+.wb-switcher-item-check{margin-left:auto;color:#7c3aed;font-weight:700}
+.wb-switcher-divider{height:1px;background:#e2e8f0;margin:6px 0}
+html[data-theme="dark"] .wb-switcher-divider{background:rgba(255,255,255,.08)}
+.wb-switcher-action{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;font-size:13px;cursor:pointer;color:#64748b;transition:background .15s}
+.wb-switcher-action:hover{background:#f1f5f9;color:#1a0f3c}
+html[data-theme="dark"] .wb-switcher-action{color:rgba(255,255,255,.6)}
+html[data-theme="dark"] .wb-switcher-action:hover{background:rgba(255,255,255,.06);color:#fff}
+
+/* WB-кабинет в Настройках */
+.wb-account-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;transition:border-color .15s}
+.wb-account-item:hover{border-color:#c4b5fd}
+.wb-account-item.is-default{border-color:#a78bfa;background:rgba(167,139,250,.08)}
+html[data-theme="dark"] .wb-account-item.is-default{background:rgba(124,58,237,.15)}
+.wb-account-icon{font-size:20px;flex-shrink:0}
+.wb-account-info{flex:1;min-width:0}
+.wb-account-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.wb-account-meta{font-size:12px;color:var(--muted)}
+.wb-account-badge{display:inline-block;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.04em;text-transform:uppercase;margin-left:6px}
+.wb-account-actions{display:flex;gap:6px;flex-shrink:0}
+.wb-acc-btn{background:transparent;border:1px solid var(--border);padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;color:var(--muted);transition:all .15s}
+.wb-acc-btn:hover{border-color:#7c3aed;color:#7c3aed}
+.wb-acc-btn.danger:hover{border-color:#dc2626;color:#dc2626}
+@media(max-width:600px){
+  .wb-account-item{flex-wrap:wrap;gap:6px}
+  .wb-account-actions{width:100%;justify-content:flex-end}
+  .wb-switcher-name{max-width:80px}
+}
+
 /* 🔥 v0.7.6 G3: Toast-уведомления */
 #toastContainer{position:fixed;top:24px;right:24px;z-index:10000;display:flex;flex-direction:column;gap:8px;max-width:380px;pointer-events:none}
 .toast{background:#1a0f3c;color:#fff;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);pointer-events:auto;animation:toastIn .25s ease-out;line-height:1.4}
@@ -1841,6 +1887,15 @@ tr.loss td{background:#fff5f5}
       <span class="topbar-search-text">Поиск</span>
       <span class="topbar-search-kbd">/</span>
     </button>
+    <!-- 🔥 v0.7.7.29: Переключатель кабинетов (показывается если >1 кабинет) -->
+    <div class="wb-switcher" id="wbSwitcher" style="display:none">
+      <button class="wb-switcher-btn" onclick="toggleWbSwitcher()" id="wbSwitcherBtn">
+        <span class="wb-switcher-icon">🏪</span>
+        <span class="wb-switcher-name" id="wbSwitcherName">Магазин</span>
+        <span class="wb-switcher-caret">▾</span>
+      </button>
+      <div class="wb-switcher-menu" id="wbSwitcherMenu" style="display:none"></div>
+    </div>
     <span class="plan-badge free" id="planBadge">Free</span>
   </div>
 
@@ -1942,21 +1997,40 @@ tr.loss td{background:#fff5f5}
           </button>
         </div>
       </div>
-      <div class="card" style="margin-top:14px">
-        <div class="ct">Подключение к Wildberries</div>
-        <div style="margin-bottom:12px">
-          <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">API токен WB</label>
-          <input type="text" id="tok1" placeholder="eyJhbGciOiJFUzI1NiIs..." class="wb-token-input" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" spellcheck="false">
-          <p class="hint" id="savedHint" style="display:none;color:var(--green)">Токен сохранён</p>
+      <!-- 🔥 v0.7.7.29: Кабинеты WB (множественные на Бизнес-тарифе) -->
+      <div class="card" style="margin-top:14px" id="wbAccountsCard">
+        <div class="ct">Кабинеты WB
+          <span id="wbAccountsLimitHint" style="font-weight:400;color:var(--muted);font-size:12px;margin-left:6px"></span>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;margin-bottom:12px">
-          <input type="checkbox" id="rememberTok" style="width:auto;padding:0"> Запомнить токен
-        </label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn-primary settings-save-btn" id="saveTokBtn" onclick="saveTokenManual()" disabled data-bind="tok1">Сохранить токен</button>
-          <button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>
+        <p class="hint" style="margin-bottom:12px">Подключите ваш WB-кабинет по API-токену. На тарифе <b>Бизнес</b> можно добавить до 2-х кабинетов и быстро переключаться между ними.</p>
+
+        <!-- Список существующих кабинетов -->
+        <div id="wbAccountsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px"></div>
+
+        <!-- Форма добавления нового кабинета -->
+        <div id="wbAccountsAddForm" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">
+          <div style="margin-bottom:10px">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Название кабинета</label>
+            <input type="text" id="newAccName" placeholder="Магазин 1" maxlength="100" style="width:100%">
+          </div>
+          <div style="margin-bottom:10px">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">API токен WB</label>
+            <input type="text" id="newAccToken" placeholder="eyJhbGciOiJFUzI1NiIs..." class="wb-token-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" spellcheck="false" style="width:100%">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn-primary" onclick="saveNewWbAccount()">Сохранить кабинет</button>
+            <button class="bulk-btn" onclick="cancelAddWbAccount()">Отмена</button>
+            <button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>
+          </div>
         </div>
+
+        <!-- Кнопка "Добавить кабинет" -->
+        <button class="btn-primary" id="wbAccountsAddBtn" onclick="showAddWbAccount()" style="width:100%">+ Добавить кабинет WB</button>
+
         <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Нужны разделы: <strong>Статистика</strong>, <strong>Продвижение</strong>, <strong>Аналитика</strong>.</p>
+
+        <!-- Скрытое поле для обратной совместимости со старым кодом -->
+        <input type="hidden" id="tok1">
       </div>
       <div class="card" style="margin-top:14px">
         <div class="ct">Контроль кассового потока <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:6px">(необязательно)</span></div>
@@ -2550,6 +2624,8 @@ async function init(){
   // Фронтовый profile из Supabase больше не источник истины для лимитов —
   // источник: /api/profile (там JOIN с таблицей plans, с проверкой подписи JWT).
   fetchPlanLimits(session.access_token);
+  // 🔥 v0.7.7.29: подтягиваем кабинеты WB (и мигрируем localStorage.wb_token если нужно)
+  if(typeof loadWbAccounts === 'function') loadWbAccounts();
   // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
   // (_currentPeriod уже подтянулся из localStorage)
   syncPeriodPills();
@@ -3463,6 +3539,312 @@ function saveTokenManual(){
   var sh=document.getElementById('savedHint');if(sh)sh.style.display='block';
   if(typeof markSettingsSaved==='function') markSettingsSaved('saveTokBtn');
 }
+
+// =====================================================================
+// 🔥 v0.7.7.29: Управление кабинетами WB (Бизнес-тариф — до 2 кабинетов)
+// =====================================================================
+
+window._wbAccounts = [];
+window._wbAccountsLimit = { max: 1, current: 0 };
+
+async function _wbAccApiFetch(path, opts){
+  const sess = await sb.auth.getSession();
+  const jwt = sess.data.session?.access_token;
+  if(!jwt) throw new Error('not_authenticated');
+  const r = await fetch(path, Object.assign({}, opts || {}, {
+    headers: Object.assign({}, (opts && opts.headers) || {}, {
+      'Authorization': 'Bearer ' + jwt,
+      'Content-Type': 'application/json'
+    })
+  }));
+  const data = await r.json().catch(function(){ return {}; });
+  return { ok: r.ok, status: r.status, data: data };
+}
+
+// Загрузить список кабинетов из API
+async function loadWbAccounts(){
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts');
+    if(!r.ok){
+      console.warn('[wb-accounts] load failed:', r.status, r.data);
+      return;
+    }
+    window._wbAccounts = r.data.accounts || [];
+    window._wbAccountsLimit = {
+      max: r.data.limits?.max_wb_accounts || 1,
+      current: r.data.limits?.current_count || 0
+    };
+    renderWbAccountsList();
+    renderWbSwitcher();
+    // 🔥 Auto-migration: если в БД пусто, но в localStorage есть токен — мигрируем
+    await maybeMigrateLocalStorageToken();
+  } catch(e){
+    console.warn('[wb-accounts] load error:', e);
+  }
+}
+
+// Auto-migration старого localStorage.wb_token → первая запись в wb_accounts
+async function maybeMigrateLocalStorageToken(){
+  if(window._wbAccounts.length > 0) return; // уже есть кабинеты
+  const lsToken = localStorage.getItem('wb_token');
+  if(!lsToken || !lsToken.trim()) return;
+  if(!isAsciiToken(lsToken) || lsToken.length < 50) return;
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Магазин 1', wb_token: lsToken.trim(), is_default: true })
+    });
+    if(r.ok){
+      console.log('[wb-accounts] migrated localStorage token → wb_accounts');
+      // Перезагружаем список
+      const list = await _wbAccApiFetch('/api/profile?resource=wb-accounts');
+      if(list.ok){
+        window._wbAccounts = list.data.accounts || [];
+        window._wbAccountsLimit = {
+          max: list.data.limits?.max_wb_accounts || 1,
+          current: list.data.limits?.current_count || 0
+        };
+        renderWbAccountsList();
+        renderWbSwitcher();
+      }
+    }
+  } catch(e){
+    console.warn('[wb-accounts] migration failed:', e);
+  }
+}
+
+// Рендер списка в Настройках
+function renderWbAccountsList(){
+  const list = document.getElementById('wbAccountsList');
+  if(!list) return;
+  const accs = window._wbAccounts;
+  const lim = window._wbAccountsLimit;
+  // Подпись лимита
+  const hint = document.getElementById('wbAccountsLimitHint');
+  if(hint) hint.textContent = lim.max > 1 ? '(' + lim.current + ' из ' + lim.max + ')' : '';
+  // Кнопка "Добавить" — отключена если лимит
+  const addBtn = document.getElementById('wbAccountsAddBtn');
+  if(addBtn){
+    const atLimit = lim.current >= lim.max;
+    addBtn.disabled = atLimit;
+    addBtn.style.opacity = atLimit ? '.5' : '';
+    addBtn.style.cursor = atLimit ? 'not-allowed' : '';
+    addBtn.title = atLimit ? 'Лимит кабинетов на текущем тарифе. Доступно на тарифе Бизнес — до 2 кабинетов.' : '';
+  }
+  // Список
+  if(accs.length === 0){
+    list.innerHTML = '<p class="hint" style="margin:0">Кабинетов пока нет. Добавьте первый, чтобы начать работу.</p>';
+    return;
+  }
+  list.innerHTML = accs.map(function(a){
+    const lastUsed = a.last_used_at ? new Date(a.last_used_at).toLocaleString('ru-RU') : 'не использовался';
+    return '<div class="wb-account-item ' + (a.is_default ? 'is-default' : '') + '" data-id="' + a.id + '">' +
+      '<span class="wb-account-icon">🏪</span>' +
+      '<div class="wb-account-info">' +
+        '<div class="wb-account-name">' + escapeHtml(a.name) +
+          (a.is_default ? '<span class="wb-account-badge">Активный</span>' : '') +
+        '</div>' +
+        '<div class="wb-account-meta">Последний вход: ' + lastUsed + '</div>' +
+      '</div>' +
+      '<div class="wb-account-actions">' +
+        (a.is_default ? '' : '<button class="wb-acc-btn" onclick="switchWbAccount(\'' + a.id + '\')">Сделать активным</button>') +
+        '<button class="wb-acc-btn" onclick="renameWbAccount(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\')">Переименовать</button>' +
+        (accs.length > 1 ? '<button class="wb-acc-btn danger" onclick="deleteWbAccount(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\')">Удалить</button>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// Рендер дропдауна в шапке
+function renderWbSwitcher(){
+  const sw = document.getElementById('wbSwitcher');
+  const accs = window._wbAccounts;
+  if(!sw) return;
+  // Прячем если 0 или 1 кабинет (свитчер не нужен)
+  if(accs.length < 2){
+    sw.style.display = 'none';
+    return;
+  }
+  sw.style.display = '';
+  const def = accs.find(function(a){ return a.is_default; }) || accs[0];
+  const nameEl = document.getElementById('wbSwitcherName');
+  if(nameEl) nameEl.textContent = def.name;
+  // Пункты меню
+  const menu = document.getElementById('wbSwitcherMenu');
+  if(menu){
+    menu.innerHTML = accs.map(function(a){
+      return '<div class="wb-switcher-item ' + (a.is_default ? 'active' : '') + '" onclick="switchWbAccount(\'' + a.id + '\')">' +
+        '<span>🏪</span><span>' + escapeHtml(a.name) + '</span>' +
+        (a.is_default ? '<span class="wb-switcher-item-check">✓</span>' : '') +
+      '</div>';
+    }).join('') +
+    '<div class="wb-switcher-divider"></div>' +
+    '<div class="wb-switcher-action" onclick="closeWbSwitcher();showSection(\'settings\',null);setTimeout(function(){var el=document.getElementById(\'wbAccountsCard\');if(el)el.scrollIntoView({behavior:\'smooth\',block:\'start\'});},100)">' +
+      '<span>⚙️</span><span>Управление кабинетами</span>' +
+    '</div>';
+  }
+}
+
+// Открыть/закрыть меню switcher
+function toggleWbSwitcher(){
+  const menu = document.getElementById('wbSwitcherMenu');
+  if(!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  // Закрываем по клику снаружи
+  if(menu.style.display === 'block'){
+    setTimeout(function(){
+      document.addEventListener('click', closeWbSwitcherOnOutside, { once: true, capture: true });
+    }, 50);
+  }
+}
+function closeWbSwitcher(){
+  const menu = document.getElementById('wbSwitcherMenu');
+  if(menu) menu.style.display = 'none';
+}
+function closeWbSwitcherOnOutside(e){
+  const sw = document.getElementById('wbSwitcher');
+  if(sw && !sw.contains(e.target)){ closeWbSwitcher(); }
+  else { setTimeout(function(){ document.addEventListener('click', closeWbSwitcherOnOutside, { once: true, capture: true }); }, 50); }
+}
+
+// Показать форму добавления
+function showAddWbAccount(){
+  if(window._wbAccountsLimit.current >= window._wbAccountsLimit.max){
+    toast('warning', 'Лимит кабинетов на текущем тарифе. Доступно на тарифе Бизнес.');
+    return;
+  }
+  const form = document.getElementById('wbAccountsAddForm');
+  const btn = document.getElementById('wbAccountsAddBtn');
+  if(form) form.style.display = '';
+  if(btn) btn.style.display = 'none';
+  // Auto-fill name
+  const nameInput = document.getElementById('newAccName');
+  if(nameInput && !nameInput.value){
+    nameInput.value = 'Магазин ' + (window._wbAccounts.length + 1);
+  }
+  if(nameInput) nameInput.focus();
+}
+function cancelAddWbAccount(){
+  const form = document.getElementById('wbAccountsAddForm');
+  const btn = document.getElementById('wbAccountsAddBtn');
+  if(form) form.style.display = 'none';
+  if(btn) btn.style.display = '';
+  document.getElementById('newAccName').value = '';
+  document.getElementById('newAccToken').value = '';
+}
+
+// Сохранить новый кабинет
+async function saveNewWbAccount(){
+  const name = document.getElementById('newAccName').value.trim();
+  const token = document.getElementById('newAccToken').value.trim();
+  if(!name){ toast('warning', 'Введите название кабинета'); return; }
+  if(!token){ toast('warning', 'Введите WB API токен'); return; }
+  if(!isAsciiToken(token)){ toast('error', 'Токен невалидный (только латинские буквы/цифры/-_.)'); return; }
+  if(token.length < 50){ toast('error', 'Токен слишком короткий (минимум 50 символов)'); return; }
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts', {
+      method: 'POST',
+      body: JSON.stringify({ name: name, wb_token: token })
+    });
+    if(!r.ok){
+      if(r.status === 403 && r.data.error === 'WB_ACCOUNTS_LIMIT_REACHED'){
+        toast('error', r.data.message || 'Достигнут лимит кабинетов на тарифе');
+      } else {
+        toast('error', r.data.message || 'Не удалось сохранить кабинет');
+      }
+      return;
+    }
+    toast('success', 'Кабинет «' + name + '» добавлен');
+    // 🔥 Если этот кабинет стал default — записываем токен в localStorage
+    if(r.data.account?.is_default && r.data.account?.wb_token){
+      localStorage.setItem('wb_token', r.data.account.wb_token);
+      localStorage.removeItem('wb_seller_name');
+      localStorage.removeItem('wb_seller_name_at');
+      window._sellerName = '';
+    }
+    cancelAddWbAccount();
+    await loadWbAccounts();
+  } catch(e){
+    toast('error', 'Ошибка: ' + (e.message || e));
+  }
+}
+
+// Переключиться на другой кабинет
+async function switchWbAccount(id){
+  const acc = window._wbAccounts.find(function(a){ return a.id === id; });
+  if(!acc) return;
+  closeWbSwitcher();
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts&id=' + id, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_default: true, touch_last_used: true })
+    });
+    if(!r.ok){
+      toast('error', 'Не удалось переключить кабинет');
+      return;
+    }
+    // 🔥 Получаем токен из ответа и сохраняем в localStorage
+    const newToken = r.data.account?.wb_token;
+    if(newToken){
+      localStorage.setItem('wb_token', newToken);
+      // Сбрасываем кеш имени селлера чтобы подтянулось имя нового кабинета
+      localStorage.removeItem('wb_seller_name');
+      localStorage.removeItem('wb_seller_name_at');
+      window._sellerName = '';
+    }
+    toast('success', 'Переключено на «' + acc.name + '». Перезагружаю данные…');
+    setTimeout(function(){ location.reload(); }, 600);
+  } catch(e){
+    toast('error', 'Ошибка: ' + (e.message || e));
+  }
+}
+
+// Переименовать кабинет
+async function renameWbAccount(id, currentName){
+  const newName = prompt('Новое название кабинета:', currentName);
+  if(newName === null) return;
+  const trimmed = newName.trim();
+  if(!trimmed){ toast('warning', 'Название не может быть пустым'); return; }
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts&id=' + id, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: trimmed })
+    });
+    if(!r.ok){ toast('error', 'Не удалось переименовать'); return; }
+    toast('success', 'Переименовано');
+    await loadWbAccounts();
+  } catch(e){
+    toast('error', 'Ошибка: ' + (e.message || e));
+  }
+}
+
+// Удалить кабинет
+async function deleteWbAccount(id, name){
+  if(!confirm('Удалить кабинет «' + name + '»?\n\nДанные пользователя (себестоимости, история) сохранятся. Удалится только токен.')) return;
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts&id=' + id, { method: 'DELETE' });
+    if(!r.ok){ toast('error', 'Не удалось удалить'); return; }
+    toast('success', 'Кабинет «' + name + '» удалён');
+    await loadWbAccounts();
+  } catch(e){
+    toast('error', 'Ошибка: ' + (e.message || e));
+  }
+}
+
+// Хелперы для escape в onclick
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+function escapeAttr(s){
+  return String(s == null ? '' : s).replace(/['"\\]/g, '\\$&');
+}
+
+// =====================================================================
+// КОНЕЦ wb-accounts модуля
+// =====================================================================
+
 // === ЛИЧНЫЕ РАСХОДЫ (для алерта о кассовом разрыве) ===
 function savePersonalExpenses(){
   var el=document.getElementById('personalExpenses');
