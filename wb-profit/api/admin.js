@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { audit } from '../lib/audit-log.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,10 +30,26 @@ export default async function handler(req, res) {
         code: code.toUpperCase(), plan, days, max_uses: maxUses
       }).select().single();
       if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: 'promo_created_by_admin',
+        event_status: 'success',
+        user_id: user.id,
+        user_email: user.email,
+        meta: { code: code.toUpperCase(), plan, days, max_uses: maxUses, promo_id: data.id },
+        req
+      });
       return res.status(200).json({ success: true, promo: data });
     }
     if (action === 'deactivate_promo') {
       await supabase.from('promo_codes').update({ is_active: false }).eq('id', id);
+      await audit({
+        event_type: 'promo_deactivated_by_admin',
+        event_status: 'success',
+        user_id: user.id,
+        user_email: user.email,
+        meta: { promo_id: id },
+        req
+      });
       return res.status(200).json({ success: true });
     }
   }

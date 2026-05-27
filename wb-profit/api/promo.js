@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
+import { audit } from '../lib/audit-log.js';
 
 const PLAN_RANK = { free: 0, start: 1, pro: 2, business: 3 };
 
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
     return res.status(planResult.status || 401).json({ error: planResult.error, message: planResult.message });
   }
   const userId = planResult.user.id;
+  const userEmail = planResult.user.email;
   const isAdmin = planResult.isAdmin;
   const currentPlan = planResult.plan;
   const currentExpires = planResult.expiresAt;
@@ -39,9 +41,11 @@ export default async function handler(req, res) {
     .from('promo_codes').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single();
 
   if (promoError || !promo) {
+    await audit({ event_type: 'promo_failed', event_status: 'failed', user_id: userId, user_email: userEmail, meta: { code: code.toUpperCase(), reason: 'not_found' }, req });
     return res.status(404).json({ error: 'Промокод не найден или недействителен' });
   }
   if (promo.used_count >= promo.max_uses) {
+    await audit({ event_type: 'promo_failed', event_status: 'failed', user_id: userId, user_email: userEmail, meta: { code: code.toUpperCase(), reason: 'max_uses' }, req });
     return res.status(400).json({ error: 'Промокод использован максимальное количество раз' });
   }
 
@@ -49,6 +53,7 @@ export default async function handler(req, res) {
   const { data: existing } = await supabase
     .from('promo_uses').select('id').eq('promo_id', promo.id).eq('user_id', userId).maybeSingle();
   if (existing) {
+    await audit({ event_type: 'promo_failed', event_status: 'failed', user_id: userId, user_email: userEmail, meta: { code: code.toUpperCase(), reason: 'already_used' }, req });
     return res.status(400).json({ error: 'Вы уже использовали этот промокод' });
   }
 
@@ -58,6 +63,7 @@ export default async function handler(req, res) {
     const curRank = PLAN_RANK[currentPlan] ?? 0;
     const promoRank = PLAN_RANK[promo.plan] ?? 0;
     if (promoRank <= curRank) {
+      await audit({ event_type: 'promo_failed', event_status: 'failed', user_id: userId, user_email: userEmail, meta: { code: code.toUpperCase(), reason: 'active_plan', current: currentPlan, promo: promo.plan }, req });
       return res.status(400).json({
         error: 'ACTIVE_PLAN',
         message: `У вас уже активен тариф ${currentPlan.toUpperCase()} до ${currentExpires.toLocaleDateString('ru-RU')}. Этот промокод даёт ${promo.plan.toUpperCase()} — нет смысла активировать.`,
@@ -73,6 +79,15 @@ export default async function handler(req, res) {
   await supabase.from('promo_uses').insert({ promo_id: promo.id, user_id: userId });
   await supabase.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id);
   await supabase.from('profiles').update({ plan: promo.plan, plan_expires_at: expires.toISOString() }).eq('id', userId);
+
+  await audit({
+    event_type: 'promo_activated',
+    event_status: 'success',
+    user_id: userId,
+    user_email: userEmail,
+    meta: { code: code.toUpperCase(), plan: promo.plan, days: promo.days, expires_at: expires.toISOString() },
+    req
+  });
 
   return res.status(200).json({
     success: true,

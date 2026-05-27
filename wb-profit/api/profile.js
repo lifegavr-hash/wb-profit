@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
+import { audit } from '../lib/audit-log.js';
 
 export const config = { maxDuration: 30 };
 
@@ -93,6 +94,15 @@ export default async function handler(req, res) {
       password: password
     });
     if (signInErr || !signIn?.user || signIn.user.id !== userId) {
+      // 🔥 v0.7.7.17: лог попыток с неверным паролем
+      await audit({
+        event_type: 'account_deleted',
+        event_status: 'failed',
+        user_id: userId,
+        user_email: userEmail,
+        meta: { reason: 'wrong_password' },
+        req
+      });
       return res.status(403).json({ error: 'WRONG_PASSWORD', message: 'Неверный пароль' });
     }
 
@@ -116,6 +126,16 @@ export default async function handler(req, res) {
         deleted
       });
     }
+
+    // 🔥 v0.7.7.17: успешный лог
+    await audit({
+      event_type: 'account_deleted',
+      event_status: 'success',
+      user_id: userId,
+      user_email: userEmail,
+      meta: { deleted },
+      req
+    });
 
     return res.status(200).json({ ok: true, deleted });
   } catch (e) {
