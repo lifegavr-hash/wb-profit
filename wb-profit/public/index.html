@@ -274,7 +274,7 @@
       if(fadeStart && performance.now() - fadeStart > 0){
         fadeBoost = Math.min((performance.now() - fadeStart) / 1400, 1) * 0.25;
       }
-      ctx.fillStyle = 'rgba(10, 10, 20, ' + (0.08 + fadeBoost) + ')';
+      ctx.fillStyle = 'rgba(17, 10, 38, ' + (0.08 + fadeBoost) + ')';
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
       ctx.font = '600 ' + fontSize + 'px Manrope, monospace';
 
@@ -307,10 +307,11 @@
     }
     draw();
 
-    // 🔥 v0.7.7.26: Плавное затухание matrix rain параллельно с fade-out overlay
-    setTimeout(function(){ fadeStart = performance.now(); }, 8800);
+    // 🔥 v0.7.7.26: Плавное затухание matrix rain — стартует одновременно с hero fade-in,
+    // заканчивается через 1.8с (когда overlay полностью невидим)
+    setTimeout(function(){ fadeStart = performance.now(); }, 10200);
     // Полная остановка после окончания overlay fade-out
-    setTimeout(function(){ stopped = true; }, 10500);
+    setTimeout(function(){ stopped = true; }, 12400);
   }
 
   // === Последовательность стадий ===
@@ -319,31 +320,31 @@
     var els = stages.map(function(id){ return document.getElementById(id); });
     if(els.some(function(e){ return !e; })) return;
 
-    // 🔥 v0.7.7.26: ещё медленнее (особенно цитата и логотип):
-    //   0ms     → stage1 show: 380 000 ₽ + 'Так показывает кабинет'    [1.7с]
-    //   1700ms  → stage2 show: −357 000 ₽ + 'Логистика, реклама...'    [1.6с]
-    //   3300ms  → stage3 show: 23 000 ₽ + 'Вот сколько вы заработали'  [1.7с]
-    //   5000ms  → stage4 show: цитата 'Считай каждый рубль...'         [2.0с]
-    //   7000ms  → stage5 show: WB Profit логотип + tagline             [1.8с]
-    //   8500ms  → ПАРАЛЛЕЛЬНО: hero лендинга начинает fade-in (1.2s)
-    //   8800ms  → CSS animation introOut (1.4с плавный scale+blur)
-    //   10200ms → localStorage + DOM hide
+    // 🔥 v0.7.7.26: Ещё медленнее (пользователь не успевал прочитать цитату):
+    //   0ms     → stage1 show: 380 000 ₽ + 'Так показывает кабинет'      [1.8с]
+    //   1800ms  → stage2 show: −357 000 ₽ + 'Логистика, реклама...'      [1.8с]
+    //   3600ms  → stage3 show: 23 000 ₽ + 'Вот сколько вы заработали'    [2.0с]
+    //   5600ms  → stage4 show: цитата 'Считай каждый рубль...'           [2.8с — БОЛЬШАЯ]
+    //   8400ms  → stage5 show: WB Profit логотип + tagline               [2.2с]
+    //  10200ms  → hero начинает proactive fade-in (sync с overlay fade-out)
+    //  10600ms  → CSS animation introOut запускается (1.6с очень плавная)
+    //  12200ms  → localStorage + DOM hide (полная очистка)
     setTimeout(function(){ els[0].classList.add('show'); }, 0);
-    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 1700);
-    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 3300);
-    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 5000);
-    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 7000);
-    // 🔥 v0.7.7.26: Hero лендинга начинает появляться ЗА 300мс до fade-out overlay
-    // — даёт ощущение, что лендинг проявляется сквозь intro, а не появляется грубо после
+    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 1800);
+    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 3600);
+    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 5600);
+    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 8400);
+    // Hero лендинга начинает появляться ЗА 400мс до fade-out overlay
+    // — даёт ощущение, что лендинг проявляется СКВОЗЬ intro, а не появляется грубо
     setTimeout(function(){
       var hero = document.querySelector('.hero-inner');
       if(hero) hero.classList.add('hero-show');
-    }, 8500);
+    }, 10200);
     setTimeout(function(){
       try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
       var ov = document.getElementById('introOverlay');
       if(ov) ov.classList.add('intro-hidden');
-    }, 10200);
+    }, 12200);
   }
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -357,16 +358,20 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
-/* 🔥 v0.7.7.24: Intro Matrix-rain заставка — перебивает всё на странице */
-.intro-overlay{position:fixed;inset:0;background:#0a0a14;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 1.4s cubic-bezier(.22,.8,.24,1) 8.8s forwards;will-change:opacity,visibility,transform,filter}
-.intro-overlay.intro-skipped{animation:introOut 0.5s cubic-bezier(.22,.8,.24,1) forwards;animation-delay:0s}
+/* 🔥 v0.7.7.24: Intro Matrix-rain заставка — перебивает всё на странице.
+   🔥 v0.7.7.26: Фон #110a26 — ближе к hero (#1a0f3c) → переход незаметнее.
+   Delay 10.6s = после стадии 5 (8.4с старт + 2.2с просмотр). */
+.intro-overlay{position:fixed;inset:0;background:#110a26;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 1.6s cubic-bezier(.65,0,.35,1) 10.6s forwards;will-change:opacity,visibility,transform,filter}
+.intro-overlay.intro-skipped{animation:introOut 0.6s cubic-bezier(.65,0,.35,1) forwards;animation-delay:0s}
 @keyframes introOut{
   0%{opacity:1;visibility:visible;transform:scale(1);filter:blur(0)}
-  60%{opacity:.6;transform:scale(1.04);filter:blur(6px)}
-  100%{opacity:0;visibility:hidden;transform:scale(1.08);filter:blur(14px)}
+  60%{opacity:.5;transform:scale(1.05);filter:blur(6px)}
+  100%{opacity:0;visibility:hidden;transform:scale(1.1);filter:blur(12px)}
 }
-.intro-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
-.intro-scrim{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(10,10,20,.55) 0%,rgba(10,10,20,.85) 60%,#0a0a14 100%);z-index:2;pointer-events:none}
+/* 🔥 v0.7.7.26: scrim матчится с новым фоном */
+.intro-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;transition:opacity .8s ease}
+.intro-overlay.intro-fading-out .intro-canvas{opacity:0}
+.intro-scrim{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(17,10,38,.55) 0%,rgba(17,10,38,.85) 60%,#110a26 100%);z-index:2;pointer-events:none}
 .intro-content{position:relative;z-index:3;text-align:center;padding:20px;width:100%;max-width:1100px}
 
 /* Стадии — все скрыты, показываются через .show */
