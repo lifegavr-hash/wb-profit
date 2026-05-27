@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.14'
+  APP_VERSION: 'v0.7.7.15'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -209,9 +209,21 @@ html[data-theme="dark"] tr.loss td{background:rgba(239,68,68,.15)!important;colo
 html[data-theme="dark"] tr.loss td.red{color:#fca5a5!important}
 html[data-theme="dark"] tr.loss .red{color:#fca5a5!important}
 html[data-theme="dark"] tr.loss .green{color:#86efac!important}
-html[data-theme="dark"] .flow-bar-wrap,html[data-theme="dark"] .flow-bar{background:#252539}
-html[data-theme="dark"] .flow-bar-fill{filter:brightness(1.1)}
+html[data-theme="dark"] .flow-bar-wrap{background:#252539}
+html[data-theme="dark"] .flow-bar-fill{filter:brightness(1.15)}
+html[data-theme="dark"] .flow-bar.green{background:linear-gradient(90deg,#34d399,#10b981);filter:brightness(1.05)}
+html[data-theme="dark"] .flow-bar.red{background:linear-gradient(90deg,#f87171,#dc2626);filter:brightness(1.05)}
 html[data-theme="dark"] .flow-label,html[data-theme="dark"] .flow-value{color:var(--text)}
+/* 🔥 v0.7.7.15: Danger zone (удаление аккаунта) — единые правила для light и dark */
+html[data-theme="dark"] .danger-zone{background:rgba(220,38,38,.1)!important;border-color:rgba(248,113,113,.4)!important}
+html[data-theme="dark"] .danger-zone .danger-title{color:#fca5a5!important}
+html[data-theme="dark"] .danger-zone .danger-text{color:#fecaca!important}
+html[data-theme="dark"] .danger-zone .btn-danger{background:#dc2626!important;color:#fff!important;border:none!important}
+html[data-theme="dark"] .danger-zone .btn-danger:hover{background:#b91c1c!important}
+.btn-danger{background:#dc2626;color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer}
+.btn-danger:hover{background:#b91c1c}
+/* Подсказка DELETE в модале — тёмная тема */
+html[data-theme="dark"] .delete-confirm-modal code{background:rgba(220,38,38,.2)!important;color:#fca5a5!important}
 html[data-theme="dark"] #sectionSettings .card > div[style*="f5f3ff"]{background:rgba(167,139,250,.1)!important;color:var(--text)!important;border-left-color:#a78bfa!important}
 html[data-theme="dark"] #sectionSettings .card > div[style*="f5f3ff"] a{color:#a78bfa!important}
 html[data-theme="dark"] .unit-model-toggle{background:#252539;border-color:var(--border)}
@@ -1790,7 +1802,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.14</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.15</div>
     </div>
   </div>
 </div>
@@ -1919,10 +1931,11 @@ tr.loss td{background:#fff5f5}
       </div>
 
       <!-- 🔥 v0.7.7.13: Удаление аккаунта (152-ФЗ ст.9 — право на отзыв согласия) -->
+      <!-- 🔥 v0.7.7.15: CSS-классы вместо inline-стилей для корректной работы в тёмной теме -->
       <div class="card danger-zone" style="margin-top:14px;border:1px solid #fecaca;background:#fef2f2">
-        <div class="ct" style="color:#991b1b">⚠️ Удаление аккаунта</div>
-        <p style="font-size:13px;color:#7f1d1d;margin-bottom:14px;line-height:1.5">Удаление аккаунта необратимо. Будут безвозвратно удалены: все ваши снимки данных, расчёты, история подборов, себестоимости, активации расширения, использованные промокоды и сам профиль. Восстановить данные после удаления нельзя.</p>
-        <button class="btn-primary" style="background:#dc2626" onclick="openDeleteAccountModal()">Удалить мой аккаунт</button>
+        <div class="ct danger-title" style="color:#991b1b">⚠️ Удаление аккаунта</div>
+        <p class="danger-text" style="font-size:13px;color:#7f1d1d;margin-bottom:14px;line-height:1.5">Удаление аккаунта необратимо. Будут безвозвратно удалены: все ваши снимки данных, расчёты, история подборов, себестоимости, активации расширения, использованные промокоды и сам профиль. Восстановить данные после удаления нельзя.</p>
+        <button class="btn-danger" onclick="openDeleteAccountModal()">Удалить мой аккаунт</button>
       </div>
     </div>
 
@@ -2939,6 +2952,7 @@ function openDeleteAccountModal(){
   if(existing){ existing.style.display='flex'; return; }
   var m = document.createElement('div');
   m.id = 'deleteAccountModal';
+  m.className = 'delete-confirm-modal';
   m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
   m.innerHTML = '<div style="background:var(--surface);border-radius:14px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)">'+
     '<h2 style="color:#991b1b;margin:0 0 12px;font-size:20px">Удалить аккаунт?</h2>'+
