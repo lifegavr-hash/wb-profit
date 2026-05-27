@@ -38,11 +38,19 @@ export default async function handler(req, res) {
       plan: r.plan,
       plan_name: r.plan_obj?.name || r.plan,
       plan_price: r.plan_obj?.price_monthly ?? 0,
+      plan_price_yearly: r.plan_obj?.price_yearly ?? null,
       plan_expires_at: r.expiresAt?.toISOString() || null,
       is_admin: r.isAdmin,
       has_pro: r.hasPro,
       limits: r.limits,
       features: r.features,
+      // 🔥 v0.7.7.22: trial + billing-период
+      is_trial: r.isTrial,
+      trial_days_left: r.trialDaysLeft,
+      trial_until: r.trialUntil?.toISOString() || null,
+      billing_period: r.billingPeriod,
+      is_expired: r.isExpired,
+      effective_plan_id: r.effectivePlanId,
     });
   }
 

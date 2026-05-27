@@ -42,7 +42,8 @@ async function loadPlans() {
 }
 
 function findPlan(plans, planId) {
-  return plans.find(p => p.id === planId) || plans.find(p => p.id === 'free') || null;
+  // Fallback на 'pro' если plan не найден (free больше нет с v0.7.7.22)
+  return plans.find(p => p.id === planId) || plans.find(p => p.id === 'pro') || null;
 }
 
 // === Извлечение JWT из заголовков ===
@@ -81,32 +82,62 @@ export async function getUserPlanWithLimits(jwt) {
   // Профиль
   const { data: profile, error: profErr } = await supabase
     .from('profiles')
-    .select('plan, plan_expires_at, is_admin')
+    .select('plan, plan_expires_at, trial_until, billing_period, is_admin')
     .eq('id', user.id)
     .single();
   if (profErr || !profile) return { error: 'Профиль не найден', status: 404 };
-  let plan = profile.plan || 'free';
+  let plan = profile.plan || 'pro';
   const expiresAt = profile.plan_expires_at ? new Date(profile.plan_expires_at) : null;
+  const trialUntil = profile.trial_until ? new Date(profile.trial_until) : null;
+  const billingPeriod = profile.billing_period || 'monthly';
   const isAdmin = !!profile.is_admin;
-  // Авто-даунгрейд если истёк (не для админа)
-  if (!isAdmin && (plan === 'pro' || plan === 'business' || plan === 'start') && expiresAt && expiresAt.getTime() < Date.now()) {
-    await supabase.from('profiles').update({ plan: 'free', plan_expires_at: null }).eq('id', user.id);
-    plan = 'free';
-  }
-  // Если админ — даём ему PRO-эквивалент с самыми высокими лимитами (business)
-  const effectivePlanId = isAdmin ? 'business' : plan;
+  // 🔥 v0.7.7.22: Trial-механика + новая логика expired
+  // Trial active = sейчас < trial_until И billing_period='trial'
+  const now = Date.now();
+  const isTrial = trialUntil && trialUntil.getTime() > now && billingPeriod === 'trial';
+  const trialDaysLeft = isTrial ? Math.ceil((trialUntil.getTime() - now) / (24*60*60*1000)) : 0;
+  // Expired = plan истёк И (не trial или trial истёк) И не админ
+  const isExpired = !isAdmin && expiresAt && expiresAt.getTime() < now;
+  // ВАЖНО: при expired НЕ переключаем plan на 'free' (free больше нет).
+  // Возвращаем эффективный план как 'expired' — это виртуальный план
+  // с доступом только к Главной (read-only).
+  // Реальное значение profile.plan в БД остаётся прежним, чтобы при
+  // успешной оплате access восстановился.
+  const effectivePlanId = isAdmin ? 'business' : (isExpired ? 'expired' : plan);
   // Подгружаем лимиты из таблицы plans
   const plans = await loadPlans();
-  const planObj = findPlan(plans, effectivePlanId);
-  // Удобные алиасы — без подзапросов в каждом потребителе
-  const limits = planObj ? {
-    max_sku: planObj.max_sku,                         // null = безлимит
-    max_period_days: planObj.max_period_days,         // null = безлимит
-    max_history_days: planObj.max_history_days,       // обязательно (Free 30)
+  let planObj = findPlan(plans, effectivePlanId);
+  // Виртуальный 'expired' план — только Главная, никаких фич
+  if (effectivePlanId === 'expired' || !planObj) {
+    planObj = {
+      id: 'expired',
+      name: 'Истёк',
+      price_monthly: 0,
+      max_sku: 30,
+      max_period_days: 7,
+      max_history_days: 7,
+      max_wb_accounts: 1,
+      max_team_members: 1,
+      has_detail: false,
+      has_analytics: false,
+      has_unit_calc: false,
+      has_telegram: false,
+      has_email_alerts: false,
+      has_excel_export: false,
+      has_priority_support: false,
+      has_ai_chat: false,
+      short_description: 'Подписка истекла — доступ только к Главной',
+      features: ['Только просмотр Главной','Загрузка данных за 7 дней','Без новой аналитики']
+    };
+  }
+  const limits = {
+    max_sku: planObj.max_sku,
+    max_period_days: planObj.max_period_days,
+    max_history_days: planObj.max_history_days,
     max_wb_accounts: planObj.max_wb_accounts || 1,
     max_team_members: planObj.max_team_members || 1,
-  } : null;
-  const features = planObj ? {
+  };
+  const features = {
     detail: !!planObj.has_detail,
     analytics: !!planObj.has_analytics,
     unit_calc: !!planObj.has_unit_calc,
@@ -115,12 +146,19 @@ export async function getUserPlanWithLimits(jwt) {
     excel_export: !!planObj.has_excel_export,
     priority_support: !!planObj.has_priority_support,
     ai_chat: !!planObj.has_ai_chat,
-  } : null;
-  const hasPro = plan === 'pro' || plan === 'business' || isAdmin;
+  };
+  const hasPro = !isExpired && (plan === 'pro' || plan === 'business' || isAdmin);
   return {
     user, plan, plan_obj: planObj,
     hasPro, expiresAt, isAdmin,
     limits, features,
+    // 🔥 v0.7.7.22: новые поля для UI
+    isTrial,
+    trialDaysLeft,
+    trialUntil,
+    billingPeriod,
+    isExpired,
+    effectivePlanId,
   };
 }
 
