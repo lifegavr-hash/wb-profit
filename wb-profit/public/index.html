@@ -205,10 +205,190 @@
   window._YM_ID = id;
 })();
 </script>
+
+<!-- 🔥 v0.7.7.24: Matrix-rain intro overlay -->
+<script>
+(function(){
+  // Skip полностью если пользователь предпочитает reduce-motion ИЛИ уже видел intro
+  var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var alreadySeen = false;
+  try { alreadySeen = localStorage.getItem('wb_intro_shown') === '1'; } catch(_) {}
+  // ?intro=1 — принудительно показать (для тестов)
+  var forceShow = window.location.search.indexOf('intro=1') !== -1;
+
+  if((prefersReducedMotion || alreadySeen) && !forceShow){
+    // Скрыть overlay немедленно
+    document.addEventListener('DOMContentLoaded', function(){
+      var ov = document.getElementById('introOverlay');
+      if(ov) ov.classList.add('intro-hidden');
+    });
+    return;
+  }
+
+  // Глобальная функция skip
+  window.skipIntro = function(){
+    var ov = document.getElementById('introOverlay');
+    if(!ov) return;
+    ov.classList.add('intro-skipped');
+    setTimeout(function(){
+      ov.classList.add('intro-hidden');
+      try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
+    }, 400);
+  };
+
+  // === Matrix rain canvas ===
+  function initMatrixRain(){
+    var canvas = document.getElementById('introCanvas');
+    if(!canvas) return;
+    var ctx = canvas.getContext('2d', { alpha: true });
+    var W, H, columns, drops;
+    var chars = '0123456789₽$₽0123456789ABCDEFАртикулSKU';
+    var charArr = chars.split('');
+    var fontSize = 18;
+
+    function resize(){
+      W = canvas.width = window.innerWidth * (window.devicePixelRatio || 1);
+      H = canvas.height = window.innerHeight * (window.devicePixelRatio || 1);
+      canvas.style.width = window.innerWidth + 'px';
+      canvas.style.height = window.innerHeight + 'px';
+      ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      columns = Math.floor(window.innerWidth / fontSize);
+      drops = new Array(columns).fill(0).map(function(){ return Math.random() * -100; });
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    var stopped = false;
+    function draw(){
+      if(stopped) return;
+      // Полупрозрачный фон — даёт trailing-эффект
+      ctx.fillStyle = 'rgba(10, 10, 20, 0.08)';
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+      ctx.font = '600 ' + fontSize + 'px Manrope, monospace';
+
+      for(var i = 0; i < columns; i++){
+        var ch = charArr[Math.floor(Math.random() * charArr.length)];
+        // Случайно подкрашиваем некоторые символы в зелёный (доходы) — для драмы
+        var isHighlight = Math.random() > 0.985;
+        var isProfit = Math.random() > 0.7;
+        if(isHighlight){
+          ctx.fillStyle = '#fff';
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = '#a78bfa';
+        } else if(isProfit){
+          ctx.fillStyle = 'rgba(167, 139, 250, 0.85)';
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = '#7c3aed';
+        } else {
+          ctx.fillStyle = 'rgba(124, 58, 237, 0.5)';
+          ctx.shadowBlur = 0;
+        }
+        ctx.fillText(ch, i * fontSize, drops[i] * fontSize);
+        ctx.shadowBlur = 0;
+        // Сброс капли когда дошла до низа (с долей рандома)
+        if(drops[i] * fontSize > window.innerHeight && Math.random() > 0.97){
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+      requestAnimationFrame(draw);
+    }
+    draw();
+
+    // Остановить когда intro закончится (через 4 сек)
+    setTimeout(function(){ stopped = true; }, 4200);
+  }
+
+  // === Последовательность стадий ===
+  function runIntroSequence(){
+    var stages = ['introStage1', 'introStage2', 'introStage3', 'introStage4'];
+    var els = stages.map(function(id){ return document.getElementById(id); });
+    if(els.some(function(e){ return !e; })) return; // если HTML не загрузился — выйти
+
+    // Таймлайн (миллисекунды от начала):
+    //   0ms     → stage1 show (380 000 ₽)
+    //   900ms   → stage1 exit, stage2 show (зачёркивание)
+    //   1700ms  → stage2 exit, stage3 show (23 000 ₽ profit)
+    //   2600ms  → stage3 exit, stage4 show (логотип)
+    //   3400ms  → CSS animation introOut запускается
+    //   4100ms  → DOM убирается
+    setTimeout(function(){ els[0].classList.add('show'); }, 0);
+    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 900);
+    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 1700);
+    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 2600);
+    setTimeout(function(){
+      try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
+      var ov = document.getElementById('introOverlay');
+      if(ov) ov.classList.add('intro-hidden');
+    }, 4200);
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    initMatrixRain();
+    runIntroSequence();
+  });
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* 🔥 v0.7.7.24: Intro Matrix-rain заставка — перебивает всё на странице */
+.intro-overlay{position:fixed;inset:0;background:#0a0a14;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 0.7s cubic-bezier(.76,0,.24,1) 3.4s forwards;will-change:opacity,visibility}
+.intro-overlay.intro-skipped{animation:introOut 0.35s ease forwards;animation-delay:0s}
+@keyframes introOut{
+  0%{opacity:1;visibility:visible;backdrop-filter:blur(0)}
+  100%{opacity:0;visibility:hidden;backdrop-filter:blur(20px)}
+}
+.intro-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.intro-scrim{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(10,10,20,.55) 0%,rgba(10,10,20,.85) 60%,#0a0a14 100%);z-index:2;pointer-events:none}
+.intro-content{position:relative;z-index:3;text-align:center;padding:20px;max-width:90vw}
+
+/* Стадии — все скрыты, показываются через .show */
+.intro-stage{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:100%;opacity:0;transition:opacity .45s ease,transform .45s cubic-bezier(.16,1,.3,1)}
+.intro-stage.show{opacity:1}
+.intro-stage.exiting{opacity:0;transform:translate(-50%,calc(-50% - 30px)) scale(.95);transition:opacity .35s ease,transform .35s ease}
+
+.intro-label{font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;letter-spacing:.4em;color:rgba(167,139,250,.7);text-transform:uppercase;margin-bottom:18px}
+.intro-number-big{font-family:'Manrope',sans-serif;font-size:clamp(48px,10vw,108px);font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 0 60px rgba(124,58,237,.4),0 0 100px rgba(167,139,250,.2)}
+.intro-number-big.intro-profit{background:linear-gradient(135deg,#34d399 0%,#a7f3d0 50%,#34d399 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:profitSheen 2s ease infinite;text-shadow:0 0 80px rgba(52,211,153,.45)}
+@keyframes profitSheen{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.intro-currency{font-size:.55em;color:rgba(255,255,255,.55);font-weight:600;letter-spacing:.05em}
+.intro-number-big.intro-profit .intro-currency{color:rgba(167,243,208,.7)}
+
+/* Стадия 2 — зачёркивание */
+.intro-strike{position:relative;display:inline-block}
+.intro-strike-text{font-family:'Manrope',sans-serif;font-size:clamp(36px,7vw,72px);font-weight:800;color:#f87171;letter-spacing:-.03em;line-height:1;position:relative;text-shadow:0 0 40px rgba(248,113,113,.35)}
+.intro-strike.show .intro-strike-text::after{content:'';position:absolute;top:50%;left:-10%;right:-10%;height:4px;background:linear-gradient(90deg,transparent,#f87171 20%,#f87171 80%,transparent);transform:scaleX(0);transform-origin:left;animation:strikeLine .55s cubic-bezier(.76,0,.24,1) .2s forwards}
+@keyframes strikeLine{to{transform:scaleX(1)}}
+.intro-strike-label{font-family:'Manrope',sans-serif;font-size:14px;font-weight:500;color:rgba(248,113,113,.6);margin-top:14px;letter-spacing:.3em;text-transform:uppercase}
+
+/* Финальная стадия — логотип */
+.intro-logo{font-family:'Manrope',sans-serif;font-size:clamp(48px,9vw,96px);font-weight:800;letter-spacing:-.04em;line-height:1;display:flex;align-items:baseline;justify-content:center;gap:16px}
+.intro-logo-wb{color:#fff}
+.intro-logo-profit{background:linear-gradient(135deg,#a78bfa 0%,#c4b5fd 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.intro-tagline{font-family:'Manrope',sans-serif;font-size:clamp(13px,1.6vw,17px);color:rgba(255,255,255,.55);margin-top:18px;font-weight:500;letter-spacing:.02em}
+
+.intro-skip{position:absolute;top:24px;right:24px;z-index:4;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:9px 18px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;backdrop-filter:blur(8px);transition:all .2s;letter-spacing:.02em}
+.intro-skip:hover{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
+
+/* Skip уже показанного intro */
+.intro-overlay.intro-hidden{display:none!important}
+
+/* Reduce-motion: полностью отключаем intro */
+@media (prefers-reduced-motion: reduce){
+  .intro-overlay{display:none}
+}
+
+/* Mobile: уменьшаем skip-кнопку */
+@media (max-width:480px){
+  .intro-skip{top:14px;right:14px;padding:7px 14px;font-size:12px}
+  .intro-logo{gap:10px}
+  .intro-strike-label{letter-spacing:.2em;font-size:12px}
+  .intro-label{font-size:11px;letter-spacing:.3em;margin-bottom:14px}
+}
+
 :root{--purple:#5433c6;--purple-dark:#1a0f3c;--green:#1a7a4a;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5}
 html{scroll-behavior:smooth}
 body{font-family:'Manrope',sans-serif;background:var(--surface);color:var(--text);line-height:1.6;font-size:16px}
@@ -557,6 +737,36 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
 </style>
 </head>
 <body>
+
+<!-- 🔥 v0.7.7.24: Intro Matrix-rain заставка с цифровой драматургией -->
+<div id="introOverlay" class="intro-overlay" aria-hidden="true">
+  <canvas id="introCanvas" class="intro-canvas"></canvas>
+  <div class="intro-scrim"></div>
+  <div class="intro-content">
+    <div class="intro-stage" id="introStage1">
+      <div class="intro-label">ВЫПЛАТА ОТ WB</div>
+      <div class="intro-number-big">380 000 <span class="intro-currency">₽</span></div>
+    </div>
+    <div class="intro-stage" id="introStage2">
+      <div class="intro-strike">
+        <div class="intro-strike-text">−357 000 ₽</div>
+        <div class="intro-strike-label">скрытых расходов</div>
+      </div>
+    </div>
+    <div class="intro-stage" id="introStage3">
+      <div class="intro-label">РЕАЛЬНАЯ ПРИБЫЛЬ</div>
+      <div class="intro-number-big intro-profit">23 000 <span class="intro-currency">₽</span></div>
+    </div>
+    <div class="intro-stage" id="introStage4">
+      <div class="intro-logo">
+        <span class="intro-logo-wb">WB</span>
+        <span class="intro-logo-profit">Profit</span>
+      </div>
+      <div class="intro-tagline">Узнайте что от выплаты реально остаётся</div>
+    </div>
+  </div>
+  <button class="intro-skip" onclick="skipIntro()" aria-label="Пропустить">Пропустить →</button>
+</div>
 <nav>
   <div class="nav-logo">WB <span>Profit</span></div>
   <div class="nav-links">
