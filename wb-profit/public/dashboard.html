@@ -3547,6 +3547,19 @@ function saveTokenManual(){
 window._wbAccounts = [];
 window._wbAccountsLimit = { max: 1, current: 0 };
 
+// 🔥 v0.7.7.30: возвращает id активного (default) кабинета или null если нет кабинетов
+function getActiveWbAccountId(){
+  var def = (window._wbAccounts || []).find(function(a){ return a.is_default; });
+  return def ? def.id : null;
+}
+
+// 🔥 v0.7.7.30: добавляет &wb_account_id=xxx к URL (если есть активный кабинет)
+function withWbAccount(url){
+  var id = getActiveWbAccountId();
+  if(!id) return url;
+  return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'wb_account_id=' + encodeURIComponent(id);
+}
+
 async function _wbAccApiFetch(path, opts){
   const sess = await sb.auth.getSession();
   const jwt = sess.data.session?.access_token;
@@ -4144,7 +4157,7 @@ async function syncCostsNow(){
     await fetch('/api/costs',{
       method:'POST',
       headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
-      body:JSON.stringify({costs:payload})
+      body:JSON.stringify({costs:payload, wb_account_id: getActiveWbAccountId()})
     });
   }catch(e){console.warn('costs sync failed',e);}
 }
@@ -4191,7 +4204,7 @@ async function loadCostsFromServer(){
     var session=await sb.auth.getSession();
     var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
     if(!jwt)return;
-    var r=await fetch('/api/costs',{headers:{'Authorization':'Bearer '+jwt}});
+    var r=await fetch(withWbAccount('/api/costs'),{headers:{'Authorization':'Bearer '+jwt}});
     if(!r.ok)return;
     var d=await r.json();
     var serverCosts=d.costs||{};
@@ -4208,7 +4221,7 @@ async function loadCostsFromServer(){
       await fetch('/api/costs',{
         method:'POST',
         headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
-        body:JSON.stringify({costs:onlyLocal})
+        body:JSON.stringify({costs:onlyLocal, wb_account_id: getActiveWbAccountId()})
       });
     }
   }catch(e){console.warn('loadCostsFromServer error',e);}
@@ -6053,6 +6066,7 @@ async function saveUnitCalcV2() {
       roi_pct: Math.round((calc.main.roi || 0) * 100) / 100,
       all_models: { fbo: calc.fbo, fbs: calc.fbs, dbs: calc.dbs },
       source: 'manual',
+      wb_account_id: getActiveWbAccountId(),
     };
     const r = await fetch('/api/calcs', {
       method: 'POST',
@@ -6094,6 +6108,7 @@ async function loadUnitHistory() {
     if (q) params.set('q', q);
     if (sort) params.set('sort', sort);
     if (modelFilter) params.set('model', modelFilter);
+    var _wbId = getActiveWbAccountId(); if(_wbId) params.set('wb_account_id', _wbId);
     const r = await fetch('/api/calcs?' + params, { headers: { 'Authorization': 'Bearer ' + jwt } });
     if (!r.ok) { el.innerHTML = '<div class="home-empty-mini">Ошибка загрузки</div>'; return; }
     const data = await r.json();
@@ -7195,7 +7210,7 @@ async function saveSnapshots(snapshots,token){
     await fetch('/api/snapshots',{
       method:'POST',
       headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
-      body:JSON.stringify({snapshots:snapshots})
+      body:JSON.stringify({snapshots:snapshots, wb_account_id: getActiveWbAccountId()})
     });
   }catch(e){console.warn('saveSnapshots error',e);}
 }
@@ -7204,7 +7219,7 @@ async function loadSnapshots(days){
     var session=await sb.auth.getSession();
     var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
     if(!jwt)return [];
-    var r=await fetch('/api/snapshots?days='+(days||7),{headers:{'Authorization':'Bearer '+jwt}});
+    var r=await fetch(withWbAccount('/api/snapshots?days='+(days||7)),{headers:{'Authorization':'Bearer '+jwt}});
     if(!r.ok)return [];
     var d=await r.json();
     return d.snapshots||[];
