@@ -122,7 +122,7 @@
           "name": "Бизнес (месяц)",
           "price": "1990",
           "priceCurrency": "RUB",
-          "description": "Всё что в PRO + 2 кабинета WB, совместный доступ, Excel, приоритетная поддержка, AI-чат",
+          "description": "Всё что в PRO + Excel/CSV экспорт + приоритетная поддержка. Скоро: 2 кабинета WB, совместный доступ, AI-чат",
           "priceSpecification": {
             "@type": "UnitPriceSpecification",
             "price": "1990",
@@ -311,7 +311,7 @@
     // заканчивается через 1.8с (когда overlay полностью невидим)
     setTimeout(function(){ fadeStart = performance.now(); }, 10200);
     // Полная остановка после окончания overlay fade-out
-    setTimeout(function(){ stopped = true; }, 12400);
+    setTimeout(function(){ stopped = true; }, 14500);
   }
 
   // === Последовательность стадий ===
@@ -320,31 +320,31 @@
     var els = stages.map(function(id){ return document.getElementById(id); });
     if(els.some(function(e){ return !e; })) return;
 
-    // 🔥 v0.7.7.26: Ещё медленнее (пользователь не успевал прочитать цитату):
-    //   0ms     → stage1 show: 380 000 ₽ + 'Так показывает кабинет'      [1.8с]
-    //   1800ms  → stage2 show: −357 000 ₽ + 'Логистика, реклама...'      [1.8с]
-    //   3600ms  → stage3 show: 23 000 ₽ + 'Вот сколько вы заработали'    [2.0с]
-    //   5600ms  → stage4 show: цитата 'Считай каждый рубль...'           [2.8с — БОЛЬШАЯ]
-    //   8400ms  → stage5 show: WB Profit логотип + tagline               [2.2с]
-    //  10200ms  → hero начинает proactive fade-in (sync с overlay fade-out)
-    //  10600ms  → CSS animation introOut запускается (1.6с очень плавная)
-    //  12200ms  → localStorage + DOM hide (полная очистка)
+    // 🔥 v0.7.7.27: ЕЩЁ медленнее (пользователь хочет успеть прочитать всё):
+    //   0ms     → stage1 show: 380 000 ₽                            [2.5с]
+    //   2500ms  → stage2 show: −357 000 ₽                           [2.5с]
+    //   5000ms  → stage3 show: 23 000 ₽                             [2.5с]
+    //   7500ms  → stage4 show: цитата 'Считай каждый рубль...'      [3.0с — БОЛЬШАЯ]
+    //  10500ms  → stage5 show: WB Profit логотип                    [2.5с]
+    //  12500ms  → hero начинает proactive fade-in (sync с overlay fade-out)
+    //  13000ms  → CSS animation introOut запускается (2.5с ОЧЕНЬ плавная)
+    //  15500ms  → localStorage + DOM hide
     setTimeout(function(){ els[0].classList.add('show'); }, 0);
-    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 1800);
-    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 3600);
-    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 5600);
-    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 8400);
-    // Hero лендинга начинает появляться ЗА 400мс до fade-out overlay
+    setTimeout(function(){ els[0].classList.add('exiting'); els[1].classList.add('show'); }, 2500);
+    setTimeout(function(){ els[1].classList.add('exiting'); els[2].classList.add('show'); }, 5000);
+    setTimeout(function(){ els[2].classList.add('exiting'); els[3].classList.add('show'); }, 7500);
+    setTimeout(function(){ els[3].classList.add('exiting'); els[4].classList.add('show'); }, 10500);
+    // Hero лендинга начинает появляться ЗА 500мс до fade-out overlay
     // — даёт ощущение, что лендинг проявляется СКВОЗЬ intro, а не появляется грубо
     setTimeout(function(){
       var hero = document.querySelector('.hero-inner');
       if(hero) hero.classList.add('hero-show');
-    }, 10200);
+    }, 12500);
     setTimeout(function(){
       try { localStorage.setItem('wb_intro_shown', '1'); } catch(_) {}
       var ov = document.getElementById('introOverlay');
       if(ov) ov.classList.add('intro-hidden');
-    }, 12200);
+    }, 15500);
   }
 
   document.addEventListener('DOMContentLoaded', function(){
@@ -359,14 +359,15 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 /* 🔥 v0.7.7.24: Intro Matrix-rain заставка — перебивает всё на странице.
-   🔥 v0.7.7.26: Фон #110a26 — ближе к hero (#1a0f3c) → переход незаметнее.
-   Delay 10.6s = после стадии 5 (8.4с старт + 2.2с просмотр). */
-.intro-overlay{position:fixed;inset:0;background:#110a26;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 1.6s cubic-bezier(.65,0,.35,1) 10.6s forwards;will-change:opacity,visibility,transform,filter}
-.intro-overlay.intro-skipped{animation:introOut 0.6s cubic-bezier(.65,0,.35,1) forwards;animation-delay:0s}
+   🔥 v0.7.7.27: ещё медленнее (13.0с старт fade, 2.5с длительность) + плавнее keyframes.
+   Фон #110a26 — ближе к hero (#1a0f3c) → переход незаметнее. */
+.intro-overlay{position:fixed;inset:0;background:#110a26;z-index:99999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:introOut 2.5s cubic-bezier(.65,0,.35,1) 13.0s forwards;will-change:opacity,visibility,transform,filter}
+.intro-overlay.intro-skipped{animation:introOut 0.8s cubic-bezier(.65,0,.35,1) forwards;animation-delay:0s}
 @keyframes introOut{
   0%{opacity:1;visibility:visible;transform:scale(1);filter:blur(0)}
-  60%{opacity:.5;transform:scale(1.05);filter:blur(6px)}
-  100%{opacity:0;visibility:hidden;transform:scale(1.1);filter:blur(12px)}
+  30%{opacity:.85;filter:blur(2px)}
+  60%{opacity:.4;transform:scale(1.05);filter:blur(8px)}
+  100%{opacity:0;visibility:hidden;transform:scale(1.12);filter:blur(16px)}
 }
 /* 🔥 v0.7.7.26: scrim матчится с новым фоном */
 .intro-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1;transition:opacity .8s ease}
@@ -619,6 +620,10 @@ html{scroll-behavior:smooth}
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
 .plan-features li{font-size:13px;display:flex;align-items:flex-start;gap:8px}
 .plan-features li::before{content:'✓';color:#1a7a4a;font-weight:700;flex-shrink:0}
+/* 🔥 v0.7.7.27: фичи "скоро" — приглушённо + бейдж */
+.plan-features li.feature-soon{color:var(--muted);opacity:.7}
+.plan-features li.feature-soon::before{content:'⏳';color:#9ca3af}
+.soon-tag{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;background:#f1f5f9;color:#64748b;padding:1px 7px;border-radius:5px;letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
 .plan-btn{display:block;width:100%;text-align:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none}
 .plan-btn.outline{border:1.5px solid var(--border);color:var(--text)}
 .plan-btn.filled{background:#5433c6;color:#fff}
@@ -1031,7 +1036,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
       </div>
       <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="Эффективно 1 392 ₽/мес">Для команды и нескольких магазинов</div>
       <div class="plan-desc">Команда + AI-чат</div>
-      <ul class="plan-features"><li>Всё что в PRO</li><li>2 кабинета WB (доп = 490 ₽/мес)</li><li>Совместный доступ — 3 пользователя</li><li>Экспорт в Excel/CSV</li><li>Приоритетная поддержка (4 часа)</li><li>AI-чат с магазином (скоро)</li><li>История 2 года</li></ul>
+      <ul class="plan-features"><li>Всё что в PRO</li><li>Экспорт в Excel/CSV</li><li>Приоритетная поддержка (4 часа)</li><li>История 2 года</li><li class="feature-soon">2 кабинета WB <span class="soon-tag">скоро</span></li><li class="feature-soon">Совместный доступ для команды <span class="soon-tag">скоро</span></li><li class="feature-soon">AI-чат с магазином <span class="soon-tag">скоро</span></li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Бизнес</a>
     </div>
   </div>
