@@ -1,0 +1,55 @@
+# Зависимости
+node_modules/
+.pnp/
+.pnp.js
+
+# Сборка / dist
+.next/
+.vercel/
+out/
+dist/
+build/
+
+# Env переменные — НИКОГДА не коммитим реальные ключи
+.env
+.env.local
+.env.*.local
+*.env
+
+# Тесты
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+logs/
+
+# Временные файлы
+*.tmp
+*.bak
+.cache/
+
+# Секреты разработки
+.ghtok
+.token
+*.pem
+*.key
+*.crt
+
+# GitHub CLI temp
+.github-token
