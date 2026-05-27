@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.30'
+  APP_VERSION: 'v0.7.7.31'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1112,7 +1112,36 @@ tr.loss td{background:#fff5f5}
 .ev-timeline{display:flex;flex-direction:column;gap:0}
 .ev-day{padding:12px 0;border-bottom:1px solid #f1f5f9}
 .ev-day:last-child{border-bottom:0;padding-bottom:0}
-.ev-day-date{font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+
+/* 🔥 v0.7.7.31: collapse-кликабельная дата */
+.ev-day-date{font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:8px;transition:background .15s;user-select:none}
+.ev-day-date:hover{background:rgba(124,58,237,.08)}
+.ev-day-toggle{display:inline-block;width:12px;font-size:10px;color:#94a3b8;transition:transform .2s;flex-shrink:0}
+.ev-day:not(.collapsed) .ev-day-toggle{transform:rotate(90deg);color:#7c3aed}
+.ev-day-label{flex:1;min-width:0}
+.ev-day-count{font-size:11px;color:#64748b;font-weight:500;background:rgba(124,58,237,.08);padding:2px 8px;border-radius:10px;text-transform:none;letter-spacing:0;flex-shrink:0}
+.ev-day.has-crit .ev-day-count{background:rgba(220,38,38,.12);color:#dc2626;font-weight:700}
+.ev-day.collapsed{padding:6px 0}
+.ev-day.collapsed .ev-day-date{margin-bottom:0}
+.ev-day.collapsed .ev-day-events{display:none}
+
+/* Toolbar Развернуть/Свернуть всё */
+.ev-collapse-toolbar{display:flex;gap:8px;align-items:center;margin:0 0 14px 0;flex-wrap:wrap}
+.ev-tb-btn{background:transparent;border:1px solid rgba(124,58,237,.3);color:#7c3aed;padding:5px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-weight:600;transition:all .15s;font-family:inherit}
+.ev-tb-btn:hover{background:rgba(124,58,237,.1);border-color:#7c3aed}
+.ev-tb-hint{font-size:12px;color:var(--muted);margin-left:6px}
+
+/* Тёмная тема */
+html[data-theme="dark"] .ev-day-date:hover{background:rgba(167,139,250,.12)}
+html[data-theme="dark"] .ev-day-count{background:rgba(167,139,250,.12);color:#c4b5fd}
+html[data-theme="dark"] .ev-day.has-crit .ev-day-count{background:rgba(248,113,113,.15);color:#fca5a5}
+html[data-theme="dark"] .ev-tb-btn{border-color:rgba(167,139,250,.35);color:#a78bfa}
+html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border-color:#a78bfa}
+@media(max-width:600px){
+  .ev-tb-hint{display:none}
+  .ev-day-count{font-size:10px;padding:2px 6px}
+}
+
 .ev-day-events{display:flex;flex-direction:column;gap:6px}
 .ev-item{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;font-size:12px;line-height:1.45}
 .ev-crit{background:rgba(220,38,38,.04);border-left:3px solid #dc2626}
@@ -1873,7 +1902,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.30</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.31</div>
     </div>
   </div>
 </div>
@@ -8368,11 +8397,30 @@ function renderEventHistory(snaps){
   if(stats.marginRisk) sumChips.push('<span class="ev-chip ev-chip-warn">'+stats.marginRisk+' '+plural(stats.marginRisk,'день','дня','дней')+' с опасной маржой</span>');
   if(stats.logShareRisk) sumChips.push('<span class="ev-chip ev-chip-warn">логистика '+stats.logShareRisk+' '+plural(stats.logShareRisk,'раз','раза','раз')+'</span>');
   var h = '<div class="ev-summary">За '+snaps.length+' дн.: '+sumChips.join(' ')+'</div>';
+  // 🔥 v0.7.7.31: Toolbar Развернуть/Свернуть всё + лента с collapse
+  h += '<div class="ev-collapse-toolbar">';
+  h += '<button type="button" class="ev-tb-btn" onclick="evToggleAll(true)">▼ Развернуть всё</button>';
+  h += '<button type="button" class="ev-tb-btn" onclick="evToggleAll(false)">▶ Свернуть всё</button>';
+  h += '<span class="ev-tb-hint">Клик по дате — раскрыть/свернуть. Свежие 3 дня раскрыты по умолчанию.</span>';
+  h += '</div>';
   // Лента событий — обратный порядок (свежее сверху)
   h += '<div class="ev-timeline">';
-  dayEvents.slice().reverse().forEach(function(d){
-    h += '<div class="ev-day">';
-    h += '<div class="ev-day-date">'+d.date+'</div>';
+  var reversedDays = dayEvents.slice().reverse();
+  reversedDays.forEach(function(d, dayIdx){
+    var critCount = (d.events||[]).filter(function(e){return e.sev==='crit';}).length;
+    var totalCount = (d.events||[]).length;
+    // Первые 3 дня — раскрыты, остальные свёрнуты
+    var isCollapsed = dayIdx >= 3;
+    var critClass = critCount > 0 ? ' has-crit' : '';
+    h += '<div class="ev-day'+(isCollapsed ? ' collapsed' : '')+critClass+'">';
+    h += '<div class="ev-day-date" onclick="evToggleDay(this)">';
+    h += '<span class="ev-day-toggle">▶</span>';
+    h += '<span class="ev-day-label">'+d.date+'</span>';
+    h += '<span class="ev-day-count">';
+    if(critCount > 0) h += '🔴 '+critCount+' критич · ';
+    h += totalCount+' событ';
+    h += '</span>';
+    h += '</div>';
     h += '<div class="ev-day-events">';
     d.events.forEach(function(e){
       h += '<div class="ev-item ev-'+e.sev+'">';
@@ -8390,6 +8438,18 @@ function renderEventHistory(snaps){
   });
   h += '</div>';
   return h;
+}
+
+// 🔥 v0.7.7.31: Toggle handlers для collapse истории проблем
+function evToggleDay(dateEl){
+  var day = dateEl.closest('.ev-day');
+  if(day) day.classList.toggle('collapsed');
+}
+function evToggleAll(expand){
+  document.querySelectorAll('.ev-day').forEach(function(d){
+    if(expand) d.classList.remove('collapsed');
+    else d.classList.add('collapsed');
+  });
 }
 
 // 🔥 v0.7.4 A2: Top Movers — товары с резким ростом или падением продаж/прибыли
