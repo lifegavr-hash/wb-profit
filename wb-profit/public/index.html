@@ -67,14 +67,7 @@
       "offers": [
         {
           "@type": "Offer",
-          "name": "Free",
-          "price": "0",
-          "priceCurrency": "RUB",
-          "description": "Базовая аналитика для знакомства с продуктом"
-        },
-        {
-          "@type": "Offer",
-          "name": "Старт",
+          "name": "Старт (месяц)",
           "price": "490",
           "priceCurrency": "RUB",
           "description": "Для одного магазина: калькулятор до 50 SKU, период 30 дней",
@@ -87,10 +80,23 @@
         },
         {
           "@type": "Offer",
-          "name": "PRO",
+          "name": "Старт (год)",
+          "price": "4100",
+          "priceCurrency": "RUB",
+          "description": "Старт со скидкой 30% при оплате за год — эффективно 342 ₽/мес",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "4100",
+            "priceCurrency": "RUB",
+            "unitText": "YEAR"
+          }
+        },
+        {
+          "@type": "Offer",
+          "name": "PRO (месяц)",
           "price": "990",
           "priceCurrency": "RUB",
-          "description": "Безлимит SKU, период 365 дней, полная аналитика, подбор товара, Telegram",
+          "description": "Безлимит SKU, период 365 дней, полная аналитика, подбор товара, Telegram. Trial 14 дней.",
           "priceSpecification": {
             "@type": "UnitPriceSpecification",
             "price": "990",
@@ -100,7 +106,20 @@
         },
         {
           "@type": "Offer",
-          "name": "Бизнес",
+          "name": "PRO (год)",
+          "price": "8300",
+          "priceCurrency": "RUB",
+          "description": "PRO со скидкой 30% при оплате за год — эффективно 692 ₽/мес",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "8300",
+            "priceCurrency": "RUB",
+            "unitText": "YEAR"
+          }
+        },
+        {
+          "@type": "Offer",
+          "name": "Бизнес (месяц)",
           "price": "1990",
           "priceCurrency": "RUB",
           "description": "Всё что в PRO + 2 кабинета WB, совместный доступ, Excel, приоритетная поддержка, AI-чат",
@@ -109,6 +128,19 @@
             "price": "1990",
             "priceCurrency": "RUB",
             "unitText": "MONTH"
+          }
+        },
+        {
+          "@type": "Offer",
+          "name": "Бизнес (год)",
+          "price": "16700",
+          "priceCurrency": "RUB",
+          "description": "Бизнес со скидкой 30% при оплате за год — эффективно 1392 ₽/мес",
+          "priceSpecification": {
+            "@type": "UnitPriceSpecification",
+            "price": "16700",
+            "priceCurrency": "RUB",
+            "unitText": "YEAR"
           }
         }
       ]
@@ -261,6 +293,22 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .step p{font-size:13px;color:var(--muted)}
 .pricing{background:var(--bg);padding:72px 5%}
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:1000px;margin:0 auto}
+
+/* 🔥 v0.7.7.22: Маркетинговый баннер скидки */
+.pricing-promo{display:flex;align-items:center;justify-content:center;gap:8px;max-width:560px;margin:0 auto 20px;padding:14px 20px;background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);border:1px solid #fbbf24;border-radius:12px;font-size:14px;color:#78350f}
+.pricing-promo-fire{font-size:20px}
+.pricing-promo b{color:#92400e}
+
+/* Переключатель Месяц/Год */
+.billing-toggle{display:inline-flex;gap:0;margin:0 auto 32px;background:#f1f5f9;border-radius:12px;padding:4px;border:1px solid #e2e8f0;position:relative;left:50%;transform:translateX(-50%)}
+.billing-btn{padding:10px 24px;background:transparent;border:0;border-radius:9px;font-size:14px;font-weight:600;color:#64748b;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:8px}
+.billing-btn:hover{color:#1a0f3c}
+.billing-btn.active{background:#fff;color:#1a0f3c;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.billing-save{font-size:11px;background:#ef4444;color:#fff;padding:2px 7px;border-radius:5px;font-weight:700}
+
+/* Зачёркнутая старая цена (показывается только в yearly режиме) */
+.price-old{display:none;font-size:18px;color:#94a3b8;text-decoration:line-through;font-weight:500;margin-right:8px}
+.pricing.show-yearly .price-old{display:inline}
 .plan{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:28px 24px}
 .plan.popular{border-color:#5433c6;box-shadow:0 0 0 4px rgba(84,51,198,.08)}
 .plan-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.05em;margin-bottom:14px}
@@ -389,6 +437,13 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   .lead-title{font-size:18px}
   .lead-form{flex-direction:column;gap:10px}
   .lead-form button{width:100%}
+
+  /* 🔥 v0.7.7.22: Pricing mobile */
+  .pricing-promo{font-size:13px;padding:12px 14px}
+  .billing-toggle{margin-bottom:24px}
+  .billing-btn{padding:9px 18px;font-size:13px}
+  .billing-save{font-size:10px;padding:2px 6px}
+  .price-old{font-size:14px;display:block;margin-bottom:2px}
 }
 
 /* Средние Android — 390-480px */
@@ -436,7 +491,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
       <a href="/login.html" class="btn-white">Попробовать бесплатно →</a>
       <a href="/demo" class="btn-ghost">🎭 Демо без регистрации</a>
     </div>
-    <p class="hero-social"><span>230+</span> селлеров уже считают реальную прибыль · 14 дней бесплатно · <a href="/demo" style="color:#a78bfa;text-decoration:none;font-weight:600">демо за 1 клик</a></p>
+    <p class="hero-social"><span>230+</span> селлеров уже считают реальную прибыль · <span style="color:#a78bfa;font-weight:600">14 дней бесплатно</span> — все возможности PRO · <a href="/demo" style="color:#a78bfa;text-decoration:none;font-weight:600">демо за 1 клик</a></p>
     <div class="hero-calc">
       <div class="hero-calc-title">⚡ Быстрый расчёт — введи свои цифры</div>
       <div class="calc-row"><span class="calc-label">Выплата от WB</span><input class="calc-input" id="cRevenue" type="number" placeholder="300 000"></div>
@@ -512,45 +567,49 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
 <section class="pricing" id="pricing">
   <div class="section-label">Выберите тариф</div>
   <div class="section-h2">Простые цены</div>
+
+  <!-- 🔥 v0.7.7.22: Маркетинговый баннер скидки -->
+  <div class="pricing-promo">
+    <span class="pricing-promo-fire">🔥</span>
+    <span><b>−30% при оплате за год</b> — для первых клиентов до повышения цен</span>
+  </div>
+
+  <!-- 🔥 v0.7.7.22: Переключатель Месяц/Год -->
+  <div class="billing-toggle">
+    <button type="button" class="billing-btn active" id="billBtnMonth" onclick="setBilling('monthly')">Месяц</button>
+    <button type="button" class="billing-btn" id="billBtnYear" onclick="setBilling('yearly')">Год <span class="billing-save">−30%</span></button>
+  </div>
+
   <div class="pricing-grid">
-    <div class="plan">
-      <div class="plan-badge starter">Free</div>
-      <div class="plan-name">Free</div>
-      <div class="plan-price-main">0 <span>₽/мес</span></div>
-      <div class="plan-price-sub">Бесплатно навсегда</div>
-      <div class="plan-desc">Базовая аналитика для знакомства с продуктом</div>
-      <ul class="plan-features"><li>Калькулятор до 30 SKU</li><li>Период до 30 дней</li><li>Главная и защита от потерь</li><li>1 кабинет WB</li></ul>
-      <a href="/login.html" class="plan-btn outline">Начать бесплатно</a>
-    </div>
     <div class="plan">
       <div class="plan-badge starter">Старт</div>
       <div class="plan-name">Старт</div>
-      <div class="plan-price-main">490 <span>₽/мес</span></div>
-      <div class="plan-price-sub">Для одного магазина</div>
+      <div class="plan-price-main"><span class="price-old" data-old="" data-show="yearly">5 880 ₽</span><span class="price-now" data-monthly="490" data-yearly="4100">490</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+      <div class="plan-price-sub" data-monthly="Для одного магазина" data-yearly="При оплате за год — 342 ₽/мес">Для одного магазина</div>
       <div class="plan-desc">Для малого бизнеса</div>
       <ul class="plan-features"><li>Калькулятор до 50 SKU</li><li>Период до 30 дней</li><li>Главная: защита от потерь и советы</li><li>Email-уведомления раз в день</li><li>1 кабинет WB</li><li>История 30 дней</li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Старт</a>
     </div>
     <div class="plan popular">
-      <div class="plan-badge pro">Популярный</div>
+      <div class="plan-badge pro">⭐ Популярный</div>
       <div class="plan-name">PRO</div>
-      <div class="plan-price-main">990 <span>₽/мес</span></div>
-      <div class="plan-price-sub">Безлимит и все возможности</div>
+      <div class="plan-price-main"><span class="price-old" data-old="" data-show="yearly">11 880 ₽</span><span class="price-now" data-monthly="990" data-yearly="8300">990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+      <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="При оплате за год — 692 ₽/мес">Безлимит и все возможности</div>
       <div class="plan-desc">Для серьёзного селлера</div>
       <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>Telegram-уведомления</li><li>1 кабинет WB</li><li>История 1 год</li></ul>
-      <a href="/login.html" class="plan-btn filled">Выбрать PRO</a>
+      <a href="/login.html" class="plan-btn filled">Начать 14 дней бесплатно</a>
     </div>
     <div class="plan">
       <div class="plan-badge biz">Бизнес</div>
       <div class="plan-name">Бизнес</div>
-      <div class="plan-price-main">1 990 <span>₽/мес</span></div>
-      <div class="plan-price-sub">Для команды и нескольких магазинов</div>
+      <div class="plan-price-main"><span class="price-old" data-old="" data-show="yearly">23 880 ₽</span><span class="price-now" data-monthly="1990" data-yearly="16700">1 990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+      <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="При оплате за год — 1 392 ₽/мес">Для команды и нескольких магазинов</div>
       <div class="plan-desc">Команда + AI-чат</div>
       <ul class="plan-features"><li>Всё что в PRO</li><li>2 кабинета WB (доп = 490 ₽/мес)</li><li>Совместный доступ — 3 пользователя</li><li>Экспорт в Excel/CSV</li><li>Приоритетная поддержка (4 часа)</li><li>AI-чат с магазином (скоро)</li><li>История 2 года</li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Бизнес</a>
     </div>
   </div>
-  <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px;">14 дней бесплатно на любом тарифе · Карта не нужна · Отмена в любой момент</p>
+  <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px;">14 дней бесплатно — все возможности PRO · Карта не нужна · Отмена в любой момент</p>
 </section>
 <section class="faq">
   <div class="section-label">Вопросы и ответы</div>
@@ -615,6 +674,32 @@ async function updateNav(){
 }
 updateNav();
 document.getElementById('cRevenue').addEventListener('keyup',function(e){if(e.key==='Enter')calcProfit();});
+
+// 🔥 v0.7.7.22: переключатель Месяц/Год для тарифов
+function fmtRub(n) {
+  return Math.round(n).toLocaleString('ru-RU');
+}
+
+function setBilling(period) {
+  // Toggle active state на кнопках
+  document.getElementById('billBtnMonth').classList.toggle('active', period === 'monthly');
+  document.getElementById('billBtnYear').classList.toggle('active', period === 'yearly');
+  // Toggle .show-yearly класс на pricing-секции (для зачёркнутой цены)
+  document.querySelector('.pricing').classList.toggle('show-yearly', period === 'yearly');
+  // Обновляем цены и подзаголовки
+  document.querySelectorAll('.price-now').forEach(function(el) {
+    var v = el.getAttribute('data-' + period);
+    if(v) el.textContent = fmtRub(Number(v));
+  });
+  document.querySelectorAll('.price-unit').forEach(function(el) {
+    var v = el.getAttribute('data-' + period);
+    if(v) el.textContent = v;
+  });
+  document.querySelectorAll('.plan-price-sub[data-monthly]').forEach(function(el) {
+    var v = el.getAttribute('data-' + period);
+    if(v) el.textContent = v;
+  });
+}
 
 // 🔥 v0.7.7.19: Lead capture
 function getUTM(){
