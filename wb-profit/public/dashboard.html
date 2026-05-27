@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.12'
+  APP_VERSION: 'v0.7.7.13'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1790,7 +1790,7 @@ tr.loss td{background:#fff5f5}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.12</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.13</div>
     </div>
   </div>
 </div>
@@ -1916,6 +1916,13 @@ tr.loss td{background:#fff5f5}
           <button class="bulk-btn" onclick="clearPersonalExpenses()">Удалить</button>
         </div>
         <p class="hint" style="margin-top:10px">Эта цифра <strong>хранится только в вашем браузере</strong> (localStorage) и не отправляется на сервер.</p>
+      </div>
+
+      <!-- 🔥 v0.7.7.13: Удаление аккаунта (152-ФЗ ст.9 — право на отзыв согласия) -->
+      <div class="card danger-zone" style="margin-top:14px;border:1px solid #fecaca;background:#fef2f2">
+        <div class="ct" style="color:#991b1b">⚠️ Удаление аккаунта</div>
+        <p style="font-size:13px;color:#7f1d1d;margin-bottom:14px;line-height:1.5">Удаление аккаунта необратимо. Будут безвозвратно удалены: все ваши снимки данных, расчёты, история подборов, себестоимости, активации расширения, использованные промокоды и сам профиль. Восстановить данные после удаления нельзя.</p>
+        <button class="btn-primary" style="background:#dc2626" onclick="openDeleteAccountModal()">Удалить мой аккаунт</button>
       </div>
     </div>
 
@@ -2924,6 +2931,101 @@ async function logout(){
   await sb.auth.signOut();
   localStorage.removeItem('wb_token');
   window.location.href='/login.html';
+}
+
+// 🔥 v0.7.7.13: Удаление аккаунта пользователем (152-ФЗ ст.9)
+function openDeleteAccountModal(){
+  var existing = document.getElementById('deleteAccountModal');
+  if(existing){ existing.style.display='flex'; return; }
+  var m = document.createElement('div');
+  m.id = 'deleteAccountModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:1rem';
+  m.innerHTML = '<div style="background:var(--surface);border-radius:14px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)">'+
+    '<h2 style="color:#991b1b;margin:0 0 12px;font-size:20px">Удалить аккаунт?</h2>'+
+    '<p style="font-size:13.5px;line-height:1.55;color:var(--text);margin-bottom:14px">Это действие <strong>необратимо</strong>. После подтверждения будут удалены:</p>'+
+    '<ul style="font-size:13px;line-height:1.7;color:var(--muted);margin:0 0 16px 18px;padding:0">'+
+      '<li>Все снимки финансовых данных</li>'+
+      '<li>История подборов и расчётов калькулятора</li>'+
+      '<li>Себестоимости товаров</li>'+
+      '<li>Активации расширения и связанные продукты</li>'+
+      '<li>Сам профиль и учётка</li>'+
+    '</ul>'+
+    '<div style="margin-bottom:12px"><label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Введите ваш пароль</label><input type="password" id="delAcctPass" placeholder="Текущий пароль" autocomplete="current-password" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--surface);color:var(--text)"></div>'+
+    '<div style="margin-bottom:16px"><label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Введите слово <code style="background:#fef2f2;padding:2px 6px;border-radius:4px;color:#991b1b;font-weight:600">DELETE</code> заглавными:</label><input type="text" id="delAcctConfirm" placeholder="DELETE" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--surface);color:var(--text);text-transform:uppercase"></div>'+
+    '<div id="delAcctErr" style="display:none;background:#fef2f2;color:#991b1b;padding:10px;border-radius:8px;font-size:13px;margin-bottom:12px"></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end">'+
+      '<button onclick="closeDeleteAccountModal()" style="padding:10px 18px;background:transparent;border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);font-size:14px">Отмена</button>'+
+      '<button id="delAcctSubmit" onclick="confirmDeleteAccount()" style="padding:10px 18px;background:#dc2626;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600">Удалить навсегда</button>'+
+    '</div>'+
+    '</div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e){ if(e.target === m) closeDeleteAccountModal(); });
+  setTimeout(function(){
+    var p = document.getElementById('delAcctPass');
+    if(p) p.focus();
+  }, 100);
+}
+
+function closeDeleteAccountModal(){
+  var m = document.getElementById('deleteAccountModal');
+  if(m) m.remove();
+}
+
+async function confirmDeleteAccount(){
+  var passEl = document.getElementById('delAcctPass');
+  var confEl = document.getElementById('delAcctConfirm');
+  var errEl = document.getElementById('delAcctErr');
+  var btn = document.getElementById('delAcctSubmit');
+  var password = (passEl?.value || '').trim();
+  var confirm = (confEl?.value || '').trim().toUpperCase();
+  errEl.style.display = 'none';
+  if(!password || password.length < 6){
+    errEl.textContent = 'Введите ваш пароль (минимум 6 символов)';
+    errEl.style.display = 'block';
+    return;
+  }
+  if(confirm !== 'DELETE'){
+    errEl.textContent = 'Введите слово DELETE заглавными буквами для подтверждения';
+    errEl.style.display = 'block';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Удаляем...';
+  try {
+    var { data: { session } } = await sb.auth.getSession();
+    if(!session){
+      errEl.textContent = 'Сессия истекла. Перезайдите в аккаунт.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Удалить навсегда';
+      return;
+    }
+    var r = await fetch('/api/profile', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': 'Bearer ' + session.access_token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: password, confirm: 'DELETE' })
+    });
+    var data = await r.json();
+    if(!r.ok){
+      var msg = data.message || data.error || 'Ошибка удаления';
+      if(data.error === 'WRONG_PASSWORD') msg = 'Неверный пароль';
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Удалить навсегда';
+      return;
+    }
+    // Успех — очищаем всё локально и редиректим
+    try { localStorage.clear(); } catch(_) {}
+    try { sessionStorage.clear(); } catch(_) {}
+    await sb.auth.signOut().catch(function(){});
+    alert('Аккаунт и все данные удалены. До свидания.');
+    window.location.href = '/index.html';
+  } catch(e) {
+    errEl.textContent = 'Сетевая ошибка: ' + (e.message || e);
+    errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Удалить навсегда';
+  }
 }
 
 function toggleMobMenu(force){
