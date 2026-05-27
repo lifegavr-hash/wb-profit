@@ -5213,6 +5213,15 @@ function applyColPrefs(){
   }catch(e){}
 }
 function exportToExcel(){
+  // 🔥 v0.7.7.26: gate — Excel-экспорт доступен только в Бизнес-тарифе (has_excel_export=true)
+  if(!hasFeature('excel_export')){
+    showInfoModal('📥 Экспорт в Excel — Бизнес-тариф',
+      '<p>Скачивание данных в Excel/CSV доступно только на тарифе <b>Бизнес</b>.</p>'+
+      '<p style="margin-top:10px;color:var(--hint);font-size:13px">Бизнес-тариф также включает 2 кабинета WB, совместный доступ для команды и приоритетную поддержку.</p>'+
+      '<p style="margin-top:14px"><button class="btn-primary" style="width:100%" onclick="closeInfoModal();showSection(\'settings\',null)">Перейти к тарифам →</button></p>'
+    );
+    return;
+  }
   if(typeof XLSX==='undefined'){alert('Библиотека ещё грузится, попробуйте через 2 секунды');return;}
   if(!rows||!rows.length){alert('Сначала загрузите данные');return;}
   var stocksMap=window._stocksMap||{};
