@@ -278,6 +278,21 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .cta p{font-size:15px;color:rgba(255,255,255,.6);margin-bottom:32px}
 .cta-urgency{display:inline-block;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);font-size:12px;padding:4px 14px;border-radius:99px;margin-bottom:20px}
 .cta a.main-btn{display:inline-block;background:#fff;color:#1a0f3c;padding:16px 40px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none}
+/* 🔥 v0.7.7.19: Lead-форма */
+.lead-section{background:#0f0a1f;padding:56px 5%;border-top:1px solid rgba(255,255,255,.08)}
+.lead-inner{max-width:560px;margin:0 auto;text-align:center}
+.lead-title{font-size:22px;font-weight:700;color:#fff;margin:0 0 8px}
+.lead-sub{font-size:14px;color:#94a3b8;margin:0 0 24px;line-height:1.5}
+.lead-form{display:flex;gap:8px;max-width:480px;margin:0 auto}
+.lead-form input{flex:1;padding:13px 16px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;border-radius:10px;font-size:15px;outline:none;transition:border .15s}
+.lead-form input::placeholder{color:#64748b}
+.lead-form input:focus{border-color:#a78bfa;background:rgba(255,255,255,.08)}
+.lead-form button{padding:13px 24px;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s}
+.lead-form button:hover{background:#6d28d9}
+.lead-form button:disabled{opacity:.5;cursor:not-allowed}
+.lead-msg{margin-top:14px;font-size:14px;min-height:20px}
+.lead-msg.ok{color:#34d399}
+.lead-msg.err{color:#f87171}
 footer{background:#1a0f3c;padding:24px 5%;text-align:center}
 footer p{font-size:13px;color:rgba(255,255,255,.3)}
 
@@ -355,6 +370,12 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   .cta{padding:56px 4%}
   .cta h2{font-size:24px}
   .cta a.main-btn{padding:14px 28px;font-size:15px}
+
+  /* Lead form */
+  .lead-section{padding:40px 4%}
+  .lead-title{font-size:18px}
+  .lead-form{flex-direction:column;gap:10px}
+  .lead-form button{width:100%}
 }
 
 /* Средние Android — 390-480px */
@@ -526,6 +547,20 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   <p>14 дней бесплатно. Карта не нужна. Первый отчёт через 2 минуты.</p>
   <a href="/login.html" class="main-btn">Начать бесплатно →</a>
 </section>
+
+<!-- 🔥 v0.7.7.19: Lead-форма для сбора email до полного запуска -->
+<section class="lead-section" id="lead">
+  <div class="lead-inner">
+    <h3 class="lead-title">Хотите узнать о новых функциях первыми?</h3>
+    <p class="lead-sub">Оставьте email — пришлём 1-2 раза в месяц подборку фишек для роста прибыли. Без спама, отписаться можно в один клик.</p>
+    <form id="leadForm" class="lead-form" onsubmit="submitLead(event)">
+      <input type="email" id="leadEmail" placeholder="your@email.ru" required autocomplete="email">
+      <button type="submit" id="leadBtn">Подписаться</button>
+    </form>
+    <div id="leadMsg" class="lead-msg"></div>
+  </div>
+</section>
+
 <footer><p>© 2025 WB Profit · Для селлеров Wildberries</p></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
@@ -558,6 +593,65 @@ async function updateNav(){
 }
 updateNav();
 document.getElementById('cRevenue').addEventListener('keyup',function(e){if(e.key==='Enter')calcProfit();});
+
+// 🔥 v0.7.7.19: Lead capture
+function getUTM(){
+  try {
+    var p = new URLSearchParams(window.location.search);
+    return {
+      source: p.get('utm_source') || null,
+      medium: p.get('utm_medium') || null,
+      campaign: p.get('utm_campaign') || null,
+      term: p.get('utm_term') || null,
+      content: p.get('utm_content') || null
+    };
+  } catch(_) { return {}; }
+}
+
+async function submitLead(e){
+  e.preventDefault();
+  var emailInput = document.getElementById('leadEmail');
+  var btn = document.getElementById('leadBtn');
+  var msg = document.getElementById('leadMsg');
+  var email = (emailInput.value || '').trim().toLowerCase();
+  msg.textContent = ''; msg.className = 'lead-msg';
+  if(!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    msg.textContent = 'Введите корректный email';
+    msg.className = 'lead-msg err';
+    return;
+  }
+  btn.disabled = true;
+  var origText = btn.textContent;
+  btn.textContent = 'Отправка...';
+  try {
+    var r = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email,
+        source: 'landing',
+        utm: getUTM(),
+        meta: { referrer: document.referrer || null, page: window.location.pathname }
+      })
+    });
+    var data = await r.json();
+    if(r.ok){
+      msg.textContent = data.duplicate ? '✓ Вы уже подписаны — спасибо!' : '✓ Готово! Будем держать в курсе';
+      msg.className = 'lead-msg ok';
+      emailInput.value = '';
+      btn.textContent = '✓';
+      setTimeout(function(){ btn.textContent = origText; btn.disabled = false; }, 3000);
+    } else {
+      msg.textContent = data.message || 'Не получилось отправить. Попробуйте позже.';
+      msg.className = 'lead-msg err';
+      btn.disabled = false; btn.textContent = origText;
+    }
+  } catch(err) {
+    msg.textContent = 'Сетевая ошибка. Проверьте соединение.';
+    msg.className = 'lead-msg err';
+    btn.disabled = false; btn.textContent = origText;
+  }
+}
 </script>
 </body>
 </html>
