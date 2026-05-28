@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.34'
+  APP_VERSION: 'v0.7.7.35'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1956,22 +1956,20 @@ body{padding-top:var(--beta-h)}
     <span class="plan-badge free" id="planBadge">Free</span>
   </div>
 
-  <!-- 🔥 v0.7.7.22: Trial-баннер (показывается через JS если is_trial=true) -->
+  <!-- 🔥 v0.7.7.35: Trial-баннер — на период беты доступ бесплатный, без призыва оплачивать -->
   <div id="trialBanner" class="trial-banner" style="display:none">
     <div class="trial-banner-icon">🎁</div>
     <div class="trial-banner-text">
-      <b>Trial PRO активен:</b> осталось <span id="trialDaysLeft">14</span> дн. После — доступ только к Главной без оплаты.
+      <b>Trial PRO активен:</b> осталось <span id="trialDaysLeft">14</span> дн. На период беты — бесплатно для всех приглашённых.
     </div>
-    <button class="trial-banner-btn" onclick="showSection('settings', null); window.scrollTo({top:0,behavior:'smooth'})">Оплатить →</button>
   </div>
 
-  <!-- 🔥 v0.7.7.22: Expired-баннер (показывается через JS если is_expired=true) -->
+  <!-- 🔥 v0.7.7.35: Expired-баннер — на бете тариф продлевается промокодом, не платежами -->
   <div id="expiredBanner" class="expired-banner" style="display:none">
     <div class="expired-banner-icon">⏰</div>
     <div class="expired-banner-text">
-      <b>Подписка истекла.</b> Доступна только Главная. Чтобы вернуть полный доступ — оплатите тариф.
+      <b>Trial-период закончился.</b> Доступна только Главная. Чтобы продлить доступ на бете — напишите нам через «Сообщить об ошибке».
     </div>
-    <button class="expired-banner-btn" onclick="showSection('settings', null); window.scrollTo({top:0,behavior:'smooth'})">Возобновить →</button>
   </div>
 
   <div class="content">
@@ -2125,7 +2123,7 @@ body{padding-top:var(--beta-h)}
       <div id="upgradeBanner" class="upgrade-banner" style="display:none">
         <div class="upgrade-text">
           <h3>Перейдите на PRO</h3>
-          <p>AI советник, прогноз прибыли и безлимит товаров</p>
+          <p>История проблем по дням, Excel-экспорт, безлимит товаров</p>
         </div>
         <button class="upgrade-btn" onclick="showSection('promo',document.getElementById('nav-promo'))">Активировать промокод</button>
       </div>
@@ -2761,13 +2759,13 @@ async function init(){
       document.body.appendChild(bar);
     },100);
   }
-  // Авто-даунгрейд если PRO истёк (не для админа с 2099 годом — он всё равно not expired)
+  // 🔥 v0.7.7.35: авто-даунгрейд НЕ пишем в БД из фронта — это была уязвимость
+  // (юзер мог через DevTools присвоить себе любой тариф). Истёкший тариф
+  // backend сам считает «expired» по plan_expires_at в plan-check.js.
+  // Здесь только локально подкрашиваем UI для отображения.
   if(profile&&profile.plan==='pro'&&profile.plan_expires_at&&!profile.is_admin){
     if(new Date(profile.plan_expires_at).getTime()<Date.now()){
-      // Истёк — даунгрейдим в БД
-      try{await sb.from('profiles').update({plan:'free',plan_expires_at:null}).eq('id',currentUser.id);}catch(e){}
-      profile.plan='free';
-      profile.plan_expires_at=null;
+      profile.plan='expired';
     }
   }
   currentProfile=profile;
@@ -3084,9 +3082,40 @@ function skipTour(){
   localStorage.setItem('wb_tour_done', '1');
 }
 
-function onbFinish(){
+async function onbFinish(){
   var tk=document.getElementById('onbToken').value.trim();
   if(!tk){alert('Вставьте токен');return;}
+  // 🔥 v0.7.7.35: сначала создаём кабинет в wb_accounts через API,
+  // ИНАЧЕ goFromHome() падает с 412 NO_WB_ACCOUNT (бэк не находит активный кабинет)
+  try{
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Магазин 1', wb_token: tk, is_default: true })
+    });
+    if(!r.ok){
+      // Если уже есть кабинет с лимитом — нестрашно, пускаем дальше
+      if(!(r.status === 403 && r.data && r.data.error === 'WB_ACCOUNTS_LIMIT_REACHED')){
+        alert('Не удалось сохранить кабинет: ' + (r.data && r.data.message ? r.data.message : 'попробуйте ещё раз'));
+        return;
+      }
+    } else {
+      // Обновляем локальный кеш списка кабинетов
+      try{
+        const list = await _wbAccApiFetch('/api/profile?resource=wb-accounts');
+        if(list.ok){
+          window._wbAccounts = list.data.accounts || [];
+          window._wbAccountsLimit = {
+            max: list.data.limits?.max_wb_accounts || 1,
+            current: list.data.limits?.current_count || 0
+          };
+        }
+      }catch(e){}
+    }
+  }catch(e){
+    alert('Не удалось сохранить кабинет (нет связи с сервером). Попробуйте позже.');
+    return;
+  }
+  // localStorage оставляем как fallback для legacy-кода
   localStorage.setItem('wb_token',tk);
   localStorage.setItem('onboarding_done','1');
   // Также показываем в Настройках
@@ -3255,7 +3284,18 @@ function updateTrialExpiredBanners(){
 
 async function logout(){
   await sb.auth.signOut();
-  localStorage.removeItem('wb_token');
+  // 🔥 v0.7.7.35: чистим ВСЕ wb_* ключи и связанные данные — закрытие утечки между юзерами на одном ПК
+  try{
+    const keysToRemove = [];
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(!k) continue;
+      if(k.startsWith('wb_') || k === 'onboarding_done' || k === 'calc_presets' || k === 'col_prefs' || k === 'calc_group_collapsed'){
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  }catch(e){}
   window.location.href='/login.html';
 }
 

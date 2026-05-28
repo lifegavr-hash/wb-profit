@@ -122,7 +122,7 @@
           "name": "Бизнес (месяц)",
           "price": "1990",
           "priceCurrency": "RUB",
-          "description": "Всё что в PRO + Excel/CSV экспорт + приоритетная поддержка. Скоро: 2 кабинета WB, совместный доступ, AI-чат",
+          "description": "Всё что в PRO + Excel/CSV экспорт + 2 кабинета WB + приоритетная поддержка. Скоро: совместный доступ для команды",
           "priceSpecification": {
             "@type": "UnitPriceSpecification",
             "price": "1990",
@@ -153,7 +153,7 @@
           "name": "Это безопасно — давать API токен?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "API токен WB даёт право только на чтение данных — мы не можем совершать действия в вашем кабинете. Данные хранятся в зашифрованном виде."
+            "text": "API токен WB даёт право только на чтение данных — мы не можем совершать действия в вашем кабинете. Все соединения по HTTPS (TLS 1.3), доступ к данным закрыт RLS-политиками Postgres."
           }
         },
         {
@@ -185,7 +185,7 @@
           "name": "За какой период загружаются данные?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "За последние 12 месяцев. Данные обновляются автоматически каждый день."
+            "text": "На тарифе Старт — за 30 дней, на PRO — 12 месяцев, на Бизнес — 24 месяца. Данные обновляются автоматически каждый день."
           }
         }
       ]
@@ -574,7 +574,7 @@ html{scroll-behavior:smooth}
 .ai-section h2{color:#fff;font-size:clamp(22px,3.5vw,36px);font-weight:800;letter-spacing:-.02em;margin-bottom:12px}
 .ai-section>div>p{color:rgba(255,255,255,.6);font-size:15px;max-width:520px;margin-bottom:28px}
 .ai-example{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:22px 26px;color:rgba(255,255,255,.8);font-size:14px;line-height:1.75;position:relative}
-.ai-example::before{content:'AI советник';position:absolute;top:-11px;left:18px;background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:2px 12px;border-radius:99px}
+.ai-example::before{content:'Подсказка';position:absolute;top:-11px;left:18px;background:#7c3aed;color:#fff;font-size:10px;font-weight:800;padding:2px 12px;border-radius:99px}
 .steps{padding:72px 5%;background:var(--surface)}
 .steps-grid{display:flex;gap:24px;justify-content:center;flex-wrap:wrap;max-width:860px;margin:0 auto}
 .step{flex:1;min-width:200px;max-width:260px;text-align:center}
@@ -848,7 +848,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
       <a href="/login.html" class="btn-white">Попробовать бесплатно →</a>
       <a href="/demo" class="btn-ghost">🎭 Демо без регистрации</a>
     </div>
-    <p class="hero-social"><span>230+</span> селлеров уже считают реальную прибыль · <span style="color:#a78bfa;font-weight:600">14 дней бесплатно</span> — все возможности PRO · <a href="/demo" style="color:#a78bfa;text-decoration:none;font-weight:600">демо за 1 клик</a></p>
+    <p class="hero-social"><span style="color:#a78bfa;font-weight:600">14 дней бесплатно</span> — все возможности PRO · <a href="/demo" style="color:#a78bfa;text-decoration:none;font-weight:600">демо за 1 клик</a></p>
     <div class="hero-calc">
       <div class="hero-calc-title">⚡ Быстрый расчёт — введи свои цифры</div>
       <div class="calc-row"><span class="calc-label">Выплата от WB</span><input class="calc-input" id="cRevenue" type="number" placeholder="300 000"></div>
@@ -931,7 +931,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
     <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">⚡</span><h3>Живые данные</h3><p>Подключается к кабинету WB через API. Данные всегда актуальны</p></div>
     <div class="feat-card reveal"><span class="feat-icon">📉</span><h3>ДРР по товарам</h3><p>Доля рекламных расходов по каждому артикулу — видите что работает</p></div>
     <div class="feat-card reveal" data-reveal-delay="100"><span class="feat-icon">🔔</span><h3>Умные алерты</h3><p>Уведомляет об убыточных товарах, росте штрафов и аномалиях</p></div>
-    <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">🤖</span><h3>AI советник</h3><p>Анализирует данные и даёт конкретные советы что изменить</p></div>
+    <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">🧮</span><h3>Калькулятор юнит-экономики</h3><p>Подбор цены, точка безубыточности, разбор расходов по товару</p></div>
   </div>
 </section>
 
@@ -974,10 +974,10 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
 </section>
 <section class="ai-section">
   <div class="ai-inner">
-    <div class="ai-badge reveal">PRO — AI советник</div>
-    <h2 class="reveal" data-reveal-delay="100">Не просто цифры — конкретные советы</h2>
-    <p class="reveal" data-reveal-delay="200">AI анализирует ваши данные и говорит что нужно изменить. Как личный финансовый директор за 990 ₽ в месяц.</p>
-    <div class="ai-example reveal" data-reveal-delay="300">Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Рекомендую перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит около 2 800 ₽/мес.</div>
+    <div class="ai-badge reveal">PRO — История проблем</div>
+    <h2 class="reveal" data-reveal-delay="100">Не просто цифры — конкретные подсказки</h2>
+    <p class="reveal" data-reveal-delay="200">Сервис сам разбирает ваши данные и выделяет проблемные точки и точки роста. Без AI — на проверенных правилах, которые работают для селлеров.</p>
+    <div class="ai-example reveal" data-reveal-delay="300">Товар "ФСБ олива" показывает выплату 35 759 ₽ при логистике 7 124 ₽ — это 20% от выручки. Стоит перейти на поставку крупными партиями. При 127 продажах в месяц экономия составит около 2 800 ₽/мес.</div>
   </div>
 </section>
 <section class="steps">
@@ -1035,8 +1035,8 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
         <div class="price-save" data-monthly="" data-yearly="Экономия 7 180 ₽">Экономия 7 180 ₽</div>
       </div>
       <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="Эффективно 1 392 ₽/мес">Для команды и нескольких магазинов</div>
-      <div class="plan-desc">Команда + AI-чат</div>
-      <ul class="plan-features"><li>Всё что в PRO</li><li>Экспорт в Excel/CSV</li><li>2 кабинета WB</li><li>Приоритетная поддержка (4 часа)</li><li>История 2 года</li><li class="feature-soon">Совместный доступ для команды <span class="soon-tag">скоро</span></li><li class="feature-soon">AI-чат с магазином <span class="soon-tag">скоро</span></li></ul>
+      <div class="plan-desc">2 кабинета WB + Excel + команда</div>
+      <ul class="plan-features"><li>Всё что в PRO</li><li>Экспорт в Excel/CSV</li><li>2 кабинета WB</li><li>Приоритетная поддержка (4 часа)</li><li>История 2 года</li><li class="feature-soon">Совместный доступ для команды <span class="soon-tag">скоро</span></li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Бизнес</a>
     </div>
   </div>
@@ -1046,11 +1046,11 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   <div class="section-label">Вопросы и ответы</div>
   <div class="section-h2">Часто спрашивают</div>
   <div class="faq-list">
-    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Это безопасно — давать API токен?</button><div class="faq-a">API токен WB даёт право только на чтение данных — мы не можем совершать действия в вашем кабинете. Данные хранятся в зашифрованном виде.</div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Это безопасно — давать API токен?</button><div class="faq-a">API токен WB даёт право только на чтение данных — мы не можем совершать действия в вашем кабинете. Все соединения по HTTPS (TLS 1.3), доступ к данным закрыт RLS-политиками Postgres.</div></div>
     <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Чем отличается от отчётов самого WB?</button><div class="faq-a">WB показывает выплаты и продажи отдельно. Мы сводим всё в одну картину: выплата минус все расходы = реальная прибыль по каждому товару. Плюс ДРР, алерты и AI советы.</div></div>
     <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Нужно ли что-то устанавливать?</button><div class="faq-a">Нет. Работает в браузере — открыли сайт, вставили токен, смотрите данные.</div></div>
     <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">Как отменить подписку?</button><div class="faq-a">В любой момент в личном кабинете. Никаких штрафов и скрытых условий.</div></div>
-    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">За какой период загружаются данные?</button><div class="faq-a">За последние 12 месяцев. Данные обновляются автоматически каждый день.</div></div>
+    <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">За какой период загружаются данные?</button><div class="faq-a">На тарифе Старт — за 30 дней, на PRO — 12 месяцев, на Бизнес — 24 месяца. Данные обновляются автоматически каждый день.</div></div>
   </div>
 </section>
 <section class="cta">
