@@ -9,6 +9,7 @@
 <link rel="canonical" href="https://wb-profit.vercel.app/login.html">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#7c3aed">
+<script>window.__APP_VERSION = 'v0.7.7.32';</script>
 <!-- 🔥 v0.7.7.6: Yandex.Metrika (плейсхолдер — подставь YM_COUNTER_ID) -->
 <script>
 (function(){
@@ -85,6 +86,7 @@ input:focus{border-color:var(--purple)}
   <div id="formReg" style="display:none">
     <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"></div>
     <div class="field"><label>Пароль</label><input type="password" id="regPass" placeholder="Минимум 6 символов"></div>
+    <div class="field"><label>Промокод</label><input type="text" id="regPromo" placeholder="BETA2024" style="text-transform:uppercase" required></div>
     <button class="btn" id="regBtn" onclick="register()">Создать аккаунт</button>
     <div class="err" id="regErr"></div>
     <div class="ok" id="regOk">Проверьте почту — отправили письмо для подтверждения!</div>
@@ -190,13 +192,23 @@ async function login() {
 async function register() {
   var email = document.getElementById('regEmail').value.trim();
   var pass = document.getElementById('regPass').value;
+  var promo = document.getElementById('regPromo').value.trim().toUpperCase();
   var errBox = document.getElementById('regErr');
   var okBox = document.getElementById('regOk');
   var btn = document.getElementById('regBtn');
   errBox.style.display='none'; okBox.style.display='none';
   if (!email||!pass){errBox.textContent='Заполните все поля';errBox.style.display='block';return;}
   if (pass.length<6){errBox.textContent='Пароль минимум 6 символов';errBox.style.display='block';return;}
-  btn.disabled=true; btn.textContent='Создаём аккаунт...';
+  if (!promo){errBox.textContent='Введите промокод';errBox.style.display='block';return;}
+  btn.disabled=true; btn.textContent='Проверяем промокод...';
+  var vr = await sb.rpc('validate_beta_code', { p_code: promo });
+  if (vr.error || !vr.data || vr.data.valid !== true) {
+    errBox.textContent = (vr.data && vr.data.message) || (vr.error && vr.error.message) || 'Неверный промокод';
+    errBox.style.display='block';
+    btn.disabled=false; btn.textContent='Создать аккаунт';
+    return;
+  }
+  btn.textContent='Создаём аккаунт...';
   var { data, error } = await sb.auth.signUp({ email, password: pass });
   if (error) {
     errBox.textContent = error.message;
@@ -204,6 +216,12 @@ async function register() {
     btn.disabled=false; btn.textContent='Создать аккаунт';
   } else {
     currentUser = data.user;
+    if (data.user && data.user.id) {
+      try {
+        var ar = await sb.rpc('apply_beta_code', { p_code: promo, p_user_id: data.user.id });
+        if (ar.error) console.warn('apply_beta_code error:', ar.error);
+      } catch(e) { console.warn('apply_beta_code threw:', e); }
+    }
     okBox.style.display='block';
     btn.disabled=false; btn.textContent='Создать аккаунт';
     if (data.session) window.location.href = '/dashboard.html';
