@@ -408,15 +408,16 @@ body > input[type="hidden"]{display:none!important}
 body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 @media(max-width:900px){
   body{grid-template-columns:1fr}
-  .sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;z-index:1500;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.3)}
+  /* v0.7.7.33: на мобиле sidebar/.topbar/.mob-menu-btn фиксированы — сдвигаем под BETA-полоску */
+  .sidebar{position:fixed;top:var(--beta-h);left:0;bottom:0;width:260px;height:calc(100vh - var(--beta-h));z-index:1500;transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.3)}
   .sidebar.open{transform:translateX(0)}
   .main{padding-top:60px!important}
   .mob-menu-btn{display:flex!important}
   .mob-menu-bg{display:none}
   .sidebar.open ~ .mob-menu-bg{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1400}
-  .topbar{position:fixed!important;top:0;left:0;right:0;background:var(--surface);z-index:1000;padding:14px 20px 14px 64px;border-bottom:1px solid var(--border)}
+  .topbar{position:fixed!important;top:var(--beta-h);left:0;right:0;background:var(--surface);z-index:1000;padding:14px 20px 14px 64px;border-bottom:1px solid var(--border)}
 }
-.mob-menu-btn{display:none;position:fixed;top:10px;left:14px;width:42px;height:42px;background:#1a0f3c;border:0;border-radius:10px;color:#fff;font-size:20px;cursor:pointer;z-index:1600;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+.mob-menu-btn{display:none;position:fixed;top:calc(10px + var(--beta-h));left:14px;width:42px;height:42px;background:#1a0f3c;border:0;border-radius:10px;color:#fff;font-size:20px;cursor:pointer;z-index:1600;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.2)}
 .mob-menu-btn:hover{background:#2d1a7a}
 .sidebar{background:#1a0f3c;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .logo{padding:1.25rem 1rem;border-bottom:1px solid rgba(255,255,255,.08)}
@@ -1458,8 +1459,8 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
   .home-spinner-icon{font-size:24px!important;margin:0!important}
   /* Скрытые блоки не должны занимать пространство — никаких padding/margin когда display:none */
   [style*="display:none"],[style*="display: none"]{padding:0!important;margin:0!important;height:0!important;min-height:0!important}
-  /* Topbar — фиксированный сверху, не толкает контент */
-  .topbar{position:fixed!important;top:0!important;left:0!important;right:0!important;height:44px!important;min-height:44px!important;max-height:44px!important;padding:8px 14px 8px 60px!important;background:var(--surface)!important;z-index:1000!important;border-bottom:1px solid var(--border)!important;box-sizing:border-box!important}
+  /* Topbar — фиксированный сверху, не толкает контент. v0.7.7.33: top=var(--beta-h) под BETA-полоску */
+  .topbar{position:fixed!important;top:var(--beta-h)!important;left:0!important;right:0!important;height:44px!important;min-height:44px!important;max-height:44px!important;padding:8px 14px 8px 60px!important;background:var(--surface)!important;z-index:1000!important;border-bottom:1px solid var(--border)!important;box-sizing:border-box!important}
   /* Load-bar когда виден — НЕ занимает много места */
   .load-bar{padding:10px!important;margin:0 0 10px 0!important}
   .load-bar[style*="display:none"]{padding:0!important;margin:0!important}
@@ -1636,15 +1637,15 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
    Решение: принудительно обнулить ВСЕ возможные источники отступов
    ═══════════════════════════════════════════════════════════════════════ */
 @media(max-width:900px){
-  /* HTML/BODY — никаких лишних отступов */
+  /* HTML/BODY — никаких лишних отступов. v0.7.7.33: padding-top для BETA-полоски сохраняем */
   html{margin:0!important;padding:0!important;height:auto!important;min-height:100%!important}
-  body{margin:0!important;padding:0!important;min-height:100vh!important;height:auto!important;display:block!important;width:100%!important;max-width:100vw!important;overflow-x:hidden!important}
+  body{margin:0!important;padding:0!important;padding-top:var(--beta-h)!important;min-height:100vh!important;height:auto!important;display:block!important;width:100%!important;max-width:100vw!important;overflow-x:hidden!important}
 
   /* Layout — обычный блочный, без grid */
   .layout{display:block!important;width:100%!important;margin:0!important;padding:0!important;min-height:auto!important}
 
-  /* Sidebar — скрыт сбоку, не в потоке */
-  .sidebar{position:fixed!important;top:0!important;left:0!important;width:260px!important;height:100vh!important;transform:translateX(-100%)!important;transition:transform .25s ease!important;z-index:1500!important}
+  /* Sidebar — скрыт сбоку, не в потоке. v0.7.7.33: top=var(--beta-h) под полоску */
+  .sidebar{position:fixed!important;top:var(--beta-h)!important;left:0!important;width:260px!important;height:calc(100vh - var(--beta-h))!important;transform:translateX(-100%)!important;transition:transform .25s ease!important;z-index:1500!important}
   .sidebar.open{transform:translateX(0)!important}
 
   /* MAIN — РАВНО ВЫСОТЕ TOPBAR padding-top, БЕЗ ЛИШНИХ ПИКСЕЛЕЙ */
@@ -1665,10 +1666,10 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
     .topbar{padding-top:calc(8px + env(safe-area-inset-top))!important;height:calc(44px + env(safe-area-inset-top))!important;max-height:calc(44px + env(safe-area-inset-top))!important;min-height:calc(44px + env(safe-area-inset-top))!important}
   }
 
-  /* TOPBAR — фиксированный, ТОЧНО 44px высоты */
+  /* TOPBAR — фиксированный, ТОЧНО 44px высоты. v0.7.7.33: top=var(--beta-h) под полоску */
   .topbar{
     position:fixed!important;
-    top:0!important;
+    top:var(--beta-h)!important;
     left:0!important;
     right:0!important;
     width:100%!important;
@@ -1723,11 +1724,11 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
     padding:0!important;
   }
 
-  /* Mob-menu-btn над topbar */
+  /* Mob-menu-btn над topbar. v0.7.7.33: top смещен под BETA-полоску */
   .mob-menu-btn{
     display:flex!important;
     position:fixed!important;
-    top:5px!important;
+    top:calc(5px + var(--beta-h))!important;
     left:5px!important;
     width:38px!important;
     height:38px!important;
@@ -1764,9 +1765,24 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
 .detail-ops-meta{color:#64748b;font-size:11px}
 .detail-ops-more{font-size:11px;color:#94a3b8;text-align:center;margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0}
 
+/* 🔥 v0.7.7.33: БЕТА-полоска. Висит сверху на всех вкладках; кликабельная ссылка открывает модалку фидбэка. */
+:root{--beta-h:26px}
+.beta-strip{position:fixed;top:0;left:0;right:0;height:var(--beta-h);background:#fef3c7;border-bottom:1px solid #f59e0b;color:#78350f;font-size:12px;line-height:var(--beta-h);text-align:center;z-index:1499;padding:0 12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500}
+.beta-strip a{color:#7c3aed;text-decoration:underline;cursor:pointer;font-weight:600}
+.beta-strip a:hover{color:#6d28d9}
+html[data-theme="dark"] .beta-strip{background:#3a2e0a;border-bottom-color:#b45309;color:#fcd34d}
+html[data-theme="dark"] .beta-strip a{color:#a78bfa}
+html[data-theme="dark"] .beta-strip a:hover{color:#c4b5fd}
+body{padding-top:var(--beta-h)}
+/* Сдвигаем sticky-сайдбар (desktop) под полоску */
+.sidebar{top:var(--beta-h);height:calc(100vh - var(--beta-h))}
+@media(max-width:520px){.beta-strip{font-size:11px}}
+
 </style>
 </head>
 <body>
+<!-- 🔥 v0.7.7.33: БЕТА-полоска. Видна на всех вкладках. Ссылка открывает модалку фидбэка из T3. -->
+<div class="beta-strip" role="banner">БЕТА-версия — данные могут быть неточными. Нашли ошибку? <a onclick="if(typeof openFeedbackModal==='function')openFeedbackModal();return false;">Напишите нам</a></div>
 <input type="hidden" id="df">
 <input type="hidden" id="dt">
 <button class="mob-menu-btn" id="mobMenuBtn" onclick="toggleMobMenu()" aria-label="Меню">☰</button>
