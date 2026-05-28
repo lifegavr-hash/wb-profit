@@ -2132,6 +2132,8 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
             </select>
             <div id="calcDrilldownBadge" class="calc-drilldown" style="display:none"></div>
             <div id="calcPresetBar" class="calc-presets"></div>
+            <!-- 🔥 v0.7.7.33: Excel-кнопка перенесена сюда из col-settings — была не видна -->
+            <button class="bulk-btn" onclick="exportToExcel()" title="Скачать таблицу в Excel">📥 Скачать в Excel</button>
           </div>
           <div class="bulk-bar">
             <div class="bulk-row">
@@ -2155,7 +2157,6 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
               <label><input type="checkbox" class="col-toggle" data-col="storage" checked onchange="toggleCol(this)"> Хранение</label>
               <label><input type="checkbox" class="col-toggle" data-col="penalty" checked onchange="toggleCol(this)"> Штрафы</label>
             </div>
-            <button class="bulk-btn" onclick="exportToExcel()" style="margin-top:10px">📥 Скачать в Excel</button>
           </details>
           <div class="tw">
             <table id="productsTable">
