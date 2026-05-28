@@ -2639,6 +2639,42 @@ function _wbProfitHotkeys(e){
 }
 window.addEventListener('keydown', _wbProfitHotkeys, true); // capture: true — перехватываем раньше всех
 
+// 🔥 v0.7.7.33: Глобальный лог JS-ошибок. Вешает window.error и unhandledrejection,
+// каждый отправляет RPC log_frontend_error. Защищён флагом от двойной установки.
+function installFrontendErrorLogger(){
+  if(window.__errLoggerInstalled) return;
+  window.__errLoggerInstalled = true;
+  var APP_VER = (window.__ANALYTICS_CONFIG && window.__ANALYTICS_CONFIG.APP_VERSION) || 'unknown';
+  function send(msg, stack){
+    try{
+      if(!window.sb || typeof sb.rpc !== 'function') return;
+      sb.rpc('log_frontend_error', {
+        p_message: String(msg||'').slice(0,500),
+        p_stack: stack ? String(stack).slice(0,4000) : null,
+        p_page_url: location.href,
+        p_user_agent: navigator.userAgent,
+        p_app_version: APP_VER,
+        p_context: null
+      });
+    }catch(_){/* лог никогда не должен ронять страницу */}
+  }
+  window.addEventListener('error', function(e){
+    try{
+      var msg = (e && e.message) ? e.message : 'error';
+      var stk = (e && e.error && e.error.stack) ? e.error.stack : null;
+      send(msg, stk);
+    }catch(_){}
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    try{
+      var reason = e && e.reason;
+      var msg = (reason && reason.message) ? reason.message : (typeof reason==='string' ? reason : 'unhandledrejection');
+      var stk = (reason && reason.stack) ? reason.stack : null;
+      send(msg, stk);
+    }catch(_){}
+  });
+}
+
 async function init(){
   // 🔥 v0.7.7.6+hotfix: Публичный демо-режим.
   // Vercel rewrite /demo → /dashboard.html?demo=1 НЕ пробрасывает query в браузер,
@@ -2653,6 +2689,8 @@ async function init(){
   var r=await fetch('/api/config');
   var cfg=await r.json();
   sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
+  // 🔥 v0.7.7.33: глобальный лог JS-ошибок (вешаем после инициализации sb)
+  installFrontendErrorLogger();
   var {data:{session}}=await sb.auth.getSession();
   if(!session){window.location.href='/login.html';return;}
   currentUser=session.user;
