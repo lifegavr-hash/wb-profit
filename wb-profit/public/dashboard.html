@@ -2092,6 +2092,13 @@ body{padding-top:var(--beta-h)}
         <p class="hint" style="margin-top:10px">Эта цифра <strong>хранится только в вашем браузере</strong> (localStorage) и не отправляется на сервер.</p>
       </div>
 
+      <!-- 🔥 v0.7.7.33: Обратная связь — модалка вызывает sb.rpc('submit_feedback', ...) -->
+      <div class="card" style="margin-top:14px">
+        <div class="ct">💬 Обратная связь</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Нашли ошибку, есть идея или вопрос? Напишите нам — каждое сообщение читается лично.</p>
+        <button class="btn-primary" onclick="openFeedbackModal()">Сообщить об ошибке / предложение</button>
+      </div>
+
       <!-- 🔥 v0.7.7.13: Удаление аккаунта (152-ФЗ ст.9 — право на отзыв согласия) -->
       <!-- 🔥 v0.7.7.15: CSS-классы вместо inline-стилей для корректной работы в тёмной теме -->
       <div class="card danger-zone" style="margin-top:14px;border:1px solid #fecaca;background:#fef2f2">
@@ -2435,6 +2442,38 @@ body{padding-top:var(--beta-h)}
       <button class="info-modal-close" onclick="closeInfoModal()" aria-label="Закрыть">×</button>
     </div>
     <div class="info-modal-body" id="infoModalBody"></div>
+  </div>
+</div>
+
+<!-- 🔥 v0.7.7.33: Модалка обратной связи (submit_feedback RPC). Открывается из Настроек и из BETA-полоски. -->
+<div id="feedbackModal" class="info-modal" style="display:none" onclick="closeFeedbackModal(event)">
+  <div class="info-modal-card" onclick="event.stopPropagation()">
+    <div class="info-modal-header">
+      <div class="info-modal-title">💬 Сообщить об ошибке или предложении</div>
+      <button class="info-modal-close" onclick="closeFeedbackModal()" aria-label="Закрыть">×</button>
+    </div>
+    <div class="info-modal-body">
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Категория</label>
+        <select id="feedbackCategory" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;background:var(--surface);color:var(--text)">
+          <option value="bug">🐛 Ошибка</option>
+          <option value="feature">💡 Предложение</option>
+          <option value="question">❓ Вопрос</option>
+          <option value="praise">❤️ Похвала</option>
+          <option value="other">📝 Другое</option>
+        </select>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Сообщение</label>
+        <textarea id="feedbackMessage" rows="6" placeholder="Опишите ситуацию: что произошло, что ожидали, на каком шаге..." style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;background:var(--surface);color:var(--text);resize:vertical;min-height:120px;font-family:inherit"></textarea>
+        <p class="hint" style="margin-top:6px;font-size:11px">Мы автоматически передадим только URL страницы, версию приложения и user-agent браузера — никаких ваших данных.</p>
+      </div>
+      <div class="err" id="feedbackErr" style="display:none"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <button class="bulk-btn" onclick="closeFeedbackModal()">Отмена</button>
+        <button class="btn-primary" id="feedbackSubmitBtn" onclick="submitFeedback()">Отправить</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -7675,6 +7714,66 @@ function closeInfoModal(e){
   document.removeEventListener('keydown',_escapeInfoModal);
 }
 function _escapeInfoModal(e){if(e.key==='Escape')closeInfoModal();}
+
+// 🔥 v0.7.7.33: Модалка обратной связи (submit_feedback RPC)
+function openFeedbackModal(){
+  var m=document.getElementById('feedbackModal');
+  if(!m)return;
+  var err=document.getElementById('feedbackErr'); if(err){err.style.display='none';err.textContent='';}
+  var btn=document.getElementById('feedbackSubmitBtn'); if(btn){btn.disabled=false;btn.textContent='Отправить';}
+  // Не очищаем поля — пользователь может случайно закрыть и вернуться
+  m.style.display='flex';
+  document.addEventListener('keydown',_escapeFeedbackModal);
+  setTimeout(function(){var t=document.getElementById('feedbackMessage'); if(t)t.focus();},50);
+}
+function closeFeedbackModal(e){
+  if(e&&e.currentTarget&&e.target&&e.currentTarget!==e.target)return;
+  var m=document.getElementById('feedbackModal');
+  if(m)m.style.display='none';
+  document.removeEventListener('keydown',_escapeFeedbackModal);
+}
+function _escapeFeedbackModal(e){if(e.key==='Escape')closeFeedbackModal();}
+async function submitFeedback(){
+  var cat=(document.getElementById('feedbackCategory')||{}).value||'other';
+  var msg=((document.getElementById('feedbackMessage')||{}).value||'').trim();
+  var err=document.getElementById('feedbackErr');
+  var btn=document.getElementById('feedbackSubmitBtn');
+  if(err){err.style.display='none';err.textContent='';}
+  if(msg.length<5){
+    if(err){err.textContent='Сообщение слишком короткое — опишите подробнее (от 5 символов).';err.style.display='block';}
+    return;
+  }
+  if(!window.sb || typeof sb.rpc !== 'function'){
+    if(err){err.textContent='Сервис временно недоступен. Попробуйте позже.';err.style.display='block';}
+    return;
+  }
+  if(btn){btn.disabled=true;btn.textContent='Отправляем...';}
+  var ver=(window.__ANALYTICS_CONFIG&&window.__ANALYTICS_CONFIG.APP_VERSION)||'unknown';
+  try{
+    var resp=await sb.rpc('submit_feedback',{
+      p_category: cat,
+      p_message: msg,
+      p_page: location.pathname,
+      p_user_agent: navigator.userAgent,
+      p_app_version: ver
+    });
+    var ok = resp && resp.data && resp.data.ok===true;
+    if(ok){
+      // Очищаем поле и закрываем
+      var t=document.getElementById('feedbackMessage'); if(t)t.value='';
+      closeFeedbackModal();
+      if(typeof showToast==='function') showToast('Спасибо за обратную связь!','success',4000);
+      else alert('Спасибо за обратную связь!');
+    } else {
+      var msgText = (resp && resp.data && resp.data.error) || (resp && resp.error && resp.error.message) || 'Не удалось отправить. Попробуйте позже.';
+      if(err){err.textContent=msgText;err.style.display='block';}
+    }
+  }catch(ex){
+    if(err){err.textContent='Ошибка сети: '+(ex&&ex.message?ex.message:String(ex));err.style.display='block';}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Отправить';}
+  }
+}
 
 // Готовые описания плиток — единое место для текстов
 function showAdjustInfo(isPos, amount){
