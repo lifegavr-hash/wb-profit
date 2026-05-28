@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.33'
+  APP_VERSION: 'v0.7.7.34'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -104,6 +104,18 @@ html[data-theme="dark"] .nav-item:hover{background:rgba(167,139,250,.1)}
 html[data-theme="dark"] .nav-item.active{background:rgba(167,139,250,.15);color:#a78bfa}
 html[data-theme="dark"] .detail-formula{background:#252539}
 html[data-theme="dark"] .detail-prev-period-hint{background:#1a1a2e;border-color:#3b3b52;color:var(--muted)}
+/* 🔥 v0.7.7.34: dark-тема для модалок (info-modal-card был захардкожен #fff) */
+html[data-theme="dark"] .info-modal-card{background:var(--card-bg);border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+html[data-theme="dark"] .info-modal-header{border-bottom-color:var(--border)}
+html[data-theme="dark"] .info-modal-close{color:var(--muted)}
+html[data-theme="dark"] .info-modal-close:hover{background:#2a2a44;color:var(--text)}
+html[data-theme="dark"] .info-modal-body .info-formula{background:#252539;color:var(--text)}
+html[data-theme="dark"] .info-modal-body .info-example{background:rgba(34,197,94,.08);border-left-color:#22c55e;color:var(--text)}
+/* feedback-модалка: усиливаем рамку селекта и textarea чтобы поля были визуально отделены от карточки */
+html[data-theme="dark"] #feedbackModal select,
+html[data-theme="dark"] #feedbackModal textarea{border-color:rgba(255,255,255,.18)!important}
+html[data-theme="dark"] #feedbackModal select:focus,
+html[data-theme="dark"] #feedbackModal textarea:focus{border-color:#a78bfa!important;outline:none;box-shadow:0 0 0 3px rgba(167,139,250,.18)}
 html[data-theme="dark"] .calc-search input{background:var(--input-bg);color:var(--text);border-color:var(--border)}
 html[data-theme="dark"] .calc-group-select{background:var(--input-bg);color:var(--text);border-color:var(--border)}
 html[data-theme="dark"] .calc-group-header{background:linear-gradient(90deg,rgba(167,139,250,.15) 0%,transparent 100%);border-color:rgba(167,139,250,.3)}
@@ -1918,7 +1930,7 @@ body{padding-top:var(--beta-h)}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.33</div>
+      <div class="sidebar-version">WB Profit · v0.7.7.34</div>
     </div>
   </div>
 </div>
