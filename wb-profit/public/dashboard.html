@@ -2403,6 +2403,24 @@ body{padding-top:var(--beta-h)}
 
     <!-- Админ -->
     <div class="section" id="sectionAdmin">
+      <!-- 🔥 v0.7.7.33: 4 view беты (admin_beta_stats / admin_available_codes / admin_beta_users / admin_new_feedback) -->
+      <div class="card">
+        <div class="ct">📊 Бета-статистика</div>
+        <div class="tw" id="adminBetaStats" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
+      </div>
+      <div class="card">
+        <div class="ct">📬 Новый фидбэк</div>
+        <div class="tw" id="adminNewFeedback" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
+      </div>
+      <div class="card">
+        <div class="ct">🎟️ Доступные промокоды</div>
+        <div class="tw" id="adminAvailableCodes" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
+      </div>
+      <div class="card">
+        <div class="ct">👥 Бета-пользователи</div>
+        <div class="tw" id="adminBetaUsers" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
+      </div>
+
       <div class="card">
         <div class="ct">Создать промокод</div>
         <div class="g2" style="margin-bottom:12px">
@@ -3424,6 +3442,8 @@ async function deactivatePromo(id){
 }
 
 async function loadAdminData(token){
+  // 🔥 v0.7.7.33: доп. защита — функция дёргается только админами
+  if(!(window.currentProfile && currentProfile.is_admin)) return;
   var r=await fetch('/api/admin',{headers:{'Authorization':'Bearer '+token}});
   var d=await r.json();
   if(d.promos){
@@ -3437,6 +3457,62 @@ async function loadAdminData(token){
       return '<tr><td>'+u.email+'</td><td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+u.plan+'</span></td><td>'+exp+'</td><td>'+new Date(u.created_at).toLocaleDateString('ru-RU')+'</td></tr>';
     }).join('');
   }
+  // 🔥 v0.7.7.33: 4 view беты — параллельно
+  loadAdminBetaViews();
+}
+
+// 🔥 v0.7.7.33: универсальный рендер таблицы из массива объектов
+function renderAdminTable(containerId, rows){
+  var el=document.getElementById(containerId);
+  if(!el)return;
+  if(!rows || !rows.length){ el.innerHTML='<div class="hint" style="padding:6px 2px">Нет данных</div>'; return; }
+  var cols=Object.keys(rows[0]);
+  var fmtCell=function(v){
+    if(v===null||v===undefined) return '<span style="color:var(--hint)">—</span>';
+    if(typeof v==='boolean') return v?'✅':'—';
+    var s=String(v);
+    // Дата ISO → ru-локаль
+    if(/^\d{4}-\d{2}-\d{2}T/.test(s)){
+      try{return new Date(s).toLocaleString('ru-RU');}catch(_){}
+    }
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)){
+      try{return new Date(s).toLocaleDateString('ru-RU');}catch(_){}
+    }
+    // Эскейп
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  };
+  var html='<table class="promo-table" style="font-size:12px"><thead><tr>'+
+    cols.map(function(c){return '<th>'+c.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</th>';}).join('')+
+    '</tr></thead><tbody>'+
+    rows.map(function(r){
+      return '<tr>'+cols.map(function(c){return '<td>'+fmtCell(r[c])+'</td>';}).join('')+'</tr>';
+    }).join('')+
+    '</tbody></table>';
+  el.innerHTML=html;
+}
+
+async function loadAdminBetaViews(){
+  if(!window.sb || !(window.currentProfile && currentProfile.is_admin)) return;
+  var views=[
+    {view:'admin_beta_stats',     container:'adminBetaStats'},
+    {view:'admin_new_feedback',   container:'adminNewFeedback'},
+    {view:'admin_available_codes',container:'adminAvailableCodes'},
+    {view:'admin_beta_users',     container:'adminBetaUsers'}
+  ];
+  await Promise.all(views.map(async function(v){
+    try{
+      var resp=await sb.from(v.view).select('*');
+      if(resp.error){
+        var el=document.getElementById(v.container);
+        if(el) el.innerHTML='<div class="err" style="display:block">Ошибка загрузки '+v.view+': '+(resp.error.message||resp.error)+'</div>';
+        return;
+      }
+      renderAdminTable(v.container, resp.data||[]);
+    }catch(ex){
+      var el=document.getElementById(v.container);
+      if(el) el.innerHTML='<div class="err" style="display:block">Ошибка: '+(ex&&ex.message?ex.message:String(ex))+'</div>';
+    }
+  }));
 }
 
 function initCalc(){
