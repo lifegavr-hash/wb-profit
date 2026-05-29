@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "SW Profit",
+  "version": "0.3.8",
+  "description": "Калькулятор прибыли продавца на WB. Логистика из WB Box API + предупреждения о доступности FBS на складах.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.wildberries.ru/*",
+    "https://card.wb.ru/*",
+    "https://wb-profit.vercel.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.wildberries.ru/catalog/*"
+      ],
+      "js": [
+        "content/widget.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_page": "options.html"
+}

@@ -1,0 +1,2 @@
+document.getElementById('ver').textContent = chrome.runtime.getManifest().version;
+document.getElementById('openOpts').addEventListener('click', (e) => { e.preventDefault(); chrome.runtime.openOptionsPage(); });
