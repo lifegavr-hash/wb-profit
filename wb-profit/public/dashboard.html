@@ -19,7 +19,7 @@ try{
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>WB Profit — Аналитика продаж</title>
+<title>SW Profit — Аналитика продаж</title>
 <!-- 🔥 v0.7.7.6: ANALYTICS & ERROR TRACKING ============================== -->
 <!-- Чтобы активировать: подставь свои ID в YM_COUNTER_ID и SENTRY_DSN ниже.
      Если оставить плейсхолдеры YM_COUNTER_ID / SENTRY_DSN — скрипты не загрузятся (no-op).
@@ -28,7 +28,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.35'
+  APP_VERSION: 'v0.7.7.36'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -451,6 +451,7 @@ body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
 .sidebar-legal a{color:rgba(255,255,255,.55);text-decoration:none}
 .sidebar-legal a:hover{color:rgba(255,255,255,.85)}
 .sidebar-version{margin-top:6px;font-size:9px;color:rgba(255,255,255,.55);letter-spacing:.3px}
+.sidebar-tagline{margin-top:3px;font-size:8px;color:rgba(255,255,255,.35);letter-spacing:.2px;font-style:italic}
 .main{overflow:hidden;display:flex;flex-direction:column}
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px}
 
@@ -1623,7 +1624,7 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
   /* Details блоки */
   details summary{font-size:13px!important;padding:10px 12px!important}
 
-  /* Sidebar заголовок WB Profit */
+  /* Sidebar заголовок SW Profit */
   .sidebar h1,.sidebar .sidebar-title{font-size:18px!important}
   .sidebar .sidebar-subtitle{font-size:11px!important}
 
@@ -1813,7 +1814,7 @@ body{padding-top:var(--beta-h)}
     <!-- Шаг 1 -->
     <div class="onb-step" data-step="1">
       <div class="onb-emoji">👋</div>
-      <div class="onb-title">Добро пожаловать в WB Profit!</div>
+      <div class="onb-title">Добро пожаловать в SW Profit!</div>
       <div class="onb-text">Это сервис, который покажет реальную прибыль по каждому товару на Wildberries, найдёт убыточные позиции и подскажет, где утекают деньги.</div>
       <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong> с правами на чтение. Сервису нужны разделы <strong>«Статистика»</strong> (продажи, остатки) и <strong>«Продвижение»</strong> (рекламные расходы для точной прибыли).</div>
       <div class="onb-text" style="margin-top:14px;font-size:12px;color:#94a3b8">Хотите сначала посмотреть как работает приложение?</div>
@@ -1867,7 +1868,7 @@ body{padding-top:var(--beta-h)}
           <div class="onb-visual-num">4</div>
           <div class="onb-visual-mock">
             <div class="onb-mock-form">
-              <div class="onb-mock-form-row"><span class="onb-mock-label">Название</span><span class="onb-mock-value">WB Profit</span></div>
+              <div class="onb-mock-form-row"><span class="onb-mock-label">Название</span><span class="onb-mock-value">SW Profit</span></div>
               <div class="onb-mock-form-row"><span class="onb-mock-label">Тип токена</span><span class="onb-mock-value">🔒 Только чтение</span></div>
               <div class="onb-mock-form-row"><span class="onb-mock-label">Разделы</span><span class="onb-mock-value">
                 <span class="onb-mock-chip">✓ Статистика</span>
@@ -1877,7 +1878,7 @@ body{padding-top:var(--beta-h)}
               <button class="onb-mock-cta">+ Создать токен</button>
             </div>
           </div>
-          <div class="onb-visual-text">Название «WB Profit», тип <strong>Только чтение</strong>, отметьте 3 раздела → создать</div>
+          <div class="onb-visual-text">Название «SW Profit», тип <strong>Только чтение</strong>, отметьте 3 раздела → создать</div>
         </div>
       </div>
       <div class="onb-text" style="font-size:11px;opacity:.7;margin-top:10px;text-align:center">⚠️ Не передавайте токен третьим лицам. Можно отозвать в том же разделе WB.</div>
@@ -1903,7 +1904,7 @@ body{padding-top:var(--beta-h)}
 
 <div class="sidebar">
   <div class="logo">
-    <div class="logo-name">WB Profit</div>
+    <div class="logo-name">SW Profit</div>
     <div class="logo-sub">Аналитика продаж</div>
   </div>
   <div class="nav">
@@ -1930,7 +1931,8 @@ body{padding-top:var(--beta-h)}
       <a href="/offer.html" target="_blank">Оферта</a> ·
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">WB Profit · v0.7.7.34</div>
+      <div class="sidebar-version">SW Profit · v0.7.7.36</div>
+      <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
 </div>
@@ -2845,11 +2847,11 @@ function initDemoBypass(){
       upsert: function(){return Promise.resolve({error:null});}
     };}
   };
-  window.currentUser = {id:'demo-user',email:'demo@wbprofit.ru'};
+  window.currentUser = {id:'demo-user',email:'demo@swprofit.ru'};
   window.currentJwt = 'demo-jwt-placeholder';
   window.currentProfile = {
     id: 'demo-user',
-    email: 'demo@wbprofit.ru',
+    email: 'demo@swprofit.ru',
     plan: 'pro',  // показываем все возможности
     plan_expires_at: '2099-01-01T00:00:00Z',
     is_admin: false
@@ -7493,7 +7495,7 @@ function renderHomeIdle(reason){
     el.innerHTML=
       '<div class="welcome-hero" style="text-align:center;padding:32px 20px;background:linear-gradient(135deg,#f6f3ff,#fff);border:1px solid rgba(124,58,237,.18);border-radius:14px;box-shadow:0 4px 16px rgba(124,58,237,.05)">'+
         '<div style="font-size:54px;margin-bottom:8px;line-height:1">📊</div>'+
-        '<div style="font-size:20px;font-weight:700;margin-bottom:6px;color:#1a0f3c">Добро пожаловать в WB Profit</div>'+
+        '<div style="font-size:20px;font-weight:700;margin-bottom:6px;color:#1a0f3c">Добро пожаловать в SW Profit</div>'+
         '<div style="font-size:13px;color:#666;max-width:520px;margin:0 auto 18px;line-height:1.5">Подключите API-токен Wildberries — увидите реальную прибыль, найдёте убыточные товары и узнаете куда уходят деньги.</div>'+
         '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'+
           '<button class="btn-primary" onclick="openOnboarding()" style="padding:11px 22px;font-size:14px">📖 Как начать (2 минуты)</button>'+

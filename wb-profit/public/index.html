@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WB Profit — Узнайте реальную прибыль с каждого товара</title>
+<title>SW Profit — Узнайте реальную прибыль с каждого товара</title>
 <meta name="description" content="Аналитика продаж Wildberries: реальная прибыль с учётом комиссий, логистики, рекламы и себестоимости. Алерты о потерях, кассовый разрыв, ДРР по товарам. Демо без регистрации.">
-<meta name="keywords" content="Wildberries аналитика, WB прибыль, аналитика продаж, селлерам WB, расчёт прибыли Wildberries, ДРР, кассовый разрыв">
+<meta name="keywords" content="Wildberries аналитика, прибыль продавца, аналитика продаж, селлерам Wildberries, расчёт прибыли, ДРР, кассовый разрыв">
 <link rel="canonical" href="https://wb-profit.vercel.app/">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="theme-color" content="#7c3aed">
@@ -14,16 +14,16 @@
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ru_RU">
 <meta property="og:url" content="https://wb-profit.vercel.app/">
-<meta property="og:title" content="WB Profit — реальная прибыль вашего магазина на Wildberries">
+<meta property="og:title" content="SW Profit — реальная прибыль вашего магазина на Wildberries">
 <meta property="og:description" content="Аналитика продаж WB с учётом всех расходов: комиссия, логистика, реклама, себестоимость. Алерты о потерях. Демо без регистрации.">
 <meta property="og:image" content="https://wb-profit.vercel.app/og-image.svg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:site_name" content="WB Profit">
+<meta property="og:site_name" content="SW Profit">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="WB Profit — реальная прибыль на Wildberries">
+<meta name="twitter:title" content="SW Profit — реальная прибыль на Wildberries">
 <meta name="twitter:description" content="Аналитика продаж WB с учётом всех расходов. Демо без регистрации.">
 <meta name="twitter:image" content="https://wb-profit.vercel.app/og-image.svg">
 
@@ -35,7 +35,7 @@
     {
       "@type": "Organization",
       "@id": "https://wb-profit.vercel.app/#organization",
-      "name": "WB Profit",
+      "name": "SW Profit",
       "url": "https://wb-profit.vercel.app/",
       "logo": "https://wb-profit.vercel.app/favicon.svg",
       "description": "Сервис аналитики продаж Wildberries: реальная прибыль с учётом всех расходов, алерты о потерях, ДРР по товарам.",
@@ -52,14 +52,14 @@
       "@type": "WebSite",
       "@id": "https://wb-profit.vercel.app/#website",
       "url": "https://wb-profit.vercel.app/",
-      "name": "WB Profit",
+      "name": "SW Profit",
       "description": "Аналитика продаж Wildberries",
       "publisher": {"@id": "https://wb-profit.vercel.app/#organization"},
       "inLanguage": "ru-RU"
     },
     {
       "@type": "SoftwareApplication",
-      "name": "WB Profit",
+      "name": "SW Profit",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
       "url": "https://wb-profit.vercel.app/",
@@ -325,7 +325,7 @@
     //   2500ms  → stage2 show: −357 000 ₽                           [2.5с]
     //   5000ms  → stage3 show: 23 000 ₽                             [2.5с]
     //   7500ms  → stage4 show: цитата 'Считай каждый рубль...'      [3.0с — БОЛЬШАЯ]
-    //  10500ms  → stage5 show: WB Profit логотип                    [2.5с]
+    //  10500ms  → stage5 show: SW Profit логотип                    [2.5с]
     //  12500ms  → hero начинает proactive fade-in (sync с overlay fade-out)
     //  13000ms  → CSS animation introOut запускается (2.5с ОЧЕНЬ плавная)
     //  15500ms  → localStorage + DOM hide
@@ -657,6 +657,7 @@ html{scroll-behavior:smooth}
 .lead-msg.err{color:#f87171}
 footer{background:#1a0f3c;padding:24px 5%;text-align:center}
 footer p{font-size:13px;color:rgba(255,255,255,.3)}
+footer .tagline{font-size:10px;color:rgba(255,255,255,.22);margin-top:6px;letter-spacing:.3px}
 
 /* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
 
@@ -868,15 +869,15 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
     <h2>Вы теряете деньги прямо сейчас</h2>
     <p class="pain-sub">Большинство продавцов путают выручку с прибылью и не замечают как деньги уходят</p>
     <div class="pain-grid">
-      <div class="pain-card bad"><div class="pain-card-label">❌ Без WB Profit</div><p>Видите выплату <strong>380 000 ₽</strong> и думаете что заработали. На самом деле логистика съела 68 000 ₽, хранение 11 000 ₽, реклама 30 000 ₽, штрафы 8 000 ₽. Реальная прибыль — <strong>23 000 ₽</strong>.</p></div>
-      <div class="pain-card good"><div class="pain-card-label">✅ С WB Profit</div><p>Видите <strong>каждую статью расходов</strong> в разбивке. Замечаете что реклама даёт ДРР 35% и отключаете неэффективные кампании. Штрафы выросли — узнаёте за что и устраняете причину. Прибыль растёт.</p></div>
+      <div class="pain-card bad"><div class="pain-card-label">❌ Без SW Profit</div><p>Видите выплату <strong>380 000 ₽</strong> и думаете что заработали. На самом деле логистика съела 68 000 ₽, хранение 11 000 ₽, реклама 30 000 ₽, штрафы 8 000 ₽. Реальная прибыль — <strong>23 000 ₽</strong>.</p></div>
+      <div class="pain-card good"><div class="pain-card-label">✅ С SW Profit</div><p>Видите <strong>каждую статью расходов</strong> в разбивке. Замечаете что реклама даёт ДРР 35% и отключаете неэффективные кампании. Штрафы выросли — узнаёте за что и устраняете причину. Прибыль растёт.</p></div>
     </div>
   </div>
 </section>
 <section class="case" id="case">
   <div class="case-inner">
     <div class="case-badge reveal">Реальные сценарии</div>
-    <h3 class="reveal" data-reveal-delay="100">Что показывает WB Profit вместо привычных «выплат»</h3>
+    <h3 class="reveal" data-reveal-delay="100">Что показывает SW Profit вместо привычных «выплат»</h3>
     <div class="cases-grid">
       <div class="case-card reveal" data-reveal-delay="100">
         <div class="case-card-icon">💄</div>
@@ -898,7 +899,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
           <div class="case-num"><div class="case-num-val red">−138 000 ₽</div><div class="case-num-label">Расходы</div></div>
           <div class="case-num"><div class="case-num-val red">−18 000 ₽</div><div class="case-num-label">Убыток</div></div>
         </div>
-        <p class="case-quote">3 артикула с логистикой 35% от цены товара. WB Profit нашёл их за минуту — перенесли на FBS, вернулись в плюс.</p>
+        <p class="case-quote">3 артикула с логистикой 35% от цены товара. SW Profit нашёл их за минуту — перенесли на FBS, вернулись в плюс.</p>
       </div>
       <div class="case-card reveal" data-reveal-delay="300">
         <div class="case-card-icon">🎯</div>
@@ -912,7 +913,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
         <p class="case-quote">7 товаров с ДРР 40%+. Отключили — прибыль выросла, продажи остались на том же уровне.</p>
       </div>
     </div>
-    <p class="case-disclaimer">Сценарии составлены на основе типовых проблем селлеров, которые WB Profit находит автоматически.</p>
+    <p class="case-disclaimer">Сценарии составлены на основе типовых проблем селлеров, которые SW Profit находит автоматически.</p>
   </div>
 </section>
 <section class="stats">
@@ -1073,7 +1074,7 @@ footer p{font-size:13px;color:rgba(255,255,255,.3)}
   </div>
 </section>
 
-<footer><p>© 2025 WB Profit · Для селлеров Wildberries</p></footer>
+<footer><p>© 2025 SW Profit · Для селлеров Wildberries</p><p class="tagline">Seller's Way Profit — путь продавца к прибыли</p></footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 function fmt(n){return Math.round(n).toLocaleString('ru-RU')+'₽';}

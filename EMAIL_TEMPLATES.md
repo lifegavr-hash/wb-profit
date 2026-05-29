@@ -19,7 +19,7 @@
 
 **Subject:**
 ```
-Подтвердите регистрацию в WB Profit
+Подтвердите регистрацию в SW Profit
 ```
 
 **Body HTML:**
@@ -28,7 +28,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Подтверждение регистрации — WB Profit</title>
+<title>Подтверждение регистрации — SW Profit</title>
 </head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f7f5;color:#1a1a18;line-height:1.5">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f5;padding:40px 16px">
@@ -37,20 +37,20 @@
 <tr><td>
 <div style="text-align:center;margin-bottom:24px">
 <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:11px;line-height:48px;color:#fff;font-weight:800;font-size:22px">W</div>
-<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">WB Profit</div>
+<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">SW Profit</div>
 </div>
 <h1 style="font-size:22px;margin:0 0 16px;color:#1a1a18">Добро пожаловать!</h1>
-<p style="font-size:15px;color:#374151;margin-bottom:24px">Спасибо за регистрацию в WB Profit. Чтобы активировать аккаунт, подтвердите свой email — нажмите кнопку ниже:</p>
+<p style="font-size:15px;color:#374151;margin-bottom:24px">Спасибо за регистрацию в SW Profit. Чтобы активировать аккаунт, подтвердите свой email — нажмите кнопку ниже:</p>
 <div style="text-align:center;margin:32px 0">
 <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#5433c6;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Подтвердить email</a>
 </div>
 <p style="font-size:13px;color:#6b6b68;margin-bottom:8px">Если кнопка не работает — скопируйте эту ссылку в браузер:</p>
 <p style="font-size:12px;color:#5433c6;word-break:break-all;padding:10px;background:#f5f3ff;border-radius:6px">{{ .ConfirmationURL }}</p>
 <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0">
-<p style="font-size:12px;color:#a0a09c;margin:0">Если вы не регистрировались в WB Profit — просто проигнорируйте это письмо.</p>
+<p style="font-size:12px;color:#a0a09c;margin:0">Если вы не регистрировались в SW Profit — просто проигнорируйте это письмо.</p>
 </td></tr>
 </table>
-<p style="font-size:11px;color:#a0a09c;margin-top:16px;text-align:center">WB Profit · Аналитика продаж Wildberries<br>ИП Чиркова А.В. · ИНН 233304659652</p>
+<p style="font-size:11px;color:#a0a09c;margin-top:16px;text-align:center">SW Profit · Аналитика продаж Wildberries<br>ИП Чиркова А.В. · ИНН 233304659652</p>
 </td></tr>
 </table>
 </body>
@@ -63,7 +63,7 @@
 
 **Subject:**
 ```
-Восстановление пароля в WB Profit
+Восстановление пароля в SW Profit
 ```
 
 **Body HTML:**
@@ -72,7 +72,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Восстановление пароля — WB Profit</title>
+<title>Восстановление пароля — SW Profit</title>
 </head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f7f7f5;color:#1a1a18;line-height:1.5">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f5;padding:40px 16px">
@@ -81,7 +81,7 @@
 <tr><td>
 <div style="text-align:center;margin-bottom:24px">
 <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:11px;line-height:48px;color:#fff;font-weight:800;font-size:22px">W</div>
-<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">WB Profit</div>
+<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">SW Profit</div>
 </div>
 <h1 style="font-size:22px;margin:0 0 16px;color:#1a1a18">Восстановление пароля</h1>
 <p style="font-size:15px;color:#374151;margin-bottom:24px">Кто-то (надеемся вы) запросил восстановление пароля для аккаунта <b>{{ .Email }}</b>. Чтобы установить новый пароль — нажмите кнопку ниже:</p>
@@ -95,7 +95,7 @@
 <p style="font-size:12px;color:#a0a09c;margin:0">Если вы не запрашивали восстановление — просто проигнорируйте это письмо. Ваш пароль не изменится.</p>
 </td></tr>
 </table>
-<p style="font-size:11px;color:#a0a09c;margin-top:16px;text-align:center">WB Profit · Аналитика продаж Wildberries<br>ИП Чиркова А.В. · ИНН 233304659652</p>
+<p style="font-size:11px;color:#a0a09c;margin-top:16px;text-align:center">SW Profit · Аналитика продаж Wildberries<br>ИП Чиркова А.В. · ИНН 233304659652</p>
 </td></tr>
 </table>
 </body>
@@ -108,7 +108,7 @@
 
 **Subject:**
 ```
-Ваша ссылка для входа в WB Profit
+Ваша ссылка для входа в SW Profit
 ```
 
 **Body HTML:**
@@ -123,12 +123,12 @@
 <tr><td>
 <div style="text-align:center;margin-bottom:24px">
 <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:11px;line-height:48px;color:#fff;font-weight:800;font-size:22px">W</div>
-<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">WB Profit</div>
+<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">SW Profit</div>
 </div>
-<h1 style="font-size:22px;margin:0 0 16px;color:#1a1a18">Вход в WB Profit</h1>
+<h1 style="font-size:22px;margin:0 0 16px;color:#1a1a18">Вход в SW Profit</h1>
 <p style="font-size:15px;color:#374151;margin-bottom:24px">Нажмите кнопку, чтобы войти в аккаунт <b>{{ .Email }}</b>:</p>
 <div style="text-align:center;margin:32px 0">
-<a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#5433c6;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Войти в WB Profit</a>
+<a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#5433c6;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Войти в SW Profit</a>
 </div>
 <p style="font-size:13px;color:#7f1d1d;background:#fef2f2;padding:12px;border-radius:6px">⚠️ Ссылка одноразовая, действует 1 час.</p>
 <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0">
@@ -147,7 +147,7 @@
 
 **Subject:**
 ```
-Подтвердите новый email в WB Profit
+Подтвердите новый email в SW Profit
 ```
 
 **Body HTML:**
@@ -162,10 +162,10 @@
 <tr><td>
 <div style="text-align:center;margin-bottom:24px">
 <div style="display:inline-block;width:48px;height:48px;background:linear-gradient(135deg,#7c3aed,#5b21b6);border-radius:11px;line-height:48px;color:#fff;font-weight:800;font-size:22px">W</div>
-<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">WB Profit</div>
+<div style="font-size:20px;font-weight:600;color:#5433c6;margin-top:8px">SW Profit</div>
 </div>
 <h1 style="font-size:22px;margin:0 0 16px;color:#1a1a18">Подтверждение нового email</h1>
-<p style="font-size:15px;color:#374151;margin-bottom:24px">В аккаунте <b>WB Profit</b> запрошена смена email на <b>{{ .Email }}</b>. Чтобы подтвердить — нажмите кнопку:</p>
+<p style="font-size:15px;color:#374151;margin-bottom:24px">В аккаунте <b>SW Profit</b> запрошена смена email на <b>{{ .Email }}</b>. Чтобы подтвердить — нажмите кнопку:</p>
 <div style="text-align:center;margin:32px 0">
 <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#5433c6;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">Подтвердить новый email</a>
 </div>
@@ -185,7 +185,7 @@
 
 Также в Supabase Dashboard → **Authentication** → **Settings**:
 - **Site URL** = `https://wb-profit.vercel.app` (или твой будущий домен)
-- **Sender Name** = `WB Profit` (или твой бренд)
-- **Sender Email** = `noreply@wbprofit.ru` (после покупки домена и настройки SPF/DKIM)
+- **Sender Name** = `SW Profit` (или твой бренд)
+- **Sender Email** = `noreply@swprofit.ru` (после покупки домена и настройки SPF/DKIM)
 
 ⚠️ **Без настройки своего SMTP** Supabase шлёт письма с домена `@supabase.co` — это снижает доставляемость и может попадать в спам. Для прода настоятельно рекомендуется подключить SendGrid / Mailgun / Yandex SMTP через **Authentication → Email Settings → Enable Custom SMTP**.

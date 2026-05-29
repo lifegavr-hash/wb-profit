@@ -1,4 +1,4 @@
-# Pre-beta audit WB Profit (v0.7.7.34)
+# Pre-beta audit SW Profit (v0.7.7.34)
 
 *Сгенерировано 2026-05-28 фоновым агентом — детальный обход dashboard.html, api/*, login.html, index.html.*
 
