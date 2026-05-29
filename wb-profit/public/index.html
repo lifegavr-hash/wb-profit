@@ -658,6 +658,9 @@ html{scroll-behavior:smooth}
 footer{background:#1a0f3c;padding:24px 5%;text-align:center}
 footer p{font-size:13px;color:rgba(255,255,255,.3)}
 footer .tagline{font-size:10px;color:rgba(255,255,255,.22);margin-top:6px;letter-spacing:.3px}
+footer .legal-links{margin-top:10px;font-size:12px}
+footer .legal-links a{color:rgba(255,255,255,.45);text-decoration:none;margin:0 8px}
+footer .legal-links a:hover{color:rgba(255,255,255,.85)}
 
 /* ===== МОБИЛЬНАЯ АДАПТАЦИЯ ===== */
 
@@ -1074,7 +1077,15 @@ footer .tagline{font-size:10px;color:rgba(255,255,255,.22);margin-top:6px;letter
   </div>
 </section>
 
-<footer><p>© 2025 SW Profit · Для селлеров Wildberries</p><p class="tagline">Seller's Way Profit — путь продавца к прибыли</p></footer>
+<footer>
+  <p>© 2025 SW Profit · Для селлеров Wildberries</p>
+  <p class="tagline">Seller's Way Profit — путь продавца к прибыли</p>
+  <p class="legal-links">
+    <a href="/offer.html">Публичная оферта</a> ·
+    <a href="/privacy.html">Политика обработки ПД</a> ·
+    <a href="/terms.html">Условия использования</a>
+  </p>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 function fmt(n){return Math.round(n).toLocaleString('ru-RU')+'₽';}
