@@ -1,0 +1,15 @@
+.DS_Store
+.AppleDouble
+.LSOverride
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+*.zip
+build/
+dist/
+.vscode/
+.idea/
+*.swp
+*.swo
+.env
+.env.local
