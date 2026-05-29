@@ -1,4 +1,4 @@
-// content/widget.js — SW Profit v0.3.8
+// content/widget.js — SW Profit v0.3.9
 // Правки v0.3.5:
 //  1) Цена продавца показывается ПО УМОЛЧАНИЮ из СПП-расчёта (без пустоты)
 //  2) Поле "Моя реальная комиссия" УБРАНО из основного UI (только в advanced)
@@ -11,11 +11,11 @@
 //  8) "⚙️ Уточнить расчёт" → "⚙️ Уточнить расчёт (склад, габариты, комиссия)"
 (() => {
   'use strict';
-  const VERSION = '0.3.8';
+  const VERSION = '0.3.9';
   const API_TARIFFS = 'https://wb-profit.vercel.app/api/wb-tariffs';
   const API_CARD = 'https://card.wb.ru/cards/v4/detail';
   const DASHBOARD_URL = 'https://wb-profit.vercel.app/dashboard.html';
-  const HOST_ID = 'wbprofit-host-v037';
+  const HOST_ID = 'swprofit-host-v039';
   const log = (...a) => console.log('[SW Profit v' + VERSION + ']', ...a);
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const fmtRub = (v) => v == null || !Number.isFinite(v) ? '—' : Math.round(v).toLocaleString('ru-RU') + ' ₽';
@@ -73,7 +73,7 @@
   const fetchDimensionsViaDrawer = async () => {
     const sleep_ = (ms) => new Promise(r => setTimeout(r, ms));
     const style = document.createElement('style');
-    style.id = 'wbprofit-drawer-cloak';
+    style.id = 'swprofit-drawer-cloak';
     style.textContent = `
       [class*="detailsDrawer"], [class*="mo-drawer__paper"] {
         transform: translateX(120%) !important; transition: none !important; animation: none !important;
