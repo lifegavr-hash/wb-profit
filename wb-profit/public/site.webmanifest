@@ -1,0 +1,15 @@
+{
+  "name": "SW Profit — Аналитика прибыли селлера",
+  "short_name": "SW Profit",
+  "description": "Реальная прибыль вашего магазина на Wildberries. Логистика, хранение, реклама — всё учтено.",
+  "start_url": "/dashboard.html",
+  "display": "standalone",
+  "background_color": "#0f0a1f",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "lang": "ru",
+  "icons": [
+    {"src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
