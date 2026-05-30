@@ -358,6 +358,7 @@
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -1090,7 +1091,6 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
     <a href="/terms.html">Условия использования</a>
   </p>
 </footer>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 function fmt(n){return Math.round(n).toLocaleString('ru-RU')+'₽';}
 function calcProfit(){
@@ -1106,20 +1106,73 @@ function calcProfit(){
   document.getElementById('calcResult').classList.add('show');
 }
 function toggleFaq(btn){btn.parentElement.classList.toggle('open');}
-async function updateNav(){
-  try{
-    var r=await fetch('/api/config');var cfg=await r.json();
-    var sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
-    var {data:{session}}=await sb.auth.getSession();
-    if(session){
-      var btn=document.querySelector('.nav-cta');
-      if(btn){btn.textContent='Мой дашборд';btn.href='/dashboard.html';}
-      var hero=document.querySelector('.btn-white');
-      if(hero){hero.textContent='Перейти в дашборд →';hero.href='/dashboard.html';}
-    }
-  }catch(e){}
+
+// 🔥 v0.7.9.0: lazy-load Supabase SDK для лендинга
+// Гибридная схема (вариант Z):
+//   ШАГ 1 — синхронная проверка localStorage → мгновенный рендер UI
+//   ШАГ 2 — фоновая проверка через Supabase SDK → коррекция при необходимости
+// Эффект: -100 KB загрузки до first paint, -1 fetch до first paint.
+
+var NAV_TEXTS = {
+  loggedOut: { ctaText:'Войти',        ctaHref:'/login.html',     heroText:'Попробовать бесплатно →', heroHref:'/login.html' },
+  loggedIn:  { ctaText:'Мой дашборд',  ctaHref:'/dashboard.html', heroText:'Перейти в дашборд →',     heroHref:'/dashboard.html' }
+};
+
+function applyNav(state){
+  var t = NAV_TEXTS[state];
+  var btn = document.querySelector('.nav-cta');
+  if(btn){ btn.textContent = t.ctaText; btn.href = t.ctaHref; }
+  var hero = document.querySelector('.btn-white');
+  if(hero){ hero.textContent = t.heroText; hero.href = t.heroHref; }
 }
-updateNav();
+
+// ШАГ 1: грубая проверка localStorage. Supabase v2 SDK хранит сессию под ключом
+// вида `sb-<project_ref>-auth-token`. Это публичный стабильный API.
+function quickGuessLoggedIn(){
+  try {
+    return Object.keys(localStorage).some(function(k){
+      return k.indexOf('sb-') === 0 && k.lastIndexOf('-auth-token') === k.length - '-auth-token'.length;
+    });
+  } catch(e){ return false; }
+}
+
+var _guessedLoggedIn = quickGuessLoggedIn();
+if(_guessedLoggedIn) applyNav('loggedIn');
+// если !guessed — дефолтное HTML-состояние (loggedOut) уже корректно, ничего не трогаем
+
+// Singleton Promise — Supabase SDK грузится максимум один раз
+var _supabasePromise = null;
+function loadSupabase(){
+  if(_supabasePromise) return _supabasePromise;
+  _supabasePromise = new Promise(function(resolve, reject){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+    s.onload = function(){ resolve(window.supabase); };
+    s.onerror = function(){ reject(new Error('Supabase SDK failed to load')); };
+    document.head.appendChild(s);
+  });
+  return _supabasePromise;
+}
+
+// ШАГ 2: фоновая точная проверка через Supabase. Если real-state расходится
+// с guessed — применяем real-state. Если совпало — DOM не трогаем (нет лишних touch).
+async function verifySession(){
+  try {
+    await loadSupabase();
+    var r = await fetch('/api/config');
+    var cfg = await r.json();
+    var sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
+    var sessionResult = await sb.auth.getSession();
+    var session = sessionResult && sessionResult.data && sessionResult.data.session;
+    var realState = session ? 'loggedIn' : 'loggedOut';
+    var guessedState = _guessedLoggedIn ? 'loggedIn' : 'loggedOut';
+    if(realState !== guessedState) applyNav(realState);
+  } catch(e){ /* silent — UI остаётся в состоянии шага 1 */ }
+}
+
+if('requestIdleCallback' in window) requestIdleCallback(verifySession, {timeout: 3000});
+else setTimeout(verifySession, 1500);
+
 document.getElementById('cRevenue').addEventListener('keyup',function(e){if(e.key==='Enter')calcProfit();});
 
 // 🔥 v0.7.7.23: Scroll-reveal через IntersectionObserver
