@@ -48,11 +48,11 @@ wb-extension/
 
 - `https://*.wildberries.ru/*` — для работы виджета на страницах товаров
 - `https://card.wb.ru/*` — публичный API карточки товара (тот же, что использует сайт wildberries.ru)
-- `https://wb-profit.vercel.app/*` — связь с основным приложением SW Profit (будет swprofit.ru после миграции)
+- `https://swprofit.ru/*` — связь с основным приложением SW Profit (будет swprofit.ru после миграции)
 
 ## Конфиденциальность
 
-Расширение не собирает персональные данные. Все настройки хранятся локально в `chrome.storage`. Подробнее: https://wb-profit.vercel.app/privacy.html
+Расширение не собирает персональные данные. Все настройки хранятся локально в `chrome.storage`. Подробнее: https://swprofit.ru/privacy.html
 
 ## Связь с основным сервисом
 
@@ -68,5 +68,5 @@ SW Profit = Seller's Way Profit — путь продавца к прибыли.
 
 ## Контакты
 
-- Сайт: https://wb-profit.vercel.app/
+- Сайт: https://swprofit.ru/
 - Поддержка: ooovsktrans@mail.ru

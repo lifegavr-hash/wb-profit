@@ -184,7 +184,7 @@
 ## После настройки шаблонов
 
 Также в Supabase Dashboard → **Authentication** → **Settings**:
-- **Site URL** = `https://wb-profit.vercel.app` (или твой будущий домен)
+- **Site URL** = `https://swprofit.ru` (или твой будущий домен)
 - **Sender Name** = `SW Profit` (или твой бренд)
 - **Sender Email** = `noreply@swprofit.ru` (после покупки домена и настройки SPF/DKIM)
 

@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.7.39'
+  APP_VERSION: 'v0.7.8.0'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -65,7 +65,7 @@ window.__ANALYTICS_CONFIG = {
       dsn: dsn,
       release: window.__ANALYTICS_CONFIG.APP_VERSION,
       tracesSampleRate: 0.1,
-      environment: location.hostname === 'wb-profit.vercel.app' ? 'production' : 'preview',
+      environment: location.hostname === 'swprofit.ru' ? 'production' : 'preview',
       ignoreErrors: [
         'ResizeObserver loop limit exceeded',
         'Non-Error promise rejection captured',
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.7.39</div>
+      <div class="sidebar-version">SW Profit · v0.7.8.0</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -3783,7 +3783,7 @@ function saveTokenManual(){
   // 🔥 v0.7.7.9: защита от вставки замаскированного значения (буллеты ••• и т.п.)
   var _newTok = tk.value.trim();
   if(!isAsciiToken(_newTok)){
-    alert('Похоже, в поле вставилась маска (••••), а не сам токен.\n\nЭто бывает когда менеджер паролей браузера автозаполнил поле визуальным «замаскированным» значением.\n\nЧто делать:\n1. Откройте ВБ-кабинет → Настройки → Доступ к API → создайте JWT\n2. Скопируйте JWT (длинная строка eyJhbGc...)\n3. Очистите это поле и вставьте JWT снова\n\nЕсли менеджер паролей мешает — добавьте wb-profit.vercel.app в исключения.');
+    alert('Похоже, в поле вставилась маска (••••), а не сам токен.\n\nЭто бывает когда менеджер паролей браузера автозаполнил поле визуальным «замаскированным» значением.\n\nЧто делать:\n1. Откройте ВБ-кабинет → Настройки → Доступ к API → создайте JWT\n2. Скопируйте JWT (длинная строка eyJhbGc...)\n3. Очистите это поле и вставьте JWT снова\n\nЕсли менеджер паролей мешает — добавьте swprofit.ru в исключения.');
     return;
   }
   var lb=document.getElementById('globalLoadBar'); if(lb)lb.style.display='';

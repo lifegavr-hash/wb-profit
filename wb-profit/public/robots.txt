@@ -9,4 +9,4 @@ Allow: /demo
 Disallow: /dashboard.html
 Disallow: /api/
 
-Sitemap: https://wb-profit.vercel.app/sitemap.xml
+Sitemap: https://swprofit.ru/sitemap.xml
