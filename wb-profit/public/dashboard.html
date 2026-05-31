@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.0'
+  APP_VERSION: 'v0.7.9.1'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.0</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.1</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -3919,9 +3919,12 @@ function renderWbAccountsList(){
       '<div class="wb-account-actions">' +
         (a.is_default ? '' : '<button class="wb-acc-btn" onclick="switchWbAccount(\'' + a.id + '\')">Сделать активным</button>') +
         '<button class="wb-acc-btn" onclick="renameWbAccount(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\')">Переименовать</button>' +
+        '<button class="wb-acc-btn" onclick="editWbAccountToken(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\', ' + (a.is_default ? 'true' : 'false') + ')">Изменить токен</button>' +
         (accs.length > 1 ? '<button class="wb-acc-btn danger" onclick="deleteWbAccount(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\')">Удалить</button>' : '') +
       '</div>' +
-    '</div>';
+    '</div>' +
+    // 🔥 v0.7.9.1: inline-форма редактирования токена (скрыта по умолчанию)
+    '<div id="editTokenForm_' + a.id + '" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px"></div>';
   }).join('');
 }
 
@@ -4096,6 +4099,83 @@ async function deleteWbAccount(id, name){
     if(!r.ok){ toast('error', 'Не удалось удалить'); return; }
     toast('success', 'Кабинет «' + name + '» удалён');
     await loadWbAccounts();
+  } catch(e){
+    toast('error', 'Ошибка: ' + (e.message || e));
+  }
+}
+
+// 🔥 v0.7.9.1: Изменить токен кабинета (открыть форму)
+function editWbAccountToken(id, name, isDefault){
+  // Закрываем другие открытые формы редактирования
+  document.querySelectorAll('[id^="editTokenForm_"]').forEach(function(f){
+    if(f.id !== 'editTokenForm_' + id){ f.style.display = 'none'; f.innerHTML = ''; }
+  });
+  const form = document.getElementById('editTokenForm_' + id);
+  if(!form) return;
+  form.innerHTML =
+    '<div style="margin-bottom:6px;font-weight:600;font-size:13px">Изменить токен для «' + escapeHtml(name) + '»</div>' +
+    '<p class="hint" style="margin:0 0 10px">Старый токен будет полностью заменён. Используйте, если текущий токен сломался, просрочен или вы выпустили новый в WB.</p>' +
+    '<div style="margin-bottom:10px">' +
+      '<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Новый API токен WB</label>' +
+      '<input type="text" id="editTokenInput_' + id + '" placeholder="eyJhbGciOiJFUzI1NiIs..." class="wb-token-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" spellcheck="false" style="width:100%">' +
+    '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      '<button class="btn-primary" onclick="saveWbAccountToken(\'' + id + '\', \'' + escapeAttr(name) + '\', ' + (isDefault ? 'true' : 'false') + ')">Сохранить новый токен</button>' +
+      '<button class="bulk-btn" onclick="cancelEditWbAccountToken(\'' + id + '\')">Отмена</button>' +
+      '<button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>' +
+    '</div>';
+  form.style.display = '';
+  setTimeout(function(){
+    const inp = document.getElementById('editTokenInput_' + id);
+    if(inp) inp.focus();
+  }, 50);
+}
+
+// Отмена редактирования токена
+function cancelEditWbAccountToken(id){
+  const form = document.getElementById('editTokenForm_' + id);
+  if(form){ form.style.display = 'none'; form.innerHTML = ''; }
+}
+
+// Сохранить новый токен кабинета
+async function saveWbAccountToken(id, name, isDefault){
+  const inp = document.getElementById('editTokenInput_' + id);
+  const newToken = (inp && inp.value || '').trim();
+  if(!newToken){ toast('warning', 'Введите новый токен'); return; }
+  if(!isAsciiToken(newToken)){ toast('error', 'Токен невалидный (только латинские буквы/цифры/-_.)'); return; }
+  if(newToken.length < 50){ toast('error', 'Токен слишком короткий (минимум 50 символов)'); return; }
+  try {
+    const r = await _wbAccApiFetch('/api/profile?resource=wb-accounts&id=' + id, {
+      method: 'PATCH',
+      body: JSON.stringify({ wb_token: newToken })
+    });
+    if(!r.ok){
+      if(r.data && r.data.error === 'INVALID_TOKEN'){
+        toast('error', 'Сервер отклонил токен — проверьте формат (латиница/цифры/-_., минимум 50 символов)');
+      } else {
+        toast('error', (r.data && r.data.message) || 'Не удалось обновить токен');
+      }
+      return;
+    }
+    // Если этот кабинет активный — обновляем localStorage и сбрасываем кэш имени селлера.
+    // Сервер не возвращает токен в обычном PATCH, поэтому используем тот что ввёл пользователь.
+    if(isDefault){
+      localStorage.setItem('wb_token', newToken);
+      localStorage.removeItem('wb_seller_name');
+      localStorage.removeItem('wb_seller_name_at');
+      window._sellerName = '';
+      const t1 = document.getElementById('tok1');
+      if(t1) t1.value = newToken;
+    }
+    toast('success', 'Токен для «' + name + '» обновлён' + (isDefault ? '. Перезагружаю данные…' : ''));
+    cancelEditWbAccountToken(id);
+    if(isDefault){
+      // Активный токен — перезагрузка чтобы все запросы заюзали новый
+      setTimeout(function(){ location.reload(); }, 700);
+    } else {
+      // Неактивный — просто обновим список
+      await loadWbAccounts();
+    }
   } catch(e){
     toast('error', 'Ошибка: ' + (e.message || e));
   }
