@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: 'YM_COUNTER_ID',          // ← вставь сюда числовой ID Яндекс.Метрики, например 98765432
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.1'
+  APP_VERSION: 'v0.7.9.2'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.1</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.2</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -2567,6 +2567,11 @@ function removeToast(toast){
   if(!toast || !toast.parentNode) return;
   toast.classList.add('exiting');
   setTimeout(function(){if(toast.parentNode) toast.parentNode.removeChild(toast);}, 250);
+}
+// 🔥 v0.7.9.2 hotfix: алиас toast(type,msg) для функций, которые годами вызывали несуществующий
+// `toast()` вместо `showToast()` — теперь все uvedomlения (Кабинеты WB, валидация, ошибки) работают.
+function toast(type, msg, duration){
+  if(typeof showToast === 'function') return showToast(msg, type, duration);
 }
 // === 🔥 v0.7.6 G1: Command Palette (Ctrl+K) ===
 var _cmdkActions = [
