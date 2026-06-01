@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.5'
+  APP_VERSION: 'v0.7.9.6'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.5</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.6</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -9189,6 +9189,8 @@ function renderExpenseStructure(snaps){
     {key:'profit',lbl:'Прибыль',val:Math.max(0,profit),color:'#22c55e'}
   ].filter(function(i){return i.val>0;});
   // 🔥 v0.5.9: Сохраняем для tooltip и клика
+  // 🔥 v0.7.9.6: сохраняем snaps чтобы детализация по клику работала с тем же периодом что и pie
+  window._pieSnapshots = snaps;
   window._pieItems = items;
   window._pieRev = rev;
   // Pie
@@ -9226,7 +9228,9 @@ function renderExpenseStructure(snaps){
     return i.lbl!=='Прибыль' && i.lbl!=='Себестоимость' && i.lbl!=='Корректировки WB';
   }).sort(function(a,b){return b.val-a.val;})[0];
   if(biggest){
-    var bp=(biggest.val/rev*100).toFixed(0);
+    // 🔥 v0.7.9.6: одна точность .toFixed(1) — как в pie-легенде.
+    // Иначе юзер видит "27%" в одном месте и "27.3%" в другом и думает что числа разные.
+    var bp=(biggest.val/rev*100).toFixed(1);
     h+='<div class="an-insight">Самая крупная статья WB-расходов: <strong>'+biggest.lbl+'</strong> ('+bp+'% от выручки, '+fmtR(biggest.val)+' за период). 👆 Кликни сегмент или строку легенды для деталей.</div>';
   }
   // 🔥 v0.7.9.4: показываем фактическую дельту WB-выплаты без интерпретаций.
@@ -9275,7 +9279,9 @@ function togglePieDetail(idx){
   }
   det.dataset.openIdx = String(idx);
   // Собираем разбивку по дням из snapshots
-  var snaps = window._lastSnapshots || [];
+  // 🔥 v0.7.9.6: используем snaps от текущего pie, не _lastSnapshots с Главной (90 дн.).
+  // Это даёт детализацию строго за тот же период что показывает сам pie (30 или другое).
+  var snaps = window._pieSnapshots || window._lastSnapshots || [];
   var rows = [];
   // 🔥 v0.7.9.5: для wb_adjust вычисляем adj на лету и допускаем отрицательные значения
   if(it.key === 'wb_adjust'){
@@ -9298,7 +9304,9 @@ function togglePieDetail(idx){
   var avgPerDay = rows.length>0 ? rows.reduce(function(a,r){return a+r.val;},0)/rows.length : 0;
   var html = '<div class="expense-detail-modal">';
   html += '<div class="expense-detail-modal-head">';
-  html += '<div class="expense-detail-modal-title"><span class="chart-tooltip-dot" style="background:'+it.color+'"></span> '+it.lbl+' — топ-'+top.length+' дней по сумме</div>';
+  // 🔥 v0.7.9.6: подписываем период модалки чтобы юзер видел в каком окне данных смотрит
+  var modalPeriodLabel = snaps.length ? ' за ' + snaps.length + ' дн.' : '';
+  html += '<div class="expense-detail-modal-title"><span class="chart-tooltip-dot" style="background:'+it.color+'"></span> '+it.lbl+' — топ-'+top.length+' дней по сумме'+modalPeriodLabel+'</div>';
   html += '<button class="expense-detail-modal-close" onclick="togglePieDetail('+idx+')" title="Закрыть">×</button>';
   html += '</div>';
   if(!top.length){
@@ -9308,7 +9316,7 @@ function togglePieDetail(idx){
     html += '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;font-size:12px">';
     html += '<div style="font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase">Дата</div>';
     html += '<div style="font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;text-align:right">Сумма</div>';
-    html += '<div style="font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;text-align:right">Доля</div>';
+    html += '<div style="font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;text-align:right">% от статьи</div>';
     var maxVal = top[0].val;
     top.forEach(function(r){
       var dateStr = r.day;
