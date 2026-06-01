@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.4'
+  APP_VERSION: 'v0.7.9.5'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.4</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.5</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -9171,7 +9171,10 @@ function renderExpenseStructure(snaps){
   var totalAdj = 0;
   snaps.forEach(function(s){
     profitFromField += Number(s.profit || 0);
-    totalAdj += Number(s.wb_adjust || 0);
+    // 🔥 v0.7.9.5: поле wb_adjust в БД отсутствует (колонки нет), вычисляем на лету.
+    // adj — арифметическая разница между фактической выплатой WB (payout=ppvz_for_pay) и
+    // расчётной нормой (revenue - commission). Все три поля есть в snapshot.
+    totalAdj += Number(s.payout || 0) - (Number(s.revenue || 0) - Number(s.commission || 0));
   });
   var profit = profitFromField;
   var items=[
@@ -9274,11 +9277,22 @@ function togglePieDetail(idx){
   // Собираем разбивку по дням из snapshots
   var snaps = window._lastSnapshots || [];
   var rows = [];
-  snaps.forEach(function(s){
-    var v = Number(s[it.key]||0);
-    if(v > 0) rows.push({day:s.day, val:v});
-  });
-  rows.sort(function(a,b){return b.val-a.val;});
+  // 🔥 v0.7.9.5: для wb_adjust вычисляем adj на лету и допускаем отрицательные значения
+  if(it.key === 'wb_adjust'){
+    snaps.forEach(function(s){
+      var dailyAdj = Number(s.payout || 0) - (Number(s.revenue || 0) - Number(s.commission || 0));
+      if(dailyAdj !== 0) rows.push({day: s.day, val: dailyAdj});
+    });
+    // Сортировка по абсолютной величине (топ "значимых" дней — и плюсов, и минусов)
+    rows.sort(function(a,b){ return Math.abs(b.val) - Math.abs(a.val); });
+  } else {
+    // Старая логика для обычных расходных секторов
+    snaps.forEach(function(s){
+      var v = Number(s[it.key]||0);
+      if(v > 0) rows.push({day:s.day, val:v});
+    });
+    rows.sort(function(a,b){return b.val-a.val;});
+  }
   var top = rows.slice(0,10);
   var totalDays = rows.length;
   var avgPerDay = rows.length>0 ? rows.reduce(function(a,r){return a+r.val;},0)/rows.length : 0;
@@ -9303,10 +9317,21 @@ function togglePieDetail(idx){
         var months=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
         dateStr = d.getDate()+' '+months[d.getMonth()];
       }catch(e){}
-      var barPct = Math.round(r.val/maxVal*100);
-      var pctOfTotal = (r.val/it.val*100).toFixed(1);
+      // 🔥 v0.7.9.5: для wb_adjust используем Math.abs (значения могут быть отрицательными)
+      var rAbs = (it.key === 'wb_adjust') ? Math.abs(r.val) : r.val;
+      var maxAbs = (it.key === 'wb_adjust') ? Math.max.apply(null, top.map(function(x){return Math.abs(x.val);})) : maxVal;
+      var barPct = Math.round(rAbs / maxAbs * 100);
+      var pctOfTotal = ((rAbs / it.val) * 100).toFixed(1);
+      // 🔥 v0.7.9.5: для wb_adjust показываем знак (могут быть как +, так и −)
+      var rValDisplay;
+      if(it.key === 'wb_adjust'){
+        var sign = r.val > 0 ? '+' : '−';
+        rValDisplay = sign + fmtR(Math.abs(r.val)).replace('₽','') + ' ₽';
+      } else {
+        rValDisplay = fmtR(r.val) + ' ₽';
+      }
       html += '<div style="position:relative;padding:4px 0">'+dateStr+'<div style="position:absolute;left:0;right:0;bottom:0;height:2px;background:'+it.color+';opacity:.4;width:'+barPct+'%"></div></div>';
-      html += '<div style="text-align:right;font-variant-numeric:tabular-nums;padding:4px 0">'+fmtR(r.val)+' ₽</div>';
+      html += '<div style="text-align:right;font-variant-numeric:tabular-nums;padding:4px 0">'+rValDisplay+'</div>';
       html += '<div style="text-align:right;color:#64748b;padding:4px 0">'+pctOfTotal+'%</div>';
     });
     html += '</div>';
