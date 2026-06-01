@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.6'
+  APP_VERSION: 'v0.7.9.7'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.6</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.7</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -6026,7 +6026,7 @@ async function exportToExcel(ev){
     XLSX.utils.book_append_sheet(wb,ws,'Товары');
     // Имя файла с датой
     var d=new Date();
-    var fn='WB-Profit_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.xlsx';
+    var fn='SW-Profit_'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.xlsx';
     XLSX.writeFile(wb,fn);
   } catch(e){
     showInfoModal('📥 Ошибка экспорта',
@@ -7821,7 +7821,7 @@ function renderDashboard(snapshots){
       if(Math.abs(pct)>999)pctTxt=(pct>0?'+':'−')+'>999%';
       else pctTxt=(pct>0?'+':'')+pct+'%';
     } else {
-      pctTxt=(diff>=0?'+':'−')+fmtR(Math.abs(diff))+' ₽';
+      pctTxt=(diff>=0?'+':'−')+fmtR(Math.abs(diff));
     }
     h+='<div class="home-delta '+(diff>=0?'green':'red')+'">'+(diff>=0?'↑':'↓')+' '+pctTxt+' vs '+fmtRusDate(prev.day)+'</div>';
   }
@@ -8766,7 +8766,7 @@ function renderEventHistory(snaps){
         events.push({
           sev:'warn', icon:'🟠', type:'log_share',
           title:'Логистика съедает выручку',
-          detail:Math.round(logShare)+'% от выручки ('+fmtR(logT)+' ₽ из '+fmtR(rev)+' ₽)',
+          detail:Math.round(logShare)+'% от выручки ('+fmtR(logT)+' из '+fmtR(rev)+')',
           hint:'Проверь габариты упаковки в карточках товаров — часто WB начисляет логистику ×2-3 если объём занижен. Сделай реальные замеры с упаковкой.'
         });
       }
@@ -9036,7 +9036,7 @@ function renderTimelineChart(snaps){
     var ret = Number(s.returns_count||0);
     var marker = null;
     if(prof < -500){
-      marker = {i:i, type:'loss', icon:'🔴', title:'Магазин в убытке', detail:'−'+fmtR(Math.abs(prof))+' ₽'};
+      marker = {i:i, type:'loss', icon:'🔴', title:'Магазин в убытке', detail:'−'+fmtR(Math.abs(prof))};
     } else if(ret >= 3 && baseline.length >= 3){
       var baseAvgRet = baseline.reduce(function(a,b,j){return a+Number(snaps[i-baseline.length+j].returns_count||0);},0)/baseline.length;
       if(baseAvgRet > 0 && ret >= baseAvgRet*2){
@@ -9101,9 +9101,9 @@ function showTlTooltip(e, i){
     dateStr = d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
   }catch(e){}
   var rows = '';
-  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#22c55e"></span>Выручка</div><div class="chart-tooltip-row-val">'+fmtR(p.rev)+' ₽</div></div>';
-  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#ef4444"></span>Расходы</div><div class="chart-tooltip-row-val">'+fmtR(p.exp)+' ₽</div></div>';
-  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#7c3aed"></span>Прибыль</div><div class="chart-tooltip-row-val" style="color:'+(p.prof>=0?'#22c55e':'#ef4444')+'">'+(p.prof>=0?'+':'')+fmtR(p.prof)+' ₽</div></div>';
+  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#22c55e"></span>Выручка</div><div class="chart-tooltip-row-val">'+fmtR(p.rev)+'</div></div>';
+  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#ef4444"></span>Расходы</div><div class="chart-tooltip-row-val">'+fmtR(p.exp)+'</div></div>';
+  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#7c3aed"></span>Прибыль</div><div class="chart-tooltip-row-val" style="color:'+(p.prof>=0?'#22c55e':'#ef4444')+'">'+(p.prof>=0?'+':'')+fmtR(p.prof)+'</div></div>';
   // Топ-3 расходные статьи этого дня
   var breakdown = [
     {lbl:'Себестоимость', val:p.cost},
@@ -9114,7 +9114,7 @@ function showTlTooltip(e, i){
     {lbl:'Штрафы', val:p.penalties}
   ].filter(function(x){return x.val>0;}).sort(function(a,b){return b.val-a.val;}).slice(0,3);
   if(breakdown.length){
-    rows += '<div class="chart-tooltip-hint">Топ расходов: '+breakdown.map(function(b){return b.lbl+' '+fmtR(b.val)+'₽';}).join(' · ')+'</div>';
+    rows += '<div class="chart-tooltip-hint">Топ расходов: '+breakdown.map(function(b){return b.lbl+' '+fmtR(b.val);}).join(' · ')+'</div>';
   }
   var html = '<div class="chart-tooltip-title">'+dateStr+'</div>'+rows;
   showChartTooltip(html, e);
@@ -9253,7 +9253,7 @@ function showPieTooltip(e, idx){
   var pct = (it.val/total*100).toFixed(1);
   var pctRev = rev>0 ? (it.val/rev*100).toFixed(1) : '0';
   var html = '<div class="chart-tooltip-title"><span class="chart-tooltip-dot" style="background:'+it.color+'"></span> '+it.lbl+'</div>';
-  html += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl">Сумма за период</div><div class="chart-tooltip-row-val">'+fmtR(it.val)+' ₽</div></div>';
+  html += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl">Сумма за период</div><div class="chart-tooltip-row-val">'+fmtR(it.val)+'</div></div>';
   html += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl">Доля в круге</div><div class="chart-tooltip-row-val">'+pct+'%</div></div>';
   if(rev>0 && it.key !== 'profit'){
     html += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl">От выручки</div><div class="chart-tooltip-row-val">'+pctRev+'%</div></div>';
@@ -9312,7 +9312,7 @@ function togglePieDetail(idx){
   if(!top.length){
     html += '<div class="home-empty-mini">Нет данных по дням</div>';
   } else {
-    html += '<div style="font-size:12px;color:#64748b;margin-bottom:8px">Активных дней: <strong>'+totalDays+'</strong> · Средний расход в день: <strong>'+fmtR(avgPerDay)+' ₽</strong></div>';
+    html += '<div style="font-size:12px;color:#64748b;margin-bottom:8px">Активных дней: <strong>'+totalDays+'</strong> · Средний расход в день: <strong>'+fmtR(avgPerDay)+'</strong></div>';
     html += '<div style="display:grid;grid-template-columns:1fr auto auto;gap:6px 14px;font-size:12px">';
     html += '<div style="font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase">Дата</div>';
     html += '<div style="font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;text-align:right">Сумма</div>';
@@ -9334,9 +9334,9 @@ function togglePieDetail(idx){
       var rValDisplay;
       if(it.key === 'wb_adjust'){
         var sign = r.val > 0 ? '+' : '−';
-        rValDisplay = sign + fmtR(Math.abs(r.val)).replace('₽','') + ' ₽';
+        rValDisplay = sign + fmtR(Math.abs(r.val));
       } else {
-        rValDisplay = fmtR(r.val) + ' ₽';
+        rValDisplay = fmtR(r.val);
       }
       html += '<div style="position:relative;padding:4px 0">'+dateStr+'<div style="position:absolute;left:0;right:0;bottom:0;height:2px;background:'+it.color+';opacity:.4;width:'+barPct+'%"></div></div>';
       html += '<div style="text-align:right;font-variant-numeric:tabular-nums;padding:4px 0">'+rValDisplay+'</div>';
@@ -9401,15 +9401,15 @@ function renderProblems(snaps){
         return;
       }
       problems.push({type:'loss',tag:'УБЫТОК',name:it.name,nm:it.nm,
-        val:'−'+fmtR(Math.abs(it.profit))+' ₽',
+        val:'−'+fmtR(Math.abs(it.profit)),
         hint:'продано '+it.sales+' шт за '+it.days+' дн, маржа '+it.margin.toFixed(0)+'%'+
-             (recent && recent.sales>=3 ? ' (за последние '+recent.windowDays+' дн.: '+(recent.profit>=0?'+':'-')+fmtR(Math.abs(recent.profit))+' ₽)' : ''),
+             (recent && recent.sales>=3 ? ' (за последние '+recent.windowDays+' дн.: '+(recent.profit>=0?'+':'-')+fmtR(Math.abs(recent.profit))+')' : ''),
         sortKey:it.profit});
     }
     // 2) СЪЕДАЕТ ЛОГИСТИКА — логистика >25% от выручки (типичная норма 5-15%)
     else if(it.logShare>=25 && it.logistics>=500){
       problems.push({type:'drr',tag:'ЛОГИСТИКА '+it.logShare+'%',name:it.name,nm:it.nm,
-        val:'−'+fmtR(it.logistics)+' ₽',
+        val:'−'+fmtR(it.logistics),
         hint:'продано '+it.sales+' шт, средняя логистика '+Math.round(it.logistics/Math.max(it.sales,1))+' ₽/шт. Проверь габариты упаковки в карточке.',
         sortKey:-it.logistics});
     }
@@ -9421,15 +9421,15 @@ function renderProblems(snaps){
         if(recentMargin >= 15) return;
       }
       problems.push({type:'drr',tag:'МАРЖА '+it.margin.toFixed(0)+'%',name:it.name,nm:it.nm,
-        val:fmtR(it.profit)+' ₽',
+        val:fmtR(it.profit),
         hint:'продано '+it.sales+' шт за '+it.days+' дн. На грани — снижайте себестоимость или повышайте цену.',
         sortKey:it.margin});
     }
     // 4) ВЫСОКИЙ ДРР — реклама >50% выручки
     else if(it.drr>50 && it.ad>=200){
       problems.push({type:'drr',tag:'ДРР '+it.drr+'%',name:it.name,nm:it.nm,
-        val:'реклама '+fmtR(it.ad)+' ₽',
-        hint:'выручка '+fmtR(it.revenue)+' ₽, продано '+it.sales+' шт. Снизьте ставки или отключите кампанию.',
+        val:'реклама '+fmtR(it.ad),
+        hint:'выручка '+fmtR(it.revenue)+', продано '+it.sales+' шт. Снизьте ставки или отключите кампанию.',
         sortKey:-it.ad});
     }
   });
@@ -9513,7 +9513,7 @@ function renderABC(snaps){
     var s='<div class="abc-group" data-cat="'+cat+'">';
     s+='<button class="abc-group-header" onclick="toggleAbcGroup(\''+id+'\', this)">';
     s+='<span class="abc-group-title"><span class="arrow">'+arrow+'</span> <span class="abc-cat '+cat+'">'+cat+'</span> '+label+' <span class="abc-group-sub">'+sub+'</span></span>';
-    s+='<span class="abc-group-total">+'+fmtR(totalCat)+' ₽ · '+Math.round(totalCat/totalProfit*100)+'%</span>';
+    s+='<span class="abc-group-total">+'+fmtR(totalCat)+' · '+Math.round(totalCat/totalProfit*100)+'%</span>';
     s+='</button>';
     s+='<div class="abc-group-body" id="'+id+'" style="display:'+displayStyle+'">';
     s+='<table class="abc-table">';
@@ -9525,7 +9525,7 @@ function renderABC(snaps){
       s+='<tr>'+
         '<td><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" class="abc-cmp-cb" data-key="'+escHtml(itemKey)+'" data-name="'+escHtml(it.name||'')+'" data-nm="'+(it.nm||'')+'" data-sales="'+it.sales+'" data-profit="'+it.profit+'" data-revenue="'+(it.revenue||0)+'" data-cat="'+cat+'" onchange="onAbcCompareToggle()" style="width:auto;margin:0">'+itemHtml(it.name, it.nm)+'</label></td>'+
         '<td style="text-align:right">'+fmt(it.sales)+'</td>'+
-        '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+' ₽</td>'+
+        '<td style="text-align:right;color:#22c55e;font-weight:600">+'+fmtR(it.profit)+'</td>'+
         '<td style="text-align:right;color:var(--muted)">'+pct+'%</td>'+
       '</tr>';
     });
@@ -9605,8 +9605,8 @@ function showAbcComparison(){
     h += '<div class="abc-cmp-name">'+itemHtml(it.name, it.nm)+'</div>';
     h += '<div class="abc-cmp-cat"><span class="abc-cat '+it.cat+'">'+it.cat+'</span></div>';
     h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Продажи</div><div class="abc-cmp-val '+(it===bestSales?'best':'')+'">'+fmt(it.sales)+' шт</div></div>';
-    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Выручка</div><div class="abc-cmp-val">'+fmtR(it.revenue)+' ₽</div></div>';
-    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Чистая прибыль</div><div class="abc-cmp-val '+(it===bestProfit?'best':(it===worstProfit?'worst':''))+'">+'+fmtR(it.profit)+' ₽</div></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Выручка</div><div class="abc-cmp-val">'+fmtR(it.revenue)+'</div></div>';
+    h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Чистая прибыль</div><div class="abc-cmp-val '+(it===bestProfit?'best':(it===worstProfit?'worst':''))+'">+'+fmtR(it.profit)+'</div></div>';
     h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Прибыль с 1 шт</div><div class="abc-cmp-val '+(it===bestPPS?'best':'')+'">'+fmt(Math.round(it.profitPerSale))+' ₽</div></div>';
     h += '<div class="abc-cmp-metric"><div class="abc-cmp-lbl">Маржа</div><div class="abc-cmp-val '+(it===bestMargin?'best':'')+'">'+it.marginPct.toFixed(1)+'%</div></div>';
     h += '</div>';
