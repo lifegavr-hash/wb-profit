@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.3'
+  APP_VERSION: 'v0.7.9.4'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.3</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.4</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -7910,7 +7910,10 @@ function renderDashboard(snapshots){
   // ═════ ЗАЩИТА ОТ ПОТЕРЬ (rich alerts) ═════
   h+=renderRichAlertsBlock();
   // Block 6: Что сделать — с чекбоксами выполненных и прогресс-баром
-  h+='<div class="home-card">'+homeCardTitle('actions','💡','ЧТО СДЕЛАТЬ СЕГОДНЯ')+homeCardBodyStart('actions');
+  // 🔥 v0.7.9.4: добавили число дней в заголовок — синхронно с заголовком "Структура расходов".
+  var actionDays = (typeof alertDays !== 'undefined' && alertDays.length) ? alertDays.length
+                   : (window._lastSnapshots ? window._lastSnapshots.length : 0);
+  h+='<div class="home-card">'+homeCardTitle('actions','💡','ЧТО СДЕЛАТЬ СЕГОДНЯ' + (actionDays ? ' (анализ за ' + actionDays + ' дн.)' : ''))+homeCardBodyStart('actions');
   // 🔥 v0.5.9 fix: советы строим из всех алертов периода
   var actions=buildActions(alertDays,allPeriodAlerts);
   // 🔥 v0.7.2: считаем сколько выполнено для прогресс-бара
@@ -8610,7 +8613,7 @@ function renderAnalytics(snaps){
   h+='</div>';
   // Виджеты 2 и 3 в сетке
   h+='<div class="an-grid">';
-  h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ</div>';
+  h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ ЗА '+snaps.length+' ДН.</div>';
   h+=renderExpenseStructure(snaps);
   h+='</div>';
   h+='<div class="an-card"><div class="an-card-title">⚠️ ТОП ПРОБЛЕМ</div>';
@@ -9161,7 +9164,16 @@ function renderExpenseStructure(snaps){
     t.cost+=Number(s.cost||0);
   });
   if(rev<=0)return '<div class="home-empty-mini">Нет данных по выручке</div>';
-  var profit=rev-t.commission-t.logistics-t.storage-t.ads-t.penalties-t.wb_finance-t.cost;
+  // 🔥 v0.7.9.4: используем поле profit из snapshot — оно содержит payout от WB (ppvz_for_pay)
+  // через корректировку adj = payout - (revenue - commission), учтённую в момент генерации snapshot.
+  // Это даёт ТЕ ЖЕ ₽ что и блок "Что сделать сегодня" → расхождения между страницами больше нет.
+  var profitFromField = 0;
+  var totalAdj = 0;
+  snaps.forEach(function(s){
+    profitFromField += Number(s.profit || 0);
+    totalAdj += Number(s.wb_adjust || 0);
+  });
+  var profit = profitFromField;
   var items=[
     {key:'cost',lbl:'Себестоимость',val:t.cost,color:'#94a3b8'},
     {key:'commission',lbl:'Комиссия WB',val:t.commission,color:'#ef4444'},
@@ -9170,6 +9182,7 @@ function renderExpenseStructure(snaps){
     {key:'storage',lbl:'Хранение',val:t.storage,color:'#06b6d4'},
     {key:'penalties',lbl:'Штрафы',val:t.penalties,color:'#dc2626'},
     {key:'wb_finance',lbl:'ВБ Финанс',val:t.wb_finance,color:'#8b5cf6'},
+    {key:'wb_adjust',lbl:'Корректировки WB',val:Math.abs(totalAdj),color: totalAdj < 0 ? '#f97316' : '#10b981'},
     {key:'profit',lbl:'Прибыль',val:Math.max(0,profit),color:'#22c55e'}
   ].filter(function(i){return i.val>0;});
   // 🔥 v0.5.9: Сохраняем для tooltip и клика
@@ -9206,10 +9219,19 @@ function renderExpenseStructure(snaps){
   // Контейнер под раскрытие деталей по клику
   h+='<div id="pieDetail"></div>';
   // Инсайт
-  var biggest=items.filter(function(i){return i.lbl!=='Прибыль'&&i.lbl!=='Себестоимость';}).sort(function(a,b){return b.val-a.val;})[0];
+  var biggest=items.filter(function(i){
+    return i.lbl!=='Прибыль' && i.lbl!=='Себестоимость' && i.lbl!=='Корректировки WB';
+  }).sort(function(a,b){return b.val-a.val;})[0];
   if(biggest){
     var bp=(biggest.val/rev*100).toFixed(0);
     h+='<div class="an-insight">Самая крупная статья WB-расходов: <strong>'+biggest.lbl+'</strong> ('+bp+'% от выручки, '+fmtR(biggest.val)+' за период). 👆 Кликни сегмент или строку легенды для деталей.</div>';
+  }
+  // 🔥 v0.7.9.4: показываем фактическую дельту WB-выплаты без интерпретаций.
+  if(totalAdj !== 0){
+    var adjSign = totalAdj > 0 ? '+' : '−';
+    h+='<div class="an-insight">По данным WB фактическая выплата (поле ppvz_for_pay) '+
+       'отличается от расчётной на '+adjSign+fmtR(Math.abs(totalAdj))+' за период. '+
+       'Уже учтено в прибыли.</div>';
   }
   return h;
 }
