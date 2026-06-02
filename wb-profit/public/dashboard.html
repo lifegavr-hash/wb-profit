@@ -28,11 +28,13 @@ try{
 <!-- Чтобы активировать: подставь свои ID в YM_COUNTER_ID и SENTRY_DSN ниже.
      Если оставить плейсхолдеры YM_COUNTER_ID / SENTRY_DSN — скрипты не загрузятся (no-op).
      Демо-режим (/demo) трекается отдельно как goal "demo_view". -->
+<!-- 🔥 v0.7.10.1: единая точка истины версии (см. /version.js) -->
+<script src="/version.js"></script>
 <script>
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.10.0'
+  APP_VERSION: window.__APP_VERSION || 'v0.7.10.1'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -178,6 +180,14 @@ html[data-theme="dark"] .toast.success{background:#0f3a2a;color:#86efac}
 html[data-theme="dark"] .toast.error{background:#3a1414;color:#fca5a5}
 html[data-theme="dark"] .toast.warning{background:#3a2814;color:#fcd34d}
 html[data-theme="dark"] .toast.info{background:#14283a;color:#93c5fd}
+/* 🔥 v0.7.10.1: визуальный прогресс-бар для chunked-загрузки больших периодов */
+.load-progress{margin:12px 0;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:none}
+.load-progress.active{display:block}
+.load-progress-bar{height:8px;background:rgba(84,51,198,.1);border-radius:4px;overflow:hidden;margin-top:10px}
+.load-progress-fill{height:100%;background:linear-gradient(90deg,#5433c6,#7c3aed);border-radius:4px;transition:width .3s ease-out;width:0%}
+.load-progress-warning{color:#d97706;font-size:12px;margin-top:8px;font-weight:600}
+html[data-theme="dark"] .load-progress{background:#1a0f3c}
+html[data-theme="dark"] .load-progress-bar{background:rgba(167,139,250,.15)}
 /* Период-пилюлюлю в load-bar — load-bar остаётся фиолетовым, не трогаем .period-pill.active */
 /* Чистая прибыль большая плитка */
 html[data-theme="dark"] .m.hi{background:#1f1f33;border-color:var(--border)}
@@ -1936,7 +1946,8 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.10.0</div>
+      <div class="sidebar-version">SW Profit · <span id="sidebarVersion">v0.7.10.1</span></div>
+      <script>try{document.getElementById('sidebarVersion').textContent=window.__APP_VERSION||'v0.7.10.1';}catch(e){}</script>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -2023,6 +2034,14 @@ body{padding-top:var(--beta-h)}
       <div class="period-popup-bg" onclick="closeCustomPeriod()"></div>
     </div>
     <div class="ld" id="ldBoxHome" style="margin-top:10px;display:none"><div class="sp"></div><span id="ldTxtHome">Загружаем...</span></div>
+    <!-- 🔥 v0.7.10.1: визуальный прогресс-бар для chunked-загрузки больших периодов -->
+    <div class="load-progress" id="loadProgress">
+      <div id="loadProgressText" style="font-weight:600;font-size:14px">Загружаем…</div>
+      <div class="load-progress-bar"><div class="load-progress-fill" id="loadProgressFill"></div></div>
+      <div class="load-progress-warning" id="loadProgressWarning" style="display:none">
+        ⏱ Загрузка большого периода — не закрывайте вкладку
+      </div>
+    </div>
     <div id="errBoxHome" class="err"></div>
 
     <!-- Дашборд -->
@@ -2573,6 +2592,13 @@ function removeToast(toast){
 function toast(type, msg, duration){
   if(typeof showToast === 'function') return showToast(msg, type, duration);
 }
+// 🔥 v0.7.10.1: явно поднимаем в window для доступа из eval-контекста
+// (Chrome-расширение SW Profit вызывает функции через eval, где модульный
+// scope не виден)
+if (typeof window !== 'undefined') {
+  window.toast = toast;
+  if (typeof showToast === 'function') window.showToast = showToast;
+}
 // === 🔥 v0.7.6 G1: Command Palette (Ctrl+K) ===
 var _cmdkActions = [
   {icon:'🏠', label:'Главная', sub:'Защита от потерь, советы', action:function(){showSection('home',document.getElementById('nav-home'));}},
@@ -2906,6 +2932,14 @@ function initDemoBypass(){
 }
 
 function openOnboarding(){
+  // 🔥 v0.7.10.1: для демо-режима не показываем onboarding (там не нужен токен WB)
+  var isDemo = location.pathname === '/demo' ||
+               location.search.indexOf('demo=1') >= 0 ||
+               localStorage.getItem('wb_demo_active') === '1';
+  if (isDemo) {
+    localStorage.setItem('onboarding_done', '1');
+    return;
+  }
   document.getElementById('onbWizard').style.display='flex';
   onbNext(1);
 }
@@ -4774,12 +4808,32 @@ async function loadSales(tok,df,dt){
     cur.setDate(cur.getDate() + 1);
   }
 
+  // 🔥 v0.7.10.1: визуальный прогресс для chunked-загрузки
+  var progressEl = document.getElementById('loadProgress');
+  var progressText = document.getElementById('loadProgressText');
+  var progressFill = document.getElementById('loadProgressFill');
+  var progressWarning = document.getElementById('loadProgressWarning');
+  if (progressEl) {
+    progressEl.classList.add('active');
+    progressFill.style.width = '0%';
+    if (totalDays > 90 && progressWarning) {
+      progressWarning.style.display = 'block';
+    }
+  }
+
   var all = [];
   for(var i=0; i<chunks.length; i++){
     var ck = chunks[i];
     setLoadStatus('Загружаем часть '+(i+1)+' из '+chunks.length+' ('+ck.from+' — '+ck.to+')...');
     var chunkRows = await _loadSalesChunk(tok, ck.from, ck.to, i+1, chunks.length);
     all = all.concat(chunkRows);
+    // 🔥 v0.7.10.1: обновляем прогресс-бар после каждого куска
+    if (progressEl) {
+      var percent = Math.round(((i+1) / chunks.length) * 100);
+      progressFill.style.width = percent + '%';
+      progressText.textContent = 'Загружено ' + (i+1) + ' из ' + chunks.length +
+        ' (' + all.length + ' записей)';
+    }
     // 🔥 v0.7.9.9: 16 сек — на 1 сек больше backend MIN_INTERVAL_MS (15 сек),
     // чтобы гарантированно проходить наш rate-limiter без 429-петель.
     // Кэш /api/wb (24ч TTL) делает повторные загрузки тех же дней мгновенными.
@@ -4787,6 +4841,10 @@ async function loadSales(tok,df,dt){
       setLoadStatus('Получено '+all.length+' записей. Пауза перед следующей частью (16 сек)...');
       await new Promise(function(res){setTimeout(res, 16000);});
     }
+  }
+  // 🔥 v0.7.10.1: скрываем прогресс-бар через 1.5 сек после завершения
+  if (progressEl) {
+    setTimeout(function(){ progressEl.classList.remove('active'); }, 1500);
   }
   setLoadStatus('Обрабатываем '+all.length+' записей…');
   return all;
