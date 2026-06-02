@@ -2706,6 +2706,27 @@ window.addEventListener('keydown', _wbProfitHotkeys, true); // capture: true —
 
 // 🔥 v0.7.7.33: Глобальный лог JS-ошибок. Вешает window.error и unhandledrejection,
 // каждый отправляет RPC log_frontend_error. Защищён флагом от двойной установки.
+// 🔥 v0.7.10.3: helper для отправки целей в Я.Метрику.
+// Цели нужно создать вручную в metrika.yandex.ru → счётчик 109568999 → Цели
+function sendYmGoal(name) {
+  try {
+    var ymId = (window.__ANALYTICS_CONFIG && window.__ANALYTICS_CONFIG.YM_COUNTER_ID);
+    if (typeof ym === 'function' && ymId) {
+      ym(parseInt(ymId, 10), 'reachGoal', name);
+      console.log('[ym] goal sent:', name);
+    }
+  } catch(e) {}
+}
+// Цели которые отправляются только один раз на устройство (через localStorage)
+function sendYmGoalOnce(name) {
+  var key = 'ym_goal_' + name + '_sent';
+  try {
+    if (localStorage.getItem(key) === '1') return;
+    sendYmGoal(name);
+    localStorage.setItem(key, '1');
+  } catch(e) {}
+}
+
 function installFrontendErrorLogger(){
   if(window.__errLoggerInstalled) return;
   window.__errLoggerInstalled = true;
@@ -2763,6 +2784,8 @@ async function init(){
   var {data:{session}}=await sb.auth.getSession();
   if(!session){window.location.href='/login.html';return;}
   currentUser=session.user;
+  // 🔥 v0.7.10.3: цель Activation (юзер успешно залогинен в dashboard)
+  sendYmGoalOnce('activation');
   window.currentJwt=session.access_token; // глобально для запросов с backend-проверкой тарифа
   // 🔥 v0.6.7: защита от лагов Supabase. Если profile=null после запроса — retry один раз,
   // потом fallback на free-заглушку. Без этого весь UI ложился, когда БД не отвечала.
@@ -4070,6 +4093,9 @@ async function saveNewWbAccount(){
       }
       return;
     }
+    // 🔥 v0.7.10.3: цель — юзер добавил WB-токен (НЕ once: можно добавлять
+    // несколько кабинетов на Business тарифе)
+    sendYmGoal('wb_token_added');
     toast('success', 'Кабинет «' + name + '» добавлен');
     // 🔥 Если этот кабинет стал default — записываем токен в localStorage
     if(r.data.account?.is_default && r.data.account?.wb_token){
@@ -4851,6 +4877,10 @@ async function loadSales(tok,df,dt){
     setTimeout(function(){ progressEl.classList.remove('active'); }, 1500);
   }
   setLoadStatus('Обрабатываем '+all.length+' записей…');
+  // 🔥 v0.7.10.3: цель — юзер впервые загрузил данные из WB
+  if (all.length > 0) {
+    sendYmGoalOnce('first_load');
+  }
   return all;
 }
 

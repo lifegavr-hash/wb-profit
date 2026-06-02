@@ -92,6 +92,12 @@ input:focus{border-color:var(--purple)}
     <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"></div>
     <div class="field"><label>Пароль</label><input type="password" id="regPass" placeholder="Минимум 6 символов"></div>
     <div class="field"><label>Промокод</label><input type="text" id="regPromo" placeholder="BETA2024" style="text-transform:uppercase" required></div>
+    <!-- 🔥 v0.7.10.3: honeypot для защиты от ботов. Не показывать юзеру! -->
+    <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
+      <label>Website (не заполнять):
+        <input type="text" name="website" id="website_hp" tabindex="-1" autocomplete="off">
+      </label>
+    </div>
     <button class="btn" id="regBtn" onclick="register()">Создать аккаунт</button>
     <div class="err" id="regErr"></div>
     <div class="ok" id="regOk">Проверьте почту — отправили письмо для подтверждения!</div>
@@ -115,6 +121,29 @@ input:focus{border-color:var(--purple)}
 <script>
 var sb = null;
 var currentUser = null;
+// 🔥 v0.7.10.3: time-trap (засекаем время появления формы регистрации)
+window.__formShownAt = Date.now();
+
+// 🔥 v0.7.10.3: helper для отправки целей в Я.Метрику.
+// Цели нужно создать вручную в metrika.yandex.ru → счётчик 109568999 → Цели
+function sendYmGoal(name) {
+  try {
+    var ymId = (window.__ANALYTICS_CONFIG && window.__ANALYTICS_CONFIG.YM_COUNTER_ID);
+    if (typeof ym === 'function' && ymId) {
+      ym(parseInt(ymId, 10), 'reachGoal', name);
+      console.log('[ym] goal sent:', name);
+    }
+  } catch(e) {}
+}
+// Цели которые отправляются только один раз на устройство (через localStorage)
+function sendYmGoalOnce(name) {
+  var key = 'ym_goal_' + name + '_sent';
+  try {
+    if (localStorage.getItem(key) === '1') return;
+    sendYmGoal(name);
+    localStorage.setItem(key, '1');
+  } catch(e) {}
+}
 
 async function initSupabase() {
   // 🔥 v0.7.7.6+hotfix: чистим демо-флаг чтобы при следующем входе в /dashboard.html
@@ -236,6 +265,18 @@ async function login() {
 }
 
 async function register() {
+  // 🔥 v0.7.10.3: honeypot check (silent reject если бот заполнил скрытое поле)
+  var hp = document.getElementById('website_hp');
+  if (hp && hp.value) {
+    console.log('[reg] honeypot filled, silent reject');
+    return; // НЕ показываем error юзеру — пусть бот думает что всё ОК
+  }
+  // 🔥 v0.7.10.3: time-trap (форма заполнена слишком быстро = бот)
+  var elapsed = Date.now() - (window.__formShownAt || 0);
+  if (elapsed < 2000) {
+    console.log('[reg] form submitted too fast (' + elapsed + 'ms), silent reject');
+    return;
+  }
   var email = document.getElementById('regEmail').value.trim();
   var pass = document.getElementById('regPass').value;
   var promo = document.getElementById('regPromo').value.trim().toUpperCase();
@@ -262,6 +303,8 @@ async function register() {
     btn.disabled=false; btn.textContent='Создать аккаунт';
   } else {
     currentUser = data.user;
+    // 🔥 v0.7.10.3: цель Я.Метрики — успешная регистрация
+    sendYmGoalOnce('registration');
     if (data.user && data.user.id) {
       try {
         var ar = await sb.rpc('apply_beta_code', { p_code: promo, p_user_id: data.user.id });
