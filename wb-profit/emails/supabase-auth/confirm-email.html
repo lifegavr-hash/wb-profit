@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Подтвердите email — SW Profit</title>
+<!--
+ИНСТРУКЦИЯ ДЛЯ НАСТРОЙКИ В SUPABASE:
+1) Открыть Supabase Dashboard → Authentication → Email Templates
+2) Выбрать template "Confirm signup"
+3) Subject: "Подтвердите email — SW Profit"
+4) Скопировать ВСЁ содержимое этого файла (от <!DOCTYPE> до </html>) в поле Message
+5) Сохранить (кнопка Save)
+
+Используемые Supabase переменные:
+- {{ .ConfirmationURL }} — ссылка для подтверждения email
+- {{ .Email }} — email юзера (опционально)
+- {{ .SiteURL }} — URL сайта (https://swprofit.ru)
+-->
+<!--[if mso]>
+<style type="text/css">
+  body, table, td {font-family: Arial, Helvetica, sans-serif !important;}
+</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#f7f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1818;-webkit-font-smoothing:antialiased;">
+
+<!-- Прехедер -->
+<div style="display:none;font-size:1px;color:#f7f7f5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+  Один клик — и аккаунт активирован. Ссылка действует 24 часа.
+</div>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#f7f7f5;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      
+      <!-- Логотип -->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <tr>
+          <td align="center" style="padding:0 0 24px 0;">
+            <a href="https://swprofit.ru/" style="text-decoration:none;color:#1a0f3c;font-size:22px;font-weight:800;letter-spacing:-0.5px;">
+              SW <span style="color:#5433c6;">Profit</span>
+            </a>
+          </td>
+        </tr>
+      </table>
+      
+      <!-- Основной контент -->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+        <tr>
+          <td style="padding:48px 40px 40px 40px;text-align:center;">
+            
+            <!-- Иконка через эмодзи -->
+            <div style="font-size:48px;margin-bottom:12px;">✉️</div>
+            
+            <!-- Заголовок -->
+            <h1 style="margin:0 0 16px 0;font-size:26px;font-weight:800;line-height:1.25;color:#1a1818;letter-spacing:-0.02em;text-align:center;">
+              Подтвердите ваш email
+            </h1>
+            
+            <p style="margin:0 0 32px 0;font-size:16px;line-height:1.6;color:#1a1818;text-align:center;">
+              Спасибо за регистрацию в SW Profit! Чтобы завершить создание аккаунта, нажмите на кнопку ниже.
+            </p>
+            
+            <!-- CTA -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 32px auto;">
+              <tr>
+                <td align="center" style="background-color:#5433c6;border-radius:10px;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 40px;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;">
+                    Подтвердить email
+                  </a>
+                </td>
+              </tr>
+            </table>
+            
+            <p style="margin:0 0 16px 0;font-size:14px;line-height:1.55;color:#6b6b68;text-align:center;">
+              Или скопируйте эту ссылку в браузер:
+            </p>
+            
+            <p style="margin:0 0 32px 0;font-size:13px;line-height:1.5;color:#5433c6;text-align:center;word-break:break-all;">
+              <a href="{{ .ConfirmationURL }}" style="color:#5433c6;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+            </p>
+            
+            <!-- Разделитель -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:24px 0;">
+              <tr>
+                <td style="border-top:1px solid rgba(0,0,0,0.08);"></td>
+              </tr>
+            </table>
+            
+            <p style="margin:0 0 12px 0;font-size:13px;line-height:1.55;color:#6b6b68;text-align:center;">
+              Ссылка действительна 24 часа. Если вы не регистрировались в SW Profit — просто проигнорируйте это письмо.
+            </p>
+            
+            <p style="margin:0;font-size:13px;line-height:1.55;color:#6b6b68;text-align:center;">
+              Возникли проблемы? Ответьте на это письмо — поможем разобраться.
+            </p>
+            
+          </td>
+        </tr>
+      </table>
+      
+      <!-- Footer -->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <tr>
+          <td align="center" style="padding:24px 20px;font-size:12px;line-height:1.5;color:#6b6b68;">
+            <p style="margin:0 0 8px 0;">
+              <a href="https://swprofit.ru/" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Главная</a>
+              <a href="https://swprofit.ru/blog/" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Блог</a>
+              <a href="https://swprofit.ru/privacy.html" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Политика ПД</a>
+              <a href="https://swprofit.ru/terms.html" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Условия</a>
+            </p>
+            <p style="margin:0 0 4px 0;">© 2026 SW Profit · Для селлеров Wildberries</p>
+            <p style="margin:0;font-style:italic;color:#9a9a96;">Seller's Way Profit — путь продавца к прибыли</p>
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

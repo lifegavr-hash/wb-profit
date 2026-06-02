@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>SW Profit — как дела с подключением?</title>
+<!--[if mso]>
+<style type="text/css">
+  body, table, td {font-family: Arial, Helvetica, sans-serif !important;}
+</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#f7f7f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1818;-webkit-font-smoothing:antialiased;">
+
+<!-- Прехедер -->
+<div style="display:none;font-size:1px;color:#f7f7f5;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+  Прошёл день — как дела с подключением WB-кабинета? Помочь?
+</div>
+
+<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#f7f7f5;">
+  <tr>
+    <td align="center" style="padding:24px 12px;">
+      
+      <!-- Логотип -->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <tr>
+          <td align="center" style="padding:0 0 24px 0;">
+            <a href="https://swprofit.ru/" style="text-decoration:none;color:#1a0f3c;font-size:22px;font-weight:800;letter-spacing:-0.5px;">
+              SW <span style="color:#5433c6;">Profit</span>
+            </a>
+          </td>
+        </tr>
+      </table>
+      
+      <!-- Основной контент -->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+        <tr>
+          <td style="padding:48px 40px 24px 40px;">
+            
+            <!-- ВАРИАНТ A: Если токен ещё не подключён -->
+            <!-- Используй этот блок если {{TOKEN_CONNECTED}} = false -->
+            <h1 style="margin:0 0 16px 0;font-size:24px;font-weight:800;line-height:1.25;color:#1a1818;letter-spacing:-0.02em;">
+              {{FIRST_NAME|default:Привет}}, как дела с подключением?
+            </h1>
+            
+            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.6;color:#1a1818;">
+              Прошёл день с твоей регистрации, но кабинет WB ещё не подключён. Возможно что-то непонятно в инструкции, или возник вопрос — это нормально, давай помогу разобраться.
+            </p>
+            
+            <h2 style="margin:24px 0 12px 0;font-size:17px;font-weight:700;color:#1a1818;">
+              Частые проблемы
+            </h2>
+            
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+              <tr>
+                <td style="padding:0 0 14px 0;font-size:15px;line-height:1.55;color:#1a1818;">
+                  <strong>«Не могу найти раздел "Интеграции по API"»</strong><br>
+                  <span style="color:#6b6b68;">Это отдельный пункт в меню профиля WB, на одном уровне с «Настройки» и «Документы». Не через настройки!</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 14px 0;font-size:15px;line-height:1.55;color:#1a1818;">
+                  <strong>«SW Profit ругается на токен (Error 401/403)»</strong><br>
+                  <span style="color:#6b6b68;">Скорее всего скопировал не весь токен (он длинный — ~400 символов) или забыл поставить галочки на «Статистика» и «Продвижение».</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:0 0 14px 0;font-size:15px;line-height:1.55;color:#1a1818;">
+                  <strong>«Загрузка идёт долго»</strong><br>
+                  <span style="color:#6b6b68;">Нормально для магазинов с большой историей. 2 года данных — это 5-10 минут. Не закрывай вкладку, прогресс-бар покажет процесс.</span>
+                </td>
+              </tr>
+            </table>
+            
+            <!-- CTA -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0 8px 0;">
+              <tr>
+                <td align="center" style="background-color:#5433c6;border-radius:10px;">
+                  <a href="https://swprofit.ru/blog/kak-poluchit-api-token-wildberries" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;">
+                    Открыть инструкцию ещё раз →
+                  </a>
+                </td>
+              </tr>
+            </table>
+            
+            <p style="margin:24px 0 0 0;font-size:15px;line-height:1.6;color:#1a1818;">
+              Или просто ответь на это письмо своим вопросом — посмотрим вместе.
+            </p>
+            
+            <!-- ============================================================ -->
+            <!-- ВАРИАНТ Б (для случая когда токен УЖЕ подключён):
+                 замени блок выше на этот, когда {{TOKEN_CONNECTED}} = true
+            ============================================================ -->
+            <!--
+            <h1>Отлично, ты подключился! 🎉</h1>
+            <p>Видим что твой кабинет подключён, и мы загрузили {{SALES_COUNT}} продаж за {{PERIOD_DAYS}} дней.</p>
+            <h2>Что попробовать сейчас</h2>
+            <ul>
+              <li>Открой раздел "Прибыль по товарам" — увидишь убыточные SKU</li>
+              <li>Включи алерты на минусовые товары</li>
+              <li>Посмотри юнит-экономику любого товара</li>
+            </ul>
+            <a href="https://swprofit.ru/dashboard.html">Открыть SW Profit →</a>
+            -->
+            
+            <!-- Помощь -->
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin:32px 0 0 0;background-color:#f7f7f5;border-radius:10px;">
+              <tr>
+                <td style="padding:18px 22px;font-size:14px;line-height:1.55;color:#6b6b68;">
+                  <strong style="color:#1a1818;">Это письмо — часть бета-теста.</strong> Если хочешь поделиться впечатлениями или у тебя есть вопрос — просто ответь на это письмо.
+                </td>
+              </tr>
+            </table>
+            
+          </td>
+        </tr>
+      </table>
+      
+      <!-- Footer -->
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="max-width:600px;width:100%;">
+        <tr>
+          <td align="center" style="padding:24px 20px;font-size:12px;line-height:1.5;color:#6b6b68;">
+            <p style="margin:0 0 8px 0;">
+              <a href="https://swprofit.ru/" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Главная</a>
+              <a href="https://swprofit.ru/blog/" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Блог</a>
+              <a href="https://swprofit.ru/privacy.html" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Политика ПД</a>
+              <a href="https://swprofit.ru/terms.html" style="color:#6b6b68;text-decoration:none;margin:0 8px;">Условия</a>
+            </p>
+            <p style="margin:0 0 4px 0;">© 2026 SW Profit · Для селлеров Wildberries</p>
+            <p style="margin:0;font-style:italic;color:#9a9a96;">Seller's Way Profit — путь продавца к прибыли</p>
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>
