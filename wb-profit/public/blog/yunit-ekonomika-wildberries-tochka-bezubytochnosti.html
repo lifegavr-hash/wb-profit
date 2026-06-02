@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Юнит-экономика на Wildberries: расчёт точки безубыточности товара | SW Profit</title>
+<meta name="description" content="Полный разбор юнит-экономики селлера Wildberries в 2026: переменные и постоянные расходы, маржинальная прибыль, точка безубыточности по товару. Формулы и примеры.">
+<meta name="keywords" content="юнит экономика wildberries, точка безубыточности на вб, расчёт юнит экономики, маржинальная прибыль селлера">
+<link rel="canonical" href="https://swprofit.ru/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti">
+<meta property="og:title" content="Юнит-экономика на Wildberries: точка безубыточности 2026">
+<meta property="og:description" content="Полный разбор юнит-экономики селлера WB: формулы, расчёт точки безубыточности, примеры.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://swprofit.ru/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti">
+<meta property="og:image" content="https://swprofit.ru/og-image.svg">
+<meta property="og:locale" content="ru_RU">
+<meta property="article:published_time" content="2026-06-02T12:00:00+03:00">
+<meta property="article:author" content="SW Profit">
+<meta property="article:section" content="Расчёты">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Юнит-экономика на Wildberries: точка безубыточности">
+<meta name="twitter:description" content="Формулы маржинальной прибыли и точки безубыточности с примерами">
+<meta name="twitter:image" content="https://swprofit.ru/og-image.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#5433c6">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://swprofit.ru/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti#article",
+      "headline": "Юнит-экономика на Wildberries: расчёт точки безубыточности товара",
+      "description": "Полный разбор юнит-экономики селлера Wildberries: переменные и постоянные расходы, маржинальная прибыль, точка безубыточности по товару.",
+      "image": "https://swprofit.ru/og-image.svg",
+      "datePublished": "2026-06-02T12:00:00+03:00",
+      "dateModified": "2026-06-02T12:00:00+03:00",
+      "author": { "@type": "Organization", "name": "SW Profit", "url": "https://swprofit.ru/" },
+      "publisher": {
+        "@type": "Organization", "name": "SW Profit",
+        "logo": { "@type": "ImageObject", "url": "https://swprofit.ru/favicon.svg" }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://swprofit.ru/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti"
+      },
+      "inLanguage": "ru-RU",
+      "articleSection": "Расчёты",
+      "wordCount": 2600
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Главная", "item": "https://swprofit.ru/" },
+        { "@type": "ListItem", "position": 2, "name": "Блог", "item": "https://swprofit.ru/blog/" },
+        { "@type": "ListItem", "position": 3, "name": "Юнит-экономика на Wildberries", "item": "https://swprofit.ru/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{--purple:#5433c6;--purple-dark:#1a0f3c;--green:#1a7a4a;--red:#dc2626;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',sans-serif;background:var(--surface);color:var(--text);line-height:1.7;font-size:17px}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:60px;background:rgba(26,15,60,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-logo{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.nav-logo a{color:inherit;text-decoration:none}
+.nav-logo span{color:#a78bfa}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:rgba(255,255,255,.65);font-size:14px;text-decoration:none;font-weight:500}
+.nav-links a:hover{color:#fff}
+.nav-cta{background:#fff;color:#1a0f3c!important;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none}
+main{padding-top:60px;max-width:760px;margin:0 auto;padding-left:5%;padding-right:5%}
+.crumbs{padding:24px 0 0;font-size:13px;color:var(--muted)}
+.crumbs a{color:var(--purple);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
+.crumbs span{margin:0 8px}
+.article-header{padding:32px 0 40px;border-bottom:1px solid var(--border);margin-bottom:40px}
+.article-meta{display:flex;align-items:center;gap:14px;margin-bottom:20px;font-size:13px;color:var(--muted);font-weight:600;letter-spacing:.02em;text-transform:uppercase}
+.article-tag{background:rgba(84,51,198,.08);color:var(--purple);padding:4px 12px;border-radius:6px;font-size:12px;font-weight:700;letter-spacing:.04em}
+h1{font-size:clamp(28px,4vw,40px);font-weight:800;letter-spacing:-.02em;line-height:1.2;margin-bottom:24px}
+.article-lead{font-size:19px;color:var(--muted);line-height:1.55;font-weight:500}
+article{padding-bottom:64px}
+article h2{font-size:28px;font-weight:800;letter-spacing:-.01em;margin:48px 0 18px;line-height:1.25}
+article h3{font-size:21px;font-weight:700;margin:32px 0 14px;line-height:1.3}
+article p{margin-bottom:18px;font-size:17px;line-height:1.75}
+article ul,article ol{margin:18px 0 24px 26px}
+article li{margin-bottom:10px;line-height:1.65}
+article strong{font-weight:700;color:var(--text)}
+article a{color:var(--purple);text-decoration:underline;text-underline-offset:2px}
+article a:hover{text-decoration-thickness:2px}
+.formula{background:#f7f7f5;border-left:4px solid var(--purple);padding:20px 24px;margin:24px 0;border-radius:8px;font-size:16px;line-height:1.6}
+.formula-label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--purple);font-weight:700;margin-bottom:8px}
+.formula code{font-family:'SF Mono','Monaco','Consolas',monospace;font-size:15px;background:rgba(84,51,198,.06);padding:2px 6px;border-radius:4px}
+.example{background:#ecfdf5;border:1px solid #a7f3d0;padding:20px 24px;margin:24px 0;border-radius:10px}
+.example-label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--green);font-weight:700;margin-bottom:10px}
+.example p{margin-bottom:10px;font-size:15px}
+.example p:last-child{margin-bottom:0}
+.warning{background:#fef2f2;border:1px solid #fecaca;padding:20px 24px;margin:24px 0;border-radius:10px}
+.warning-label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--red);font-weight:700;margin-bottom:10px}
+.warning p{margin-bottom:10px;font-size:15px}
+.warning p:last-child{margin-bottom:0}
+.calc-table{width:100%;border-collapse:collapse;margin:24px 0;font-size:15px;background:#f7f7f5;border-radius:10px;overflow:hidden}
+.calc-table th{background:var(--purple);color:#fff;padding:14px 16px;text-align:left;font-weight:700;font-size:14px;letter-spacing:.02em}
+.calc-table td{padding:12px 16px;border-bottom:1px solid var(--border)}
+.calc-table tr:last-child td{border-bottom:none}
+.calc-table tr.total td{background:rgba(84,51,198,.05);font-weight:700;font-size:16px}
+.calc-table td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.calc-table td.num.neg{color:var(--red)}
+.calc-table td.num.pos{color:var(--green)}
+.toc{background:#f7f7f5;border:1px solid var(--border);border-radius:12px;padding:24px 28px;margin:32px 0}
+.toc-title{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:14px}
+.toc ol{margin:0;padding-left:20px}
+.toc li{margin-bottom:6px;font-size:15px}
+.toc a{color:var(--text);text-decoration:none}
+.toc a:hover{color:var(--purple);text-decoration:underline}
+.inline-cta{background:linear-gradient(135deg,#5433c6 0%,#7c3aed 100%);color:#fff;padding:32px;border-radius:14px;margin:40px 0;text-align:center}
+.inline-cta h3{font-size:22px;font-weight:800;color:#fff;margin-bottom:10px;margin-top:0}
+.inline-cta p{color:rgba(255,255,255,.85);margin-bottom:20px;font-size:15px}
+.inline-cta a{display:inline-block;background:#fff;color:var(--purple)!important;text-decoration:none!important;padding:12px 28px;border-radius:8px;font-weight:700;font-size:14px}
+.inline-cta a:hover{background:#f3f4f6}
+.related{background:#f7f7f5;border-top:1px solid var(--border);padding:48px 5% 64px}
+.related-inner{max-width:760px;margin:0 auto}
+.related-label{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:20px}
+.related-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.related-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-decoration:none;color:inherit;transition:all .2s}
+.related-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(84,51,198,.08);border-color:rgba(84,51,198,.2)}
+.related-card-tag{font-size:11px;color:var(--purple);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+.related-card-title{font-size:16px;font-weight:700;line-height:1.35}
+footer{background:#1a0f3c;color:rgba(255,255,255,.6);padding:48px 5%;text-align:center;font-size:13px}
+footer a{color:rgba(255,255,255,.8);text-decoration:none;margin:0 12px}
+footer a:hover{color:#fff}
+.footer-tagline{font-size:12px;color:rgba(255,255,255,.4);margin-top:14px;font-style:italic}
+@media (max-width:640px){body{font-size:16px}main{padding-left:6%;padding-right:6%}h1{font-size:26px}article h2{font-size:23px;margin:36px 0 14px}article h3{font-size:18px}article p{font-size:16px}.nav-links{gap:14px}.nav-links a:not(.nav-cta){font-size:13px}.nav-links a:nth-child(1),.nav-links a:nth-child(2){display:none}.calc-table{font-size:13px}.calc-table th,.calc-table td{padding:10px 12px}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><a href="/">SW <span>Profit</span></a></div>
+  <div class="nav-links">
+    <a href="/#features">Возможности</a>
+    <a href="/#pricing">Тарифы</a>
+    <a href="/blog/">Блог</a>
+    <a href="/login.html" class="nav-cta">Войти</a>
+  </div>
+</nav>
+
+<main>
+  <div class="crumbs">
+    <a href="/">Главная</a><span>/</span><a href="/blog/">Блог</a><span>/</span>Юнит-экономика на Wildberries
+  </div>
+
+  <header class="article-header">
+    <div class="article-meta">
+      <span class="article-tag">Расчёты</span>
+      <span>2 июня 2026</span>
+      <span>· 15 мин чтения</span>
+    </div>
+    <h1>Юнит-экономика на Wildberries: расчёт точки безубыточности товара</h1>
+    <p class="article-lead">Магазин на 30 артикулов в плюсе по итогам месяца — а четыре товара уводят его в минус. Юнит-экономика позволяет посчитать, что с каждой проданной единицы реально остаётся, и понять, какие SKU тянут вниз весь магазин.</p>
+  </header>
+
+  <article>
+
+    <div class="toc">
+      <div class="toc-title">Содержание</div>
+      <ol>
+        <li><a href="#chto-takoe">Что такое юнит-экономика для селлера WB</a></li>
+        <li><a href="#peremennye-postoyannye">Переменные и постоянные расходы: разница</a></li>
+        <li><a href="#marzhinalnaya-pribyl">Маржинальная прибыль на единицу</a></li>
+        <li><a href="#tochka-bezubytochnosti">Точка безубыточности: формула и смысл</a></li>
+        <li><a href="#primer-raschet">Пример: разбираем товар по полкам</a></li>
+        <li><a href="#tipichnye-oshibki">Типичные ошибки расчёта</a></li>
+        <li><a href="#chto-delat">Что делать когда товар не отбивается</a></li>
+      </ol>
+    </div>
+
+    <h2 id="chto-takoe">Что такое юнит-экономика для селлера WB</h2>
+    <p>Юнит-экономика — это разбор экономики бизнеса на уровне одной единицы товара. Не «сколько заработали за месяц», а «сколько остаётся с продажи одной упаковки шампуня, одного платья, одного чехла».</p>
+    <p>Для селлера маркетплейса этот подход критически важен, потому что:</p>
+    <ul>
+      <li>Магазин может быть в плюсе целиком, но содержать товары, работающие в минус</li>
+      <li>На месячном уровне «убыточные» товары не видны — их минусы компенсируются плюсами «успешных» SKU</li>
+      <li>Без юнит-экономики легко вкладывать рекламный бюджет в товар, который физически не может приносить прибыль из-за веса и логистики</li>
+    </ul>
+    <p>Если посмотреть только на общий P&L магазина, никогда нельзя понять: <strong>какие именно</strong> товары стоит масштабировать, а какие выводить из ассортимента.</p>
+
+    <h2 id="peremennye-postoyannye">Переменные и постоянные расходы: разница</h2>
+    <p>В юнит-экономике все расходы делятся на две группы. От того, в какую группу попадает каждая статья, зависит, как считается прибыль на единицу.</p>
+
+    <h3>Переменные расходы</h3>
+    <p>Возникают только когда товар реально продаётся. Если за день продали 0 штук — этих расходов тоже не было.</p>
+    <ul>
+      <li><strong>Себестоимость товара</strong> — закупка плюс упаковка плюс маркировка</li>
+      <li><strong>Комиссия WB</strong> — процент с продажи</li>
+      <li><strong>Логистика «до клиента»</strong> — WB берёт за каждую доставленную единицу</li>
+      <li><strong>Эквайринг</strong> — процент за приём платежа (обычно внутри комиссии WB)</li>
+      <li><strong>Налог с продажи</strong> — УСН 6% от выручки или 15% от прибыли</li>
+    </ul>
+
+    <h3>Постоянные расходы</h3>
+    <p>Возникают независимо от количества продаж. Если за день не продали ни одной единицы — эти расходы всё равно начислятся.</p>
+    <ul>
+      <li><strong>Хранение на складе WB</strong> — начисляется ежедневно за остатки</li>
+      <li><strong>Реклама WB</strong> — обычно фиксированный месячный бюджет</li>
+      <li><strong>Внешняя реклама</strong> — таргет, блогеры, Telegram-каналы</li>
+      <li><strong>Услуги менеджера, фотографа, бухгалтера</strong></li>
+      <li><strong>Подписка на сервисы аналитики</strong></li>
+    </ul>
+
+    <div class="warning">
+      <div class="warning-label">⚠ Спорный момент</div>
+      <p>Реклама WB на самом деле может быть и переменной (CPM/CPC по клику) и постоянной (фиксированный дневной бюджет). При расчёте юнит-экономики удобнее считать её постоянной и распределять на количество проданных штук. Если магазин с большой долей рекламы — посмотрите рекламные расходы по конкретному артикулу за период и разделите на количество проданных штук.</p>
+    </div>
+
+    <h2 id="marzhinalnaya-pribyl">Маржинальная прибыль на единицу</h2>
+    <p>Главный показатель юнит-экономики — <strong>маржинальная прибыль с единицы</strong>. Это сколько остаётся с одной продажи после вычета всех переменных расходов, но до распределения постоянных.</p>
+
+    <div class="formula">
+      <div class="formula-label">Формула маржинальной прибыли</div>
+      <code>Маржинальная прибыль = Цена продажи − Комиссия WB − Логистика − Себестоимость − Налог</code>
+    </div>
+
+    <p>Если маржинальная прибыль <strong>отрицательная</strong> — это приговор. Товар физически не может стать прибыльным, потому что каждая продажа уносит деньги ещё до того, как мы учли рекламу, хранение и менеджеров. Такой товар нужно либо снимать с продажи, либо переделывать (поднимать цену, менять упаковку для снижения веса, переводить на FBS).</p>
+    <p>Если маржинальная прибыль <strong>положительная, но маленькая</strong> — товар может работать в плюс только при большом объёме продаж, чтобы суммарная маржинальная прибыль перекрыла постоянные расходы. Это нормально для дешёвых массовых товаров, но рискованно — любой провал в продажах или рост логистики уводит в минус.</p>
+    <p>Здоровая маржинальная прибыль — <strong>20–35% от цены продажи</strong>. Ниже 15% — товар работает на грани. Выше 40% — отличная экономика, можно масштабировать.</p>
+
+    <h2 id="tochka-bezubytochnosti">Точка безубыточности: формула и смысл</h2>
+    <p>Точка безубыточности — это объём продаж, при котором товар покрывает все расходы и выходит «в ноль». Меньше этого объёма — товар приносит убыток. Больше — приносит прибыль.</p>
+
+    <div class="formula">
+      <div class="formula-label">Формула точки безубыточности</div>
+      <code>Точка безубыточности (в шт.) = Постоянные расходы ÷ Маржинальная прибыль с единицы</code>
+    </div>
+
+    <p>Смысл формулы простой: каждая проданная единица отдаёт маржинальную прибыль на покрытие постоянных расходов. Делим постоянные на «отдачу с единицы» — получаем сколько штук нужно продать, чтобы постоянные закрылись полностью.</p>
+
+    <div class="example">
+      <div class="example-label">✓ Простой пример</div>
+      <p>Постоянные расходы на товар за месяц: реклама 8 000 ₽ + хранение 2 000 ₽ = <strong>10 000 ₽</strong>.</p>
+      <p>Маржинальная прибыль с одной продажи: <strong>250 ₽</strong>.</p>
+      <p>Точка безубыточности: 10 000 ÷ 250 = <strong>40 продаж в месяц</strong>.</p>
+      <p>Если в этом месяце продастся 40 штук — ровно в ноль. 50 штук — заработали 2 500 ₽ чистой. 30 штук — минус 2 500 ₽.</p>
+    </div>
+
+    <h2 id="primer-raschet">Пример: разбираем товар по полкам</h2>
+    <p>Возьмём женский кардиган. Цена продажи в карточке — 2 500 ₽. WB предоставляет скидку покупателю 20% — реальная цена продажи 2 000 ₽. Считаем юнит-экономику этого товара:</p>
+
+    <table class="calc-table">
+      <thead>
+        <tr><th>Параметр</th><th style="text-align:right">Сумма</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Цена продажи (после скидки WB)</td><td class="num pos">+2 000 ₽</td></tr>
+        <tr><td>Комиссия WB (15%)</td><td class="num neg">−300 ₽</td></tr>
+        <tr><td>Логистика «до клиента» + обратная (среднее)</td><td class="num neg">−180 ₽</td></tr>
+        <tr><td>Налог УСН 6% от 2000 ₽</td><td class="num neg">−120 ₽</td></tr>
+        <tr><td>Себестоимость (закупка + упаковка)</td><td class="num neg">−800 ₽</td></tr>
+        <tr class="total"><td>Маржинальная прибыль с единицы</td><td class="num pos">+600 ₽</td></tr>
+      </tbody>
+    </table>
+
+    <p>Маржинальная прибыль 600 ₽ = <strong>30% от цены продажи</strong>. Это здоровая юнит-экономика.</p>
+    <p>Теперь постоянные расходы на этот товар за месяц:</p>
+
+    <table class="calc-table">
+      <thead>
+        <tr><th>Статья</th><th style="text-align:right">Сумма за месяц</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Реклама WB на этот артикул</td><td class="num neg">−12 000 ₽</td></tr>
+        <tr><td>Платное хранение</td><td class="num neg">−3 000 ₽</td></tr>
+        <tr><td>Доля рекламы блогера (1 размещение / 3 артикула)</td><td class="num neg">−5 000 ₽</td></tr>
+        <tr class="total"><td>Постоянные расходы</td><td class="num neg">−20 000 ₽</td></tr>
+      </tbody>
+    </table>
+
+    <p><strong>Точка безубыточности:</strong> 20 000 ÷ 600 = <strong>33,3 единицы в месяц</strong>.</p>
+    <p>То есть, чтобы кардиган не приносил убыток, нужно продавать минимум 34 штуки в месяц. На 50 штуках чистая прибыль составит: 50 × 600 − 20 000 = <strong>10 000 ₽</strong>. На 80 штуках: 80 × 600 − 20 000 = <strong>28 000 ₽</strong>.</p>
+
+    <div class="example">
+      <div class="example-label">✓ Что это даёт селлеру</div>
+      <p>Зная точку безубыточности, можно принимать осознанные решения. Если за первую неделю месяца продаётся 5 штук — линейно это даёт 20 в месяц, что ниже точки безубыточности. Нужно либо усилить рекламу, либо снять с продажи и не дожигать постоянные расходы дальше.</p>
+      <p>Если продажи идут на 80 штук в месяц — есть смысл увеличить рекламный бюджет: каждая дополнительная продажа после точки безубыточности приносит 600 ₽ маржи, и в этих условиях можно платить за клиента до 500 ₽ и всё равно зарабатывать.</p>
+    </div>
+
+    <div class="inline-cta">
+      <h3>SW Profit считает юнит-экономику каждого товара</h3>
+      <p>Подключите кабинет WB по API — увидите маржинальную прибыль и точку безубыточности по каждому SKU автоматически. 14 дней бесплатно.</p>
+      <a href="/login.html">Попробовать →</a>
+    </div>
+
+    <h2 id="tipichnye-oshibki">Типичные ошибки расчёта юнит-экономики</h2>
+
+    <h3>Считать от выставленной цены, а не от цены продажи</h3>
+    <p>В карточке стоит 2 500 ₽, но WB дал скидку 20% и продал за 2 000 ₽. Комиссия WB берётся с 2 000 ₽, налог — с 2 000 ₽. Если считать от 2 500 ₽, вся юнит-экономика будет завышена примерно на 15–20%. Всегда работаем с реальной ценой продажи.</p>
+
+    <h3>Забывать про логистику возвратов</h3>
+    <p>Не каждый покупатель выкупает товар. Процент выкупа в одежде — 30–50%, в косметике — 70–90%. Когда товар не выкуплен, WB берёт деньги за обратную дорогу. Если процент возврата 50% — реальная логистика на одну <strong>проданную</strong> единицу в 2 раза выше, чем указано в тарифах.</p>
+
+    <div class="formula">
+      <div class="formula-label">Правильный расчёт логистики с учётом выкупа</div>
+      <code>Логистика на проданную единицу = Тариф WB ÷ Процент выкупа</code>
+    </div>
+
+    <p>Если тариф 90 ₽ и процент выкупа 60%, фактическая логистика — 90 ÷ 0,6 = <strong>150 ₽</strong> на проданную единицу. Это критически важная поправка.</p>
+
+    <h3>Не учитывать платное хранение в постоянных</h3>
+    <p>Многие селлеры записывают платное хранение в переменные, потому что оно «связано с товаром». На самом деле — это постоянный расход, который накапливается каждый день, пока товар на складе. Если оборачиваемость плохая — хранение может стать главной статьёй убытков.</p>
+
+    <h3>Игнорировать налог</h3>
+    <p>Налог УСН 6% от выручки кажется небольшим, но на товаре с маржой 25% он составляет до 25% от маржи. Это значимая величина, особенно для дешёвых товаров.</p>
+
+    <h3>Не разделять рекламу по артикулам</h3>
+    <p>«Рекламный бюджет 50 000 ₽ в месяц» — это не юнит-экономика. Нужно посмотреть в кабинете WB или в аналитике распределение бюджета по конкретным артикулам и считать на каждый отдельно. Один артикул может съедать 80% бюджета и при этом давать 10% продаж.</p>
+
+    <h2 id="chto-delat">Что делать когда товар не отбивается</h2>
+    <p>Если посчитали юнит-экономику и видите что товар работает в минус или близко к нулю — есть несколько рычагов:</p>
+
+    <h3>1. Поднять цену</h3>
+    <p>Самое прямое решение. Поднимаем цену на 10–15% и смотрим как реагируют продажи. Если падают на тот же процент — выручка не меняется, но юнит-экономика улучшается. Если падают сильнее — возвращаем как было. Если не падают — оставляем и считаем заработок.</p>
+
+    <h3>2. Снизить логистику через FBS</h3>
+    <p>Если товар лёгкий и компактный — переход на FBS (вы храните и отправляете сами) может снизить логистику в 2–3 раза. Подходит товарам стоимостью выше 1 500 ₽, чтобы свои операционные расходы не съели экономию.</p>
+
+    <h3>3. Изменить упаковку</h3>
+    <p>WB считает логистику по габаритам и весу. Часто можно уменьшить упаковку на 20–30% без потери функциональности — это снижает тариф на одну единицу логистики.</p>
+
+    <h3>4. Сменить поставщика</h3>
+    <p>Если маржа упёрлась — единственный путь это снизить себестоимость. Поиск нового поставщика или переговоры со старым на больший объём по сниженной цене.</p>
+
+    <h3>5. Отключить рекламу</h3>
+    <p>Парадокс: иногда отключение рекламы повышает прибыль. Если ДРР превышает маржу (то есть на каждую новую продажу мы платим больше, чем с неё зарабатываем), реклама работает в убыток. Лучше продавать меньше но с прибылью, чем больше но в минус.</p>
+
+    <h3>6. Снять с продажи</h3>
+    <p>Если ни один из рычагов не работает — товар нужно убирать из ассортимента. Каждая дополнительная продажа уносит деньги, а постоянные расходы продолжают капать. Перевод остатков на распродажу + закрытие карточки — нормальное решение, не поражение.</p>
+
+    <p>Когда разобрались с юнит-экономикой по каждому товару, следующий уровень понимания — это <a href="/blog/marzha-na-wildberries-kak-schitat">маржа магазина в целом и какая считается нормальной в 2026 году</a>. А чтобы понимать общую картину, начните с базы — <a href="/blog/kak-poschitat-chistuyu-pribyl-wildberries">как посчитать чистую прибыль на Wildberries</a>.</p>
+
+    <div class="inline-cta">
+      <h3>Считайте юнит-экономику автоматически</h3>
+      <p>SW Profit разбирает каждый товар на статьи расходов и показывает маржинальную прибыль и точку безубыточности. Без Excel.</p>
+      <a href="/login.html">Попробовать →</a>
+    </div>
+
+  </article>
+</main>
+
+<section class="related">
+  <div class="related-inner">
+    <div class="related-label">Читайте также</div>
+    <div class="related-grid">
+      <a href="/blog/kak-poschitat-chistuyu-pribyl-wildberries" class="related-card">
+        <div class="related-card-tag">Расчёты</div>
+        <div class="related-card-title">Как посчитать чистую прибыль на Wildberries: формула 2026</div>
+      </a>
+      <a href="/blog/marzha-na-wildberries-kak-schitat" class="related-card">
+        <div class="related-card-tag">Расчёты</div>
+        <div class="related-card-title">Маржа на Wildberries: как считать и какая нормальная в 2026</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <a href="/">Главная</a> ·
+    <a href="/blog/">Блог</a> ·
+    <a href="/offer.html">Оферта</a> ·
+    <a href="/privacy.html">Политика ПД</a> ·
+    <a href="/terms.html">Условия</a>
+  </div>
+  <div style="margin-top:14px">© 2026 SW Profit · Для селлеров Wildberries</div>
+  <div class="footer-tagline">Seller's Way Profit — путь продавца к прибыли</div>
+</footer>
+
+</body>
+</html>

@@ -5,6 +5,7 @@ Allow: /offer.html
 Allow: /privacy.html
 Allow: /login.html
 Allow: /demo
+Allow: /blog/
 
 Disallow: /dashboard.html
 Disallow: /api/

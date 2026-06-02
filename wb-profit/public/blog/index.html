@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Блог SW Profit — аналитика и расчёты для селлеров Wildberries</title>
+<meta name="description" content="Реальные расчёты, формулы и инструкции для селлеров Wildberries. Чистая прибыль, юнит-экономика, маржа, ДРР, логистика, штрафы — разбираем по фактам с примерами.">
+<meta name="keywords" content="блог Wildberries, аналитика wb, расчёт прибыли, юнит-экономика, маржа wildberries, селлерам wb">
+<link rel="canonical" href="https://swprofit.ru/blog/">
+<meta property="og:title" content="Блог SW Profit — расчёты и аналитика для селлеров Wildberries">
+<meta property="og:description" content="Реальные формулы, разборы отчётов WB, примеры расчёта прибыли. Без воды.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://swprofit.ru/blog/">
+<meta property="og:image" content="https://swprofit.ru/og-image.svg">
+<meta property="og:locale" content="ru_RU">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Блог SW Profit — расчёты для селлеров Wildberries">
+<meta name="twitter:description" content="Формулы прибыли, юнит-экономика, маржа на WB. Реальные примеры из практики.">
+<meta name="twitter:image" content="https://swprofit.ru/og-image.svg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#5433c6">
+
+<!-- JSON-LD: Blog + BreadcrumbList -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Blog",
+      "@id": "https://swprofit.ru/blog/#blog",
+      "url": "https://swprofit.ru/blog/",
+      "name": "Блог SW Profit",
+      "description": "Расчёты, формулы и аналитика для селлеров Wildberries",
+      "inLanguage": "ru-RU",
+      "publisher": {
+        "@type": "Organization",
+        "name": "SW Profit",
+        "url": "https://swprofit.ru/",
+        "logo": "https://swprofit.ru/favicon.svg"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Главная", "item": "https://swprofit.ru/" },
+        { "@type": "ListItem", "position": 2, "name": "Блог", "item": "https://swprofit.ru/blog/" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root{--purple:#5433c6;--purple-dark:#1a0f3c;--green:#1a7a4a;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Manrope',sans-serif;background:var(--surface);color:var(--text);line-height:1.6;font-size:16px}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:60px;background:rgba(26,15,60,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav-logo{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px}
+.nav-logo a{color:inherit;text-decoration:none}
+.nav-logo span{color:#a78bfa}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:rgba(255,255,255,.65);font-size:14px;text-decoration:none;font-weight:500;transition:color .2s}
+.nav-links a:hover{color:#fff}
+.nav-links a.active{color:#fff}
+.nav-cta{background:#fff;color:#1a0f3c!important;padding:8px 20px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none}
+
+main{padding-top:60px}
+
+.blog-header{background:linear-gradient(180deg,#1a0f3c 0%,#2a1a5c 100%);color:#fff;padding:80px 5% 64px;text-align:center}
+.blog-header-inner{max-width:780px;margin:0 auto}
+.blog-eyebrow{font-size:13px;font-weight:700;color:#a78bfa;letter-spacing:.2em;text-transform:uppercase;margin-bottom:18px}
+.blog-h1{font-size:clamp(32px,4.5vw,48px);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:20px}
+.blog-sub{font-size:17px;color:rgba(255,255,255,.75);line-height:1.5;max-width:620px;margin:0 auto}
+
+.crumbs{max-width:1100px;margin:0 auto;padding:24px 5% 0;font-size:13px;color:var(--muted)}
+.crumbs a{color:var(--purple);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
+.crumbs span{margin:0 8px;color:var(--muted)}
+
+.posts{max-width:1100px;margin:0 auto;padding:48px 5% 96px}
+.posts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:24px}
+.post-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;transition:all .25s cubic-bezier(.4,0,.2,1);text-decoration:none;color:inherit;display:flex;flex-direction:column}
+.post-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(84,51,198,.1);border-color:rgba(84,51,198,.2)}
+.post-meta{font-size:12px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:10px;letter-spacing:.02em;text-transform:uppercase;font-weight:600}
+.post-tag{background:rgba(84,51,198,.08);color:var(--purple);padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.04em}
+.post-title{font-size:20px;font-weight:700;line-height:1.3;letter-spacing:-.01em;margin-bottom:12px;color:var(--text)}
+.post-excerpt{font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:18px;flex:1}
+.post-arrow{font-size:14px;color:var(--purple);font-weight:600;display:flex;align-items:center;gap:6px;margin-top:auto}
+.post-arrow::after{content:'→';transition:transform .2s}
+.post-card:hover .post-arrow::after{transform:translateX(3px)}
+
+.cta-section{background:#f7f7f5;padding:64px 5%;text-align:center;border-top:1px solid var(--border)}
+.cta-inner{max-width:640px;margin:0 auto}
+.cta-h2{font-size:28px;font-weight:800;letter-spacing:-.01em;margin-bottom:14px}
+.cta-sub{font-size:15px;color:var(--muted);margin-bottom:28px;line-height:1.5}
+.cta-btn{display:inline-block;background:var(--purple);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:15px;transition:all .2s}
+.cta-btn:hover{background:#4527a8;transform:translateY(-1px);box-shadow:0 6px 20px rgba(84,51,198,.25)}
+
+footer{background:#1a0f3c;color:rgba(255,255,255,.6);padding:48px 5%;text-align:center;font-size:13px}
+footer a{color:rgba(255,255,255,.8);text-decoration:none;margin:0 12px}
+footer a:hover{color:#fff}
+.footer-tagline{font-size:12px;color:rgba(255,255,255,.4);margin-top:14px;font-style:italic}
+
+@media (max-width:640px){
+  .blog-header{padding:64px 5% 48px}
+  .posts{padding:32px 5% 64px}
+  .posts-grid{grid-template-columns:1fr;gap:16px}
+  .post-card{padding:22px}
+  .nav-links{gap:16px}
+  .nav-links a:not(.nav-cta){display:none}
+  .nav-links a.nav-blog{display:inline}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><a href="/">SW <span>Profit</span></a></div>
+  <div class="nav-links">
+    <a href="/#features">Возможности</a>
+    <a href="/#pricing">Тарифы</a>
+    <a href="/blog/" class="active nav-blog">Блог</a>
+    <a href="/login.html" class="nav-cta">Войти</a>
+  </div>
+</nav>
+
+<main>
+  <div class="crumbs">
+    <a href="/">Главная</a><span>/</span>Блог
+  </div>
+
+  <header class="blog-header">
+    <div class="blog-header-inner">
+      <div class="blog-eyebrow">Блог SW Profit</div>
+      <h1 class="blog-h1">Расчёты и аналитика<br>для селлеров Wildberries</h1>
+      <p class="blog-sub">Реальные формулы, разборы отчётов WB, примеры расчётов. Без воды и общих слов — только то, что помогает увидеть реальную прибыль магазина.</p>
+    </div>
+  </header>
+
+  <section class="posts">
+    <div class="posts-grid">
+
+      <a href="/blog/kak-poschitat-chistuyu-pribyl-wildberries" class="post-card">
+        <div class="post-meta">
+          <span class="post-tag">Расчёты</span>
+          <span>2 июня 2026</span>
+          <span>· 12 мин</span>
+        </div>
+        <h2 class="post-title">Как посчитать чистую прибыль на Wildberries: формула с примерами 2026</h2>
+        <p class="post-excerpt">Чем чистая прибыль отличается от выплаты WB, какие 8 статей расходов нужно учесть, и почему «выплата 380 000 ₽» не означает «заработок 380 000 ₽». Формула с примерами и подводными камнями.</p>
+        <span class="post-arrow">Читать статью</span>
+      </a>
+
+      <a href="/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti" class="post-card">
+        <div class="post-meta">
+          <span class="post-tag">Расчёты</span>
+          <span>2 июня 2026</span>
+          <span>· 15 мин</span>
+        </div>
+        <h2 class="post-title">Юнит-экономика на Wildberries: расчёт точки безубыточности товара</h2>
+        <p class="post-excerpt">Что такое юнит-экономика селлера WB, как разобрать товар на постоянные и переменные расходы, и сколько штук нужно продать чтобы выйти в ноль. Формулы, примеры, типичные ошибки.</p>
+        <span class="post-arrow">Читать статью</span>
+      </a>
+
+      <a href="/blog/marzha-na-wildberries-kak-schitat" class="post-card">
+        <div class="post-meta">
+          <span class="post-tag">Расчёты</span>
+          <span>2 июня 2026</span>
+          <span>· 11 мин</span>
+        </div>
+        <h2 class="post-title">Маржа на Wildberries: как считать и какая нормальная в 2026 году</h2>
+        <p class="post-excerpt">Разница между маржой и наценкой, маржинальностью и рентабельностью. Какая маржа считается нормальной в разных нишах WB и как её повысить без подъёма цены.</p>
+        <span class="post-arrow">Читать статью</span>
+      </a>
+
+    </div>
+  </section>
+
+  <section class="cta-section">
+    <div class="cta-inner">
+      <h2 class="cta-h2">Не считайте вручную — SW Profit делает это автоматически</h2>
+      <p class="cta-sub">Подключите кабинет WB по API за 2 минуты. Увидите реальную прибыль каждого товара с учётом всех 8 статей расходов. 14 дней бесплатно, карта не нужна.</p>
+      <a href="/login.html" class="cta-btn">Попробовать бесплатно →</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div>
+    <a href="/">Главная</a> ·
+    <a href="/blog/">Блог</a> ·
+    <a href="/offer.html">Оферта</a> ·
+    <a href="/privacy.html">Политика ПД</a> ·
+    <a href="/terms.html">Условия</a>
+  </div>
+  <div style="margin-top:14px">© 2026 SW Profit · Для селлеров Wildberries</div>
+  <div class="footer-tagline">Seller's Way Profit — путь продавца к прибыли</div>
+</footer>
+
+</body>
+</html>
