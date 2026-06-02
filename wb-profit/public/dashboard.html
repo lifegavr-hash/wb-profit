@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.8'
+  APP_VERSION: 'v0.7.9.9'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.8</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.9</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -4780,11 +4780,12 @@ async function loadSales(tok,df,dt){
     setLoadStatus('Загружаем часть '+(i+1)+' из '+chunks.length+' ('+ck.from+' — '+ck.to+')...');
     var chunkRows = await _loadSalesChunk(tok, ck.from, ck.to, i+1, chunks.length);
     all = all.concat(chunkRows);
-    // Пауза между кусками — WB rate-limit ~1 запрос в минуту на токен, но кэш в /api/wb смягчает.
-    // 1.5 сек минимизирует риск 429 и при этом не сильно тормозит общую загрузку.
+    // 🔥 v0.7.9.9: 16 сек — на 1 сек больше backend MIN_INTERVAL_MS (15 сек),
+    // чтобы гарантированно проходить наш rate-limiter без 429-петель.
+    // Кэш /api/wb (24ч TTL) делает повторные загрузки тех же дней мгновенными.
     if(i < chunks.length - 1){
-      setLoadStatus('Получено '+all.length+' записей. Пауза перед следующей частью...');
-      await new Promise(function(res){setTimeout(res, 1500);});
+      setLoadStatus('Получено '+all.length+' записей. Пауза перед следующей частью (16 сек)...');
+      await new Promise(function(res){setTimeout(res, 16000);});
     }
   }
   setLoadStatus('Обрабатываем '+all.length+' записей…');

@@ -8,8 +8,13 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const HAS_DB = Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY);
 
-// Окно между запросами к WB на один токен. WB говорит «1/мин», берём 65 сек на всякий.
-const MIN_INTERVAL_MS = 65 * 1000;
+// 🔥 v0.7.9.9: снижено с 65 до 15 сек. Это нужно для chunked-загрузки больших периодов
+// (v0.7.9.8 разрезает >30 дней на куски). Реально WB API допускает burst-режим —
+// 25 мая мы успешно загрузили 674 дня одной сессией, ни одного 429 от самого WB.
+// 65 сек был "1 req/min" по WB-документации, но фактическая толерантность WB больше.
+// При 15 сек: 6 кусков (152 дня) загружаются за ~1.5 мин вместо ~9 мин.
+// Кэш в /api/wb (24 ч TTL для прошедших дней) дополнительно снижает реальные запросы к WB.
+const MIN_INTERVAL_MS = 15 * 1000;
 
 function hashToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 32);
