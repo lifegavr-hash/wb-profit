@@ -32,7 +32,7 @@ try{
 window.__ANALYTICS_CONFIG = {
   YM_COUNTER_ID: '109568999',              // Я.Метрика, счётчик SW Profit (gavrvlog)
   SENTRY_DSN: 'SENTRY_DSN',                // ← вставь сюда DSN из Sentry, например https://abc@o123.ingest.sentry.io/456
-  APP_VERSION: 'v0.7.9.7'
+  APP_VERSION: 'v0.7.9.8'
 };
 </script>
 <!-- Яндекс.Метрика (загружается только если YM_COUNTER_ID валидный) -->
@@ -1936,7 +1936,7 @@ body{padding-top:var(--beta-h)}
       <a href="/privacy.html" target="_blank">Политика ПД</a> ·
       <a href="/terms.html" target="_blank">Условия</a> ·
       <a href="mailto:ooovsktrans@mail.ru">Помощь</a>
-      <div class="sidebar-version">SW Profit · v0.7.9.7</div>
+      <div class="sidebar-version">SW Profit · v0.7.9.8</div>
       <div class="sidebar-tagline">Seller's Way Profit — путь продавца к прибыли</div>
     </div>
   </div>
@@ -4742,7 +4742,59 @@ function getJwt(){
   return null;
 }
 
+// 🔥 v0.7.9.8: для больших периодов (>30 дн.) делим запрос на куски по 30 дней,
+// иначе один длинный fetch /api/wb упирается в Vercel FUNCTION_INVOCATION_TIMEOUT (60с).
+// Эта внешняя loadSales — роутер: либо один вызов _loadSalesChunk, либо последовательный
+// обход кусков с паузой 1.5 сек. Старая while-логика (429/401/204/rrdid pagination)
+// полностью сохранена внутри _loadSalesChunk без изменений.
 async function loadSales(tok,df,dt){
+  var totalDays=1;
+  try{var d1=new Date(df),d2=new Date(dt);totalDays=Math.max(1,Math.round((d2-d1)/86400000)+1);}catch(e){}
+
+  // Короткий период — старая логика одним запросом (без накладных расходов на chunking)
+  if(totalDays <= 30){
+    return await _loadSalesChunk(tok, df, dt, 1, 1);
+  }
+
+  // Длинный период — нарезаем на куски по 30 дней
+  var CHUNK_DAYS = 30;
+  var chunks = [];
+  var d1 = new Date(df), d2 = new Date(dt);
+  var cur = new Date(d1);
+  while(cur <= d2){
+    var chunkStart = new Date(cur);
+    var chunkEnd = new Date(cur);
+    chunkEnd.setDate(chunkEnd.getDate() + CHUNK_DAYS - 1);
+    if(chunkEnd > d2) chunkEnd = new Date(d2);
+    chunks.push({
+      from: chunkStart.toISOString().slice(0,10),
+      to: chunkEnd.toISOString().slice(0,10)
+    });
+    cur = new Date(chunkEnd);
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  var all = [];
+  for(var i=0; i<chunks.length; i++){
+    var ck = chunks[i];
+    setLoadStatus('Загружаем часть '+(i+1)+' из '+chunks.length+' ('+ck.from+' — '+ck.to+')...');
+    var chunkRows = await _loadSalesChunk(tok, ck.from, ck.to, i+1, chunks.length);
+    all = all.concat(chunkRows);
+    // Пауза между кусками — WB rate-limit ~1 запрос в минуту на токен, но кэш в /api/wb смягчает.
+    // 1.5 сек минимизирует риск 429 и при этом не сильно тормозит общую загрузку.
+    if(i < chunks.length - 1){
+      setLoadStatus('Получено '+all.length+' записей. Пауза перед следующей частью...');
+      await new Promise(function(res){setTimeout(res, 1500);});
+    }
+  }
+  setLoadStatus('Обрабатываем '+all.length+' записей…');
+  return all;
+}
+
+// 🔥 v0.7.9.8: реализация загрузки ОДНОГО куска (до 30 дней).
+// chunkIdx/totalChunks нужны только для статуса прогресса в начале каждой итерации.
+// Вся остальная логика (429 retry, 401 retry, 204, rrdid pagination) — оригинальная.
+async function _loadSalesChunk(tok,df,dt,chunkIdx,totalChunks){
   var all=[],rid=0,pg=0,retries401=0;
   // 🔥 v0.6.8: max 3 retry на 401 — WB под нагрузкой иногда возвращает ложный 401
   var MAX_401_RETRIES = 3;
@@ -4751,7 +4803,8 @@ async function loadSales(tok,df,dt){
   try{var d1=new Date(df),d2=new Date(dt);totalDays=Math.max(1,Math.round((d2-d1)/86400000)+1);}catch(e){}
   while(true){
     pg++;
-    setLoadStatus('Загружаем продажи... страница '+pg+' / период '+totalDays+' дн.');
+    var prefix = totalChunks > 1 ? 'Часть '+chunkIdx+'/'+totalChunks+': ' : '';
+    setLoadStatus(prefix + 'Загружаем продажи... страница '+pg+' / период '+totalDays+' дн.');
     var jwt=getJwt();
     var headers={Authorization:tok};
     if(jwt)headers['X-User-Auth']='Bearer '+jwt;
@@ -4789,7 +4842,6 @@ async function loadSales(tok,df,dt){
     rid=lid;
     if(d.length<100000) break;
   }
-  setLoadStatus('Обрабатываем '+all.length+' записей…');
   return all;
 }
 // 🔥 v0.6.9: setLoadStatus + таймер «идёт X сек / мин» для длинных загрузок
