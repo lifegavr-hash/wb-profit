@@ -64,7 +64,7 @@
       ]
     },
     {
-      "source": "/(.*).(svg|png|jpg|jpeg|gif|webp|ico|woff2|woff|ttf|css|js)",
+      "source": "/(.*).(svg|png|jpg|jpeg|gif|webp|ico|woff2|woff|ttf|css)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
