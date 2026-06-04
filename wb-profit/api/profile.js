@@ -341,21 +341,31 @@ async function handleExport(req, res, jwt) {
   };
   if (errors.length > 0) payload.meta.errors = errors;
 
-  // Audit-лог через console (audit_log CHECK constraint пока не разрешает 'data_exported' —
-  // если решим логировать в таблицу, нужна отдельная миграция на расширение whitelist).
-  console.log('[profile?resource=export]', JSON.stringify({
-    user_id: user.id,
-    user_email: user.email,
-    counts: {
-      wb_accounts:     payload.wb_accounts.length,
-      saved_calcs:     payload.saved_calcs.length,
-      product_costs:   payload.product_costs.length,
-      user_costs:      payload.user_costs.length,
-      daily_snapshots: payload.daily_snapshots.length,
-    },
-    section_errors: errors.length || 0,
-    ip: (req.headers?.['x-forwarded-for'] || req.headers?.['x-real-ip'] || null),
-  }));
+  // 🔥 v0.7.12.3: пишем событие в audit_log (CHECK constraint расширен миграцией).
+  // Аудит вторичен — если INSERT упадёт, экспорт всё равно должен дойти до юзера.
+  // Поэтому try/catch + console.warn, без re-throw. В meta только счётчики, без ПД.
+  try {
+    await audit({
+      event_type: 'data_exported',
+      event_status: 'success',
+      user_id: user.id,
+      user_email: user.email,
+      meta: {
+        counts: {
+          wb_accounts:     payload.wb_accounts.length,
+          saved_calcs:     payload.saved_calcs.length,
+          product_costs:   payload.product_costs.length,
+          user_costs:      payload.user_costs.length,
+          daily_snapshots: payload.daily_snapshots.length,
+        },
+        section_errors: errors.length || 0,
+        format_version: 1,
+      },
+      req,
+    });
+  } catch (auditErr) {
+    console.warn('[profile?resource=export] audit failed (export proceeds):', auditErr?.message);
+  }
 
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="swprofit-export-${dateForFilename}.json"`);
