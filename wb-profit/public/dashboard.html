@@ -4989,17 +4989,22 @@ async function runHistoryImport(){
     // (см. setLoadStatus, флаг _importInProgress).
     var raw = await loadSales(tok, df, dt);
 
-    // Себестоимости — как в существующих путях (go/auto-save).
+    // 🔥 v0.7.12.2 (B): гарантируем что localStorage.wb_costs синхронизирован с user_costs
+    // ДО построения снапшотов. loadCostsFromServer в init() — fire-and-forget, импорт
+    // может опередить его и прочитать пустой/устаревший localStorage → cost=0 у новых юзеров.
+    if(typeof loadCostsFromServer === 'function'){
+      try { await loadCostsFromServer(); } catch(_) {}
+    }
+
+    // 🔥 v0.7.12.2 (A): база costByNm — из localStorage (user_costs через /api/costs),
+    // а не из raw (WB reportDetailByPeriod не отдаёт себестоимость, x.cost всегда undefined).
+    // Прежний код строил пустую мапу → снапшоты с cost=0 → завышенная прибыль.
     var costMap = getCosts();
+    var costByNm = Object.assign({}, costMap);
+    // На будущее: если raw когда-то начнёт содержать cost — он перекроет значение из карты.
     (raw || []).forEach(function(x){
-      if(x.cost > 0){
-        var key = String(x.nm_id || x.sa || 'x');
-        costMap[key] = x.cost;
-      }
+      if(x.nm_id && x.cost > 0) costByNm[x.nm_id] = x.cost;
     });
-    saveCosts(costMap);
-    var costByNm = {};
-    (raw || []).forEach(function(x){ if(x.nm_id && x.cost > 0) costByNm[x.nm_id] = x.cost; });
 
     // 🔥 КЛЮЧЕВОЕ: fillRange — нулевые дни внутри диапазона. Гарантирует ровно 90 строк
     // и проход порога 60 при следующем входе (импорт не повторится).
