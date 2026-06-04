@@ -149,8 +149,14 @@ async function initSupabase() {
   // 🔥 v0.7.7.6+hotfix: чистим демо-флаг чтобы при следующем входе в /dashboard.html
   // не сработала /demo-проверка и пользователь попал в нормальный auth-режим
   try{localStorage.removeItem('wb_demo_active');}catch(e){}
-  var r = await fetch('/api/config');
-  var cfg = await r.json();
+  // 🔥 v0.7.10.9: читаем из inline __SUPA (см. /version.js), fallback на fetch.
+  var cfg;
+  if(window.__SUPA && window.__SUPA.url && window.__SUPA.key){
+    cfg = {supabaseUrl: window.__SUPA.url, supabaseKey: window.__SUPA.key};
+  } else {
+    var r = await fetch('/api/config');
+    cfg = await r.json();
+  }
   sb = supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
   window.sb = sb;  // 🔥 v0.7.10.1: для логгера ошибок (он читает window.sb)
   // 🔥 v0.7.10.1: вешаем глобальный логгер JS-ошибок (копия с dashboard.html v0.7.7.33)

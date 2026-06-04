@@ -80,6 +80,57 @@ window.__ANALYTICS_CONFIG = {
   document.head.appendChild(s);
 })();
 </script>
+<!-- 🔥 v0.7.10.9: PWA — регистрация SW + перехват install-prompt -->
+<script>
+(function(){
+  // Регистрация SW: только в защищённом контексте (https или localhost).
+  if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/sw.js').catch(function(err){
+        console.warn('[PWA] SW registration failed:', err);
+      });
+    });
+  }
+
+  // Перехват beforeinstallprompt: сохраняем event, открываем UI install-карточки.
+  // Listener вешаем максимально рано — событие стреляет ровно один раз.
+  window.__pwaDeferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    window.__pwaDeferredPrompt = e;
+    // Если карточка уже в DOM (после прогрузки UI) — показываем её.
+    try {
+      var card = document.getElementById('pwaInstallCard');
+      if(card) card.style.display = 'block';
+    } catch(_) {}
+  });
+
+  // Если приложение уже установлено — Chrome шлёт appinstalled.
+  window.addEventListener('appinstalled', function(){
+    window.__pwaDeferredPrompt = null;
+    try {
+      var card = document.getElementById('pwaInstallCard');
+      if(card) card.style.display = 'none';
+      if(window._YM_ID && window.ym) ym(window._YM_ID, 'reachGoal', 'pwa_installed');
+    } catch(_) {}
+  });
+
+  // Обработчик клика по кнопке Установить — вызываем сохранённый prompt.
+  window.pwaInstall = async function(){
+    var dp = window.__pwaDeferredPrompt;
+    if(!dp) return;
+    dp.prompt();
+    try {
+      var choice = await dp.userChoice;
+      if(choice && choice.outcome === 'accepted'){
+        var card = document.getElementById('pwaInstallCard');
+        if(card) card.style.display = 'none';
+      }
+    } catch(_) {}
+    window.__pwaDeferredPrompt = null;
+  };
+})();
+</script>
 <!-- ===================================================================== -->
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -2128,6 +2179,13 @@ body{padding-top:var(--beta-h)}
         <p class="hint" style="margin-top:10px">Эта цифра <strong>хранится только в вашем браузере</strong> (localStorage) и не отправляется на сервер.</p>
       </div>
 
+      <!-- 🔥 v0.7.10.9: PWA install — карточка появляется когда Chrome поймал beforeinstallprompt -->
+      <div class="card" id="pwaInstallCard" style="margin-top:14px;display:none">
+        <div class="ct">📲 Установить приложение</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Установите SW Profit как приложение — иконка на рабочем столе/смартфоне, запуск без браузера.</p>
+        <button class="btn-primary" onclick="pwaInstall()">Установить</button>
+      </div>
+
       <!-- 🔥 v0.7.7.33: Обратная связь — модалка вызывает sb.rpc('submit_feedback', ...) -->
       <div class="card" style="margin-top:14px">
         <div class="ct">💬 Обратная связь</div>
@@ -2772,8 +2830,14 @@ async function init(){
   if(pathDemo || urlDemo || lsDemo){
     return initDemoBypass();
   }
-  var r=await fetch('/api/config');
-  var cfg=await r.json();
+  // 🔥 v0.7.10.9: читаем из inline __SUPA (см. /version.js), fallback на fetch.
+  var cfg;
+  if(window.__SUPA && window.__SUPA.url && window.__SUPA.key){
+    cfg = {supabaseUrl: window.__SUPA.url, supabaseKey: window.__SUPA.key};
+  } else {
+    var r=await fetch('/api/config');
+    cfg=await r.json();
+  }
   sb=supabase.createClient(cfg.supabaseUrl,cfg.supabaseKey);
   // 🔥 v0.7.10.2: выставляем window.sb чтобы installFrontendErrorLogger
   // мог отправить RPC (проверка `if(!window.sb)` молча отбрасывала всё

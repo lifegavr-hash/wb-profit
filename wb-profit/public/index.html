@@ -13,6 +13,8 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#7c3aed">
+<!-- 🔥 v0.7.10.9: единая точка истины версии + inline Supabase config -->
+<script src="/version.js"></script>
 
 <!-- Open Graph -->
 <meta property="og:type" content="website">
@@ -1160,8 +1162,14 @@ function loadSupabase(){
 async function verifySession(){
   try {
     await loadSupabase();
-    var r = await fetch('/api/config');
-    var cfg = await r.json();
+    // 🔥 v0.7.10.9: читаем из inline __SUPA (см. /version.js), fallback на fetch.
+    var cfg;
+    if(window.__SUPA && window.__SUPA.url && window.__SUPA.key){
+      cfg = {supabaseUrl: window.__SUPA.url, supabaseKey: window.__SUPA.key};
+    } else {
+      var r = await fetch('/api/config');
+      cfg = await r.json();
+    }
     var sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseKey);
     var sessionResult = await sb.auth.getSession();
     var session = sessionResult && sessionResult.data && sessionResult.data.session;
