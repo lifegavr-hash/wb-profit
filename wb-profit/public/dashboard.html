@@ -1881,7 +1881,7 @@ body{padding-top:var(--beta-h)}
       <div class="onb-emoji">👋</div>
       <div class="onb-title">Добро пожаловать в SW Profit!</div>
       <div class="onb-text">Это сервис, который покажет реальную прибыль по каждому товару на Wildberries, найдёт убыточные позиции и подскажет, где утекают деньги.</div>
-      <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong> с правами на чтение. Сервису нужны разделы <strong>«Статистика»</strong> (продажи, остатки) и <strong>«Продвижение»</strong> (рекламные расходы для точной прибыли).</div>
+      <div class="onb-text" style="margin-top:10px">Чтобы начать работу, нам нужно подключиться к вашему кабинету WB через <strong>API токен</strong> с правами на чтение. Достаточно раздела <strong>«Статистика»</strong> — он содержит продажи, остатки и рекламные списания (ДРР считается из них). Раздел <strong>«Продвижение»</strong> — опционально: понадобится позже для детальной разбивки по рекламным кампаниям.</div>
       <div class="onb-text" style="margin-top:14px;font-size:12px;color:#94a3b8">Хотите сначала посмотреть как работает приложение?</div>
       <div style="text-align:center;margin-top:6px"><button class="onb-demo-btn" onclick="startDemoMode()">🎭 Посмотреть демо с тестовыми данными</button></div>
       <div class="onb-actions">
@@ -2167,7 +2167,7 @@ body{padding-top:var(--beta-h)}
         <!-- Кнопка "Добавить кабинет" -->
         <button class="btn-primary" id="wbAccountsAddBtn" onclick="showAddWbAccount()" style="width:100%">+ Добавить кабинет WB</button>
 
-        <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Нужны разделы: <strong>Статистика</strong>, <strong>Продвижение</strong>, <strong>Аналитика</strong>.</p>
+        <p class="hint" style="margin-top:10px">Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Обязательный раздел — <strong>Статистика</strong> (продажи, остатки, рекламные списания). Опционально — <strong>Продвижение</strong> и <strong>Аналитика</strong>: для будущей разбивки по кампаниям. Сервис работает и только со «Статистикой».</p>
 
         <!-- Скрытое поле для обратной совместимости со старым кодом -->
         <input type="hidden" id="tok1">
@@ -6425,6 +6425,9 @@ async function exportToExcel(ev){
         'Реклама ₽':Math.round(a.adv||0),
         'ДРР %':Number(drr.toFixed(1)),
         'Стоимость рекламы / продажу ₽':Math.round(cpc),
+        // 🔥 v0.7.12.4: ROAS — Return on Ad Spend (выручка/реклама), обратная ДРР.
+        // Только в Excel: рекламные KPI для аналитиков, в UI остаётся ДРР для простоты.
+        'ROAS':drr>0?Number((100/drr).toFixed(2)):null,
         'Штрафы ₽':Math.round(a.pen||0),
         'Себестоимость ₽/шт':Math.round(a.cost||0),
         'Чистая прибыль ₽':Math.round(prf)
@@ -9098,6 +9101,11 @@ function renderAnalytics(snaps){
   h+='<div class="an-card-title">📈 ЛИДЕРЫ РОСТА И ПАДЕНИЯ</div>';
   h+=renderTopMovers(snaps);
   h+='</div>';
+  // 🔥 v0.7.12.4: Топ-5 товаров где реклама съедает прибыль (по ДРР).
+  h+='<div class="an-card">';
+  h+='<div class="an-card-title">🎯 ТОП-5 ТОВАРОВ: РЕКЛАМА СЪЕДАЕТ ПРИБЫЛЬ</div>';
+  h+=renderTopBadDrr(snaps);
+  h+='</div>';
   // Виджет 4: ABC-анализ
   h+='<div class="an-card">';
   h+='<div class="an-card-title">🏷️ ABC-АНАЛИЗ ТОВАРОВ</div>';
@@ -9416,6 +9424,59 @@ function renderTopMovers(snaps){
   return h;
 }
 
+// 🔥 v0.7.12.4: Топ-5 товаров с худшим ДРР за период.
+// Агрегирует top_items[] из всех снапшотов по nm/name, суммирует ad и revenue,
+// считает «средневзвешенный» ДРР по сумме за период (а не среднее дневное).
+// Это правильная метрика: если в один день случайно крошечная выручка и алгоритм
+// дал 200% ДРР — он не доминирует над товаром с большим оборотом и 35% ДРР.
+function renderTopBadDrr(snaps){
+  if(!snaps || !snaps.length) return '<div class="home-empty-mini">Нет данных</div>';
+  var map = {};
+  snaps.forEach(function(s){
+    (s.top_items||[]).forEach(function(it){
+      var key = String(it.nm || it.name || '');
+      if(!key) return;
+      if(!map[key]) map[key] = {nm:it.nm, name:it.name, sales:0, revenue:0, ad:0};
+      map[key].sales   += Number(it.sales||0);
+      map[key].revenue += Number(it.revenue||0);
+      map[key].ad      += Number(it.ad||0);
+    });
+  });
+  // Фильтруем: были продажи И была реклама (без рекламы ДРР=0, неинтересно)
+  var items = Object.keys(map).map(function(k){ return map[k]; })
+    .filter(function(it){ return it.sales > 0 && it.ad > 0; })
+    .map(function(it){
+      it.drr = it.revenue > 0 ? (it.ad / it.revenue * 100) : 0;
+      return it;
+    })
+    .sort(function(a,b){ return b.drr - a.drr; })
+    .slice(0,5);
+
+  if(!items.length){
+    return '<div class="home-empty-mini">За этот период по товарам не было рекламных расходов — ДРР считать не из чего.</div>';
+  }
+
+  var h = '<table class="promo-table" style="width:100%;font-size:13px;margin-top:6px"><thead><tr>'+
+    '<th style="text-align:left">Товар</th>'+
+    '<th style="text-align:right">ДРР</th>'+
+    '<th style="text-align:right">Реклама ₽</th>'+
+    '<th style="text-align:right">Продажи</th>'+
+  '</tr></thead><tbody>';
+  items.forEach(function(it){
+    var cls = it.drr > 50 ? 'red' : (it.drr > 30 ? '' : 'green');
+    var label = (typeof itemHtml === 'function') ? itemHtml(it.name, it.nm) : escHtml(it.name||'—');
+    h += '<tr>'+
+      '<td>'+label+'</td>'+
+      '<td style="text-align:right" class="'+cls+'"><b>'+it.drr.toFixed(1)+'%</b></td>'+
+      '<td style="text-align:right">'+fmtR(it.ad)+'</td>'+
+      '<td style="text-align:right">'+it.sales+' шт</td>'+
+    '</tr>';
+  });
+  h += '</tbody></table>';
+  h += '<div style="font-size:11px;color:#94a3b8;margin-top:8px">Норма ДРР до 30% (зелёный), 30-50% — внимание, выше 50% — реклама съедает прибыль (красный).</div>';
+  return h;
+}
+
 // === ВИДЖЕТ 1: Линейный график ===
 function renderTimelineChart(snaps){
   if(!snaps.length)return '<div class="home-empty-mini">Нет данных</div>';
@@ -9431,11 +9492,14 @@ function renderTimelineChart(snaps){
       storage:Number(s.storage||0),ads:Number(s.ads||0),
       penalties:Number(s.penalties||0),cost:Number(s.cost||0)};
   });
+  // 🔥 v0.7.12.4: учитываем и max(p.ads) для шкалы — иначе если рекламы много,
+  // линия упирается в верх и обрезается (но в большинстве случаев ads < exp, так что эффект минимален).
   var maxV=0,minV=0;
   pts.forEach(function(p){
     if(p.rev>maxV)maxV=p.rev;
     if(p.exp>maxV)maxV=p.exp;
     if(p.prof>maxV)maxV=p.prof;
+    if(p.ads>maxV)maxV=p.ads;
     if(p.prof<minV)minV=p.prof;
   });
   if(maxV===0)maxV=1;
@@ -9450,11 +9514,15 @@ function renderTimelineChart(snaps){
   var avgProfit=total.prof/pts.length;
   // 🔥 v0.5.9: Сохраняем точки глобально для tooltip
   window._tlPoints = pts;
+  // 🔥 v0.7.12.4: показываем линию «Реклама» только если за период была реклама хоть в один день.
+  // Иначе легенда замусоривается, а линия лежит на нуле и не несёт информации.
+  var hasAds = pts.some(function(p){ return p.ads > 0; });
   // SVG
   var h='<div class="an-legend">'+
     '<span><span class="an-legend-dot" style="background:#22c55e"></span>Выручка</span>'+
     '<span><span class="an-legend-dot" style="background:#ef4444"></span>Расходы</span>'+
     '<span><span class="an-legend-dot" style="background:#7c3aed"></span>Прибыль</span>'+
+    (hasAds ? '<span><span class="an-legend-dot" style="background:#f97316"></span>Реклама</span>' : '')+
     '<span style="margin-left:auto;color:#94a3b8;font-size:11px">👆 наведи на точку</span>'+
   '</div>';
   h+='<svg class="an-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" onmouseleave="hideChartTooltip();hideTlCursor()">';
@@ -9474,14 +9542,19 @@ function renderTimelineChart(snaps){
   h+='<path d="'+path('rev')+'" stroke="#22c55e" stroke-width="2" fill="none"/>';
   h+='<path d="'+path('exp')+'" stroke="#ef4444" stroke-width="2" fill="none"/>';
   h+='<path d="'+path('prof')+'" stroke="#7c3aed" stroke-width="2.5" fill="none"/>';
+  // 🔥 v0.7.12.4: 4-я серия — расходы на рекламу по дням. Тоньше и пунктиром,
+  // чтобы не конкурировала визуально с тремя основными линиями.
+  if(hasAds) h+='<path d="'+path('ads')+'" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>';
   // Vertical cursor (показывается при hover, id для управления)
   h+='<line id="tlCursor" class="tl-cursor" x1="0" y1="'+pad.t+'" x2="0" y2="'+(H-pad.b)+'"/>';
   // 🔥 v0.5.9: Точки на ВСЕХ днях для ВСЕХ 3 метрик (не только на прибыли)
+  // v0.7.12.4: + 4-я точка (реклама), только если за период была реклама.
   pts.forEach(function(p,i){
     var cx=x(i);
     h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.rev)+'" r="3" fill="#22c55e" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
     h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.exp)+'" r="3" fill="#ef4444" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
     h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.prof)+'" r="3" fill="#7c3aed" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
+    if(hasAds && p.ads>0) h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.ads)+'" r="2.5" fill="#f97316" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
   });
   // 🔥 v0.5.9: Hit-зоны — вертикальные прозрачные полоски на каждый день
   // ловят мышь между точками для удобного hover
@@ -9572,6 +9645,8 @@ function showTlTooltip(e, i){
   rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#22c55e"></span>Выручка</div><div class="chart-tooltip-row-val">'+fmtR(p.rev)+'</div></div>';
   rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#ef4444"></span>Расходы</div><div class="chart-tooltip-row-val">'+fmtR(p.exp)+'</div></div>';
   rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#7c3aed"></span>Прибыль</div><div class="chart-tooltip-row-val" style="color:'+(p.prof>=0?'#22c55e':'#ef4444')+'">'+(p.prof>=0?'+':'')+fmtR(p.prof)+'</div></div>';
+  // 🔥 v0.7.12.4: строка «Реклама» в tooltip — только если был расход в этот день.
+  if(p.ads>0) rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#f97316"></span>Реклама</div><div class="chart-tooltip-row-val">'+fmtR(p.ads)+'</div></div>';
   // Топ-3 расходные статьи этого дня
   var breakdown = [
     {lbl:'Себестоимость', val:p.cost},
