@@ -143,6 +143,15 @@ export default async function handler(req, res) {
         // PERIOD_LIMIT → 403 с понятным сообщением для фронта
         if (sendIfPlanError(res, check)) return;
       }
+      // 🔥 v0.7.11.1: блокируем свежие WB-данные для истёкших подписок.
+      // checkPeriodLimit при успехе возвращает все поля плана включая isExpired/isAdmin —
+      // переиспользуем результат, не делая второй round-trip. Период уже проверен выше.
+      if (check.isExpired && !check.isAdmin) {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_EXPIRED',
+          message: 'Ваша подписка закончилась — свежие данные не поступают. Ваши сохранённые данные доступны для просмотра.'
+        });
+      }
     } else {
       // Если JWT нет — анонимный пробный режим, ограничиваем как Free (30 дней max)
       const fromMs = new Date(dateFrom).getTime();

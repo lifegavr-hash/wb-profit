@@ -2,6 +2,7 @@
 // Кэшируется в Supabase на 1 час (остатки меняются медленно).
 
 import crypto from 'node:crypto';
+import { extractJwt, getUserPlanWithLimits } from '../lib/plan-check.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -77,6 +78,24 @@ export default async function handler(req, res) {
 
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: 'Токен не передан' });
+
+  // 🔥 v0.7.11.1: блок свежих WB-данных для истёкших подписок (admin не блокируется).
+  // JWT в X-User-Auth (Authorization занят WB-токеном). Если JWT не передан —
+  // fail-open: не блокируем (анонимный/legacy-вызов, существующее поведение сохраняется).
+  try {
+    const jwt = extractJwt(req);
+    if (jwt) {
+      const planResult = await getUserPlanWithLimits(jwt);
+      if (!planResult.error && planResult.isExpired && !planResult.isAdmin) {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_EXPIRED',
+          message: 'Ваша подписка закончилась — свежие данные не поступают. Ваши сохранённые данные доступны для просмотра.'
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[wb-stocks] plan-check error:', e.message);
+  }
 
   const tokenHash = hashToken(token);
   const cacheKey = `stocks:${tokenHash}`;

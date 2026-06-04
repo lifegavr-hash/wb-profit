@@ -1,3 +1,5 @@
+import { extractJwt, getUserPlanWithLimits } from '../lib/plan-check.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -6,6 +8,23 @@ export default async function handler(req, res) {
 
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: 'Токен не передан' });
+
+  // 🔥 v0.7.11.1: блок свежих WB-данных рекламы для истёкших подписок (admin исключён).
+  // JWT в X-User-Auth. fail-open если JWT не передан.
+  try {
+    const jwt = extractJwt(req);
+    if (jwt) {
+      const planResult = await getUserPlanWithLimits(jwt);
+      if (!planResult.error && planResult.isExpired && !planResult.isAdmin) {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_EXPIRED',
+          message: 'Ваша подписка закончилась — свежие данные не поступают. Ваши сохранённые данные доступны для просмотра.'
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[wb-adv] plan-check error:', e.message);
+  }
 
   const { from, to } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'Укажите from и to' });

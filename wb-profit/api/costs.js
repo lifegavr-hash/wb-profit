@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { resolveWbAccountId } from '../lib/wb-account.js';
+import { getUserPlanWithLimits } from '../lib/plan-check.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -44,6 +45,23 @@ export default async function handler(req, res) {
     const map = {};
     (data || []).forEach((r) => { map[r.nm_id] = Number(r.cost) || 0; });
     return res.status(200).json({ costs: map, wb_account_id: wbAccountId });
+  }
+
+  // 🔥 v0.7.11.1: блок ИЗМЕНЕНИЯ себестоимостей для истёкших подписок (GET остаётся открытым).
+  // Чтение своих сохранённых данных — право пользователя (terms «данные сохраняются»),
+  // но обновление/удаление = активная работа → требует валидной подписки. Admin не блокируется.
+  if (req.method === 'POST' || req.method === 'DELETE') {
+    try {
+      const planResult = await getUserPlanWithLimits(token);
+      if (!planResult.error && planResult.isExpired && !planResult.isAdmin) {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_EXPIRED',
+          message: 'Ваша подписка закончилась — изменение себестоимостей недоступно. Просмотр сохранённых остаётся.'
+        });
+      }
+    } catch (e) {
+      console.warn('[costs] plan-check error:', e.message);
+    }
   }
 
   if (req.method === 'POST') {

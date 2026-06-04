@@ -2033,11 +2033,11 @@ body{padding-top:var(--beta-h)}
     </div>
   </div>
 
-  <!-- 🔥 v0.7.7.35: Expired-баннер — на бете тариф продлевается промокодом, не платежами -->
+  <!-- 🔥 v0.7.11.1: Expired-баннер — честный текст для беты (оплаты пока нет, продление промокодом) -->
   <div id="expiredBanner" class="expired-banner" style="display:none">
     <div class="expired-banner-icon">⏰</div>
     <div class="expired-banner-text">
-      <b>Trial-период закончился.</b> Доступна только Главная. Чтобы продлить доступ на бете — напишите нам через «Сообщить об ошибке».
+      <b>Ваша подписка закончилась.</b> Свежие данные не поступают, ваши сохранённые — доступны для просмотра. На бете продление по промокоду — напишите в поддержку через «Сообщить об ошибке».
     </div>
   </div>
 
@@ -3590,8 +3590,10 @@ function showSection(name,el){
   var ext = window.__profileExtended || {};
   var isAdmin = currentProfile && currentProfile.is_admin;
   if(ext.is_expired && !isAdmin && name!=='home' && name!=='settings'){
-    showInfoModal('⏰ Подписка истекла', 
-      '<p>Вы можете просматривать только <b>Главную</b>. Чтобы вернуть полный доступ — оплатите тариф в <b>Настройках</b>.</p>'+
+    // 🔥 v0.7.11.1: честный текст для беты — оплаты пока нет, продление через промокод.
+    showInfoModal('⏰ Подписка закончилась',
+      '<p>Свежие данные не поступают. Доступен просмотр <b>Главной</b> с уже сохранёнными данными.</p>'+
+      '<p style="margin-top:10px">На бете продление по промокоду — напишите в поддержку.</p>'+
       '<p style="margin-top:14px"><button class="btn-primary" style="width:100%" onclick="closeInfoModal();showSection(\'settings\',null)">Открыть Настройки</button></p>'
     );
     return;
@@ -4875,12 +4877,23 @@ async function go(tokenArg){
 async function loadStocks(tok){
   for(var attempt=0;attempt<3;attempt++){
     try{
-      var r=await fetch('/api/wb-stocks',{headers:{Authorization:tok}});
+      // 🔥 v0.7.11.1: шлём X-User-Auth чтобы бэк мог проверить isExpired (см. api/wb-stocks.js)
+      var jwt=getJwt();
+      var stHeaders={Authorization:tok};
+      if(jwt) stHeaders['X-User-Auth']='Bearer '+jwt;
+      var r=await fetch('/api/wb-stocks',{headers:stHeaders});
       if(r.status===429){
         var ra=parseInt(r.headers.get('Retry-After')||'60',10);
         if(attempt===2||ra>90){console.warn('stocks 429, giving up');return null;}
         await new Promise(function(res){setTimeout(res,(ra+2)*1000);});
         continue;
+      }
+      if(r.status===403){
+        var body403={};try{body403=await r.json();}catch(_){}
+        if(body403.error==='SUBSCRIPTION_EXPIRED'){
+          console.info('[stocks] subscription expired — skipping fresh stocks');
+          return null;
+        }
       }
       if(!r.ok){console.warn('stocks not ok',r.status);return null;}
       return r.json();
@@ -5026,8 +5039,15 @@ async function _loadSalesChunk(tok,df,dt,chunkIdx,totalChunks){
     if(jwt)headers['X-User-Auth']='Bearer '+jwt;
     var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:headers});
     if(r.status===403){
-      // PRO-required / PERIOD_LIMIT / FEATURE_REQUIRED от backend (v0.7.1)
+      // PRO-required / PERIOD_LIMIT / FEATURE_REQUIRED / SUBSCRIPTION_EXPIRED от backend
       var body={};try{body=await r.json();}catch(e){}
+      // 🔥 v0.7.11.1: истёкшая подписка — отдельный путь, БЕЗ upgrade-модалки.
+      // Юзер уже видит expiredBanner в шапке; здесь даём внятное сообщение в зоне загрузки.
+      if(body.error==='SUBSCRIPTION_EXPIRED'){
+        var em = body.message || 'Подписка закончилась — свежие данные не поступают.';
+        setLoadStatus('⏰ ' + em);
+        throw new Error('SUBSCRIPTION_EXPIRED');
+      }
       if(body.error==='PRO_REQUIRED' || body.error==='FEATURE_REQUIRED' || body.error==='PERIOD_LIMIT'){
         var feat = body.feature || body.message || 'Расширенный период';
         showProUpgradeModal(feat);
