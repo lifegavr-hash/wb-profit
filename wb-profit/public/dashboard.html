@@ -2041,6 +2041,14 @@ body{padding-top:var(--beta-h)}
     </div>
   </div>
 
+  <!-- 🔥 v0.7.12.0: Sticky-бар импорта истории — виден во всех разделах пока идёт фоновая загрузка -->
+  <div id="importProgressBar" class="trial-banner" style="display:none">
+    <div class="trial-banner-icon">🎁</div>
+    <div class="trial-banner-text">
+      <b>Загружаем вашу историю за 90 дней:</b> <span id="importProgressText">подготовка…</span>
+    </div>
+  </div>
+
   <div class="content">
 
     <!-- 🆕 v0.4.6: Панель показывается только если есть токен -->
@@ -2955,6 +2963,10 @@ async function init(){
     loadSellerName(),
     new Promise(r=>setTimeout(r,2000))
   ]).finally(()=>loadHomeData());
+  // 🔥 v0.7.12.0: онбординг-импорт — для юзеров с <60 снапшотов за 90 дней.
+  // Зовём в background, runHistoryImport сам проверит порог через тот же memo, что и loadHomeData.
+  // Поэтому второго запроса в Supabase не будет, если loadHomeData успеет наполнить кэш первым.
+  if(typeof runHistoryImport === 'function') runHistoryImport();
   // Если у пользователя нет токена и онбординг ещё не закрывали — показываем wizard
   if(!localStorage.getItem('wb_token')&&!localStorage.getItem('onboarding_done')){
     setTimeout(openOnboarding,500);
@@ -3265,6 +3277,11 @@ async function onbFinish(){
   var t1=document.getElementById('tok1');if(t1)t1.value=tk;
   var rt=document.getElementById('rememberTok');if(rt)rt.checked=true;
   closeOnboarding();
+  // 🔥 v0.7.12.0: запускаем онбординг-импорт истории за 90 дней в фоне.
+  // Не блокирует закрытие модалки. invalidateSnaps90 — на случай если до сохранения токена
+  // memo уже наполнили нулевым результатом (новый юзер, 0 снапшотов).
+  if(typeof invalidateSnaps90 === 'function') invalidateSnaps90();
+  if(typeof runHistoryImport === 'function') runHistoryImport();
   // Сразу запускаем загрузку 30 дней
   goFromHome();
 }
@@ -4933,6 +4950,102 @@ function buildStocksMap(stocks){
   return m;
 }
 
+// 🔥 v0.7.12.0: Онбординг-импорт истории за 90 дней.
+// Триггер (а) после первого подключения WB-токена и (б) при входе если у юзера < 60 снапшотов
+// в окне 90 дней. Переиспользует loadSales/_loadSalesChunk (готовый chunking 30 дней + 429-retry).
+// Идемпотентно: повторный запуск с тем же диапазоном перезаписывает upsert'ом, ничего не дублируется.
+async function runHistoryImport(){
+  // Guard: не запускать повторно если уже идёт.
+  if(window._importInProgress) return;
+  // Без токена — нечего грузить.
+  var tok = localStorage.getItem('wb_token');
+  if(!tok) return;
+  // Демо — пропускаем (для демо нет реального WB-токена).
+  try { if(localStorage.getItem('wb_demo_active') === '1') return; } catch(_) {}
+
+  try {
+    // Порог: если в БД уже >=60 снапшотов в окне последних 90 дней — импорт не нужен.
+    // Используем memo — то же значение что и loadHomeData(), без второго запроса.
+    var existing = await getOrLoadSnaps90();
+    if(existing && existing.length >= 60){
+      return; // тихо, без UI-шума
+    }
+
+    // === СТАРТ ИМПОРТА ===
+    window._importInProgress = true;
+    showImportBar('Подготовка…');
+    toast('info', '🎁 Загружаем вашу историю за 90 дней — это разовая операция, около минуты. Можно продолжать пользоваться, окно лучше не закрывать.');
+
+    // Период: 90 дней включая «вчера».
+    var today = new Date();
+    var yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+    var startDate = new Date(yesterday); startDate.setDate(yesterday.getDate() - 89);
+    var df = startDate.toISOString().slice(0,10);
+    var dt = yesterday.toISOString().slice(0,10);
+
+    // Существующий loadSales уже нарезает на 30-дневные чанки, держит паузу 16 сек
+    // между чанками и обрабатывает 401×3 / 429×5 retry — НЕ дублируем эту логику.
+    // setLoadStatus внутри loadSales автоматически копируется в #importProgressText
+    // (см. setLoadStatus, флаг _importInProgress).
+    var raw = await loadSales(tok, df, dt);
+
+    // Себестоимости — как в существующих путях (go/auto-save).
+    var costMap = getCosts();
+    (raw || []).forEach(function(x){
+      if(x.cost > 0){
+        var key = String(x.nm_id || x.sa || 'x');
+        costMap[key] = x.cost;
+      }
+    });
+    saveCosts(costMap);
+    var costByNm = {};
+    (raw || []).forEach(function(x){ if(x.nm_id && x.cost > 0) costByNm[x.nm_id] = x.cost; });
+
+    // 🔥 КЛЮЧЕВОЕ: fillRange — нулевые дни внутри диапазона. Гарантирует ровно 90 строк
+    // и проход порога 60 при следующем входе (импорт не повторится).
+    var snaps = aggregateRowsByDay(raw || [], costByNm, { fillRange: { df: df, dt: dt } });
+    if(snaps.length){
+      await saveSnapshots(snaps);
+    }
+
+    // Глобально публикуем raw для Детализации/Аналитики если юзер туда зайдёт.
+    rawData = raw || [];
+
+    // Сбрасываем memo чтобы Главная/Аналитика подтянули свежие 90 строк.
+    invalidateSnaps90();
+    var homeActive = document.getElementById('sectionHome') && document.getElementById('sectionHome').classList.contains('active');
+    if(homeActive && typeof loadHomeData === 'function') loadHomeData();
+    var anActive = document.getElementById('sectionAnalytics') && document.getElementById('sectionAnalytics').classList.contains('active');
+    if(anActive && typeof loadAnalytics === 'function') loadAnalytics();
+
+    toast('success', '✅ История за 90 дней загружена');
+  } catch(e) {
+    // SUBSCRIPTION_EXPIRED — тихо, юзер уже видит expiredBanner.
+    if(e && String(e.message) === 'SUBSCRIPTION_EXPIRED'){
+      console.info('[history-import] skipped — subscription expired');
+    } else {
+      console.warn('[history-import] failed:', e);
+      // Не показываем toast'ом — у юзера и так может быть проблема с токеном/сетью,
+      // а отдельная ошибка про «онбординг-импорт» только запутает.
+    }
+  } finally {
+    window._importInProgress = false;
+    hideImportBar();
+  }
+}
+
+function showImportBar(text){
+  var bar = document.getElementById('importProgressBar');
+  if(!bar) return;
+  bar.style.display = 'flex';
+  var txt = document.getElementById('importProgressText');
+  if(txt) txt.textContent = text || 'подготовка…';
+}
+function hideImportBar(){
+  var bar = document.getElementById('importProgressBar');
+  if(bar) bar.style.display = 'none';
+}
+
 // Получить актуальный JWT (обновляется в init() и при каждом session refresh от Supabase)
 function getJwt(){
   if(window.currentJwt)return window.currentJwt;
@@ -5092,6 +5205,11 @@ var _loadTimerInt = null;
 function setLoadStatus(text){
   _loadStatusText = text;
   renderLoadStatus();
+  // 🔥 v0.7.12.0: дублируем в sticky import-bar чтобы прогресс был виден во всех разделах
+  if(window._importInProgress){
+    var imp = document.getElementById('importProgressText');
+    if(imp) imp.textContent = text;
+  }
 }
 function renderLoadStatus(){
   var suffix = '';
@@ -7169,7 +7287,7 @@ async function fetchWbDay(dateIso,opts){
 
 // === АГРЕГАТОР ===
 // Превращает плоский список WB-строк в массив снапшотов по дням.
-function aggregateRowsByDay(rows,costMap){
+function aggregateRowsByDay(rows,costMap,opts){
   costMap=costMap||{};
   var byDay={};
   for(var i=0;i<rows.length;i++){
@@ -7220,6 +7338,21 @@ function aggregateRowsByDay(rows,costMap){
       it.logistics_amount+=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
       if(isAdv(r.bonus_type_name,r.supplier_oper_name))it.ad+=Math.abs(r.deduction||0);
       if(costMap[nm]&&doc==='продажа')it.profit-=Number(costMap[nm]);
+    }
+  }
+  // 🔥 v0.7.12.0: опционально заполняем нулевые дни в диапазоне (используется онбординг-импортом).
+  // Без этого график показывает только дни с операциями — выглядит как «дыры в истории».
+  if(opts && opts.fillRange && opts.fillRange.df && opts.fillRange.dt){
+    var _dStart = new Date(opts.fillRange.df);
+    var _dEnd = new Date(opts.fillRange.dt);
+    for(var _cur = new Date(_dStart); _cur <= _dEnd; _cur.setDate(_cur.getDate()+1)){
+      var _dayIso = _cur.toISOString().slice(0,10);
+      if(!byDay[_dayIso]){
+        byDay[_dayIso] = { day:_dayIso, sales_count:0, returns_count:0,
+          revenue:0, commission:0, payout:0,
+          logistics:0, storage:0, ads:0, penalties:0, wb_finance:0,
+          cost:0, profit:0, _items:{} };
+      }
     }
   }
   // Финализация: profit, top_items, alerts
@@ -7891,6 +8024,19 @@ async function loadSnapshots(days){
   }catch(e){console.warn('loadSnapshots error',e);return [];}
 }
 
+// 🔥 v0.7.12.0: memo для loadSnapshots(90). При входе loadHomeData() и runHistoryImport()
+// оба зовут одну и ту же выборку — кэш на 15 сек устраняет дублирующий запрос.
+// Инвалидируется после успешного импорта чтобы Главная подхватила свежие 90 строк.
+var __snaps90Cache = null; // {promise, ts}
+function getOrLoadSnaps90(){
+  if(__snaps90Cache && (Date.now() - __snaps90Cache.ts) < 15000){
+    return __snaps90Cache.promise;
+  }
+  __snaps90Cache = { promise: loadSnapshots(90), ts: Date.now() };
+  return __snaps90Cache.promise;
+}
+function invalidateSnaps90(){ __snaps90Cache = null; }
+
 // === ГЛАВНАЯ ===
 function renderHomeIdle(reason){
   var el=document.getElementById('homeContent');
@@ -7941,8 +8087,9 @@ async function loadHomeData(){
   if(lb) lb.style.display = localStorage.getItem('wb_token') ? '' : 'none';
   el.dataset.rendered='1';
   el.innerHTML='<div class="home-empty"><div class="home-spinner-icon">⏳</div>Загружаем сводку...</div>';
-  // Читаем историю снапшотов из Supabase (быстро)
-  var snapshots=await loadSnapshots(90);
+  // Читаем историю снапшотов из Supabase (быстро). v0.7.12.0: через memo, чтобы
+  // параллельный runHistoryImport переиспользовал тот же результат, а не делал второй запрос.
+  var snapshots=await getOrLoadSnaps90();
   if(!snapshots.length){
     renderHomeIdle();
     return;
