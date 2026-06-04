@@ -8065,7 +8065,9 @@ function invalidateSnaps90(){ __snaps90Cache = null; }
 var __adsCampaignsCache = {}; // {key: {promise, ts}}
 function _adsCacheKey(df, dt){
   var acc = (typeof getActiveWbAccountId === 'function') ? (getActiveWbAccountId() || '') : '';
-  return df+'_'+dt+'_'+acc;
+  // 🔥 v0.7.12.6: bump version в ключе — инвалидирует кэши у юзеров что висели
+  // на ответах без noAccess-поля (попадались в v0.7.12.5 если бэк не понял noAccess).
+  return 'v2:'+df+'_'+dt+'_'+acc;
 }
 async function getOrLoadAdsCampaigns(df, dt){
   var key = _adsCacheKey(df, dt);
@@ -9542,19 +9544,56 @@ function renderTopBadDrr(snaps){
 function renderAdsCampaigns(snaps, adsData){
   // Состояния:
   // 1) adsData еще не пришёл → placeholder (его рисует loader, сюда не попадаем)
-  // 2) noAccess === true → подсказка про право «Продвижение»
-  // 3) byCampaign пустой → empty state
-  // 4) есть данные → таблица top-10 + опц. "+N других"
+  // 2) noAccess === true → бэк уверен что нет права «Продвижение» (401/403 от WB)
+  // 3) byCampaign пустой, НО в snapshots[].ads была реклама → noAccess-like плашка
+  //    (WB advert-api иногда отдаёт 200+[] вместо 401 для токенов без прав — эвристика)
+  // 4) byCampaign пустой и рекламы реально не было → empty state
+  // 5) есть данные → таблица top-10 + опц. "+N других"
   if(!adsData){
     return '<div class="home-empty-mini"><span class="home-spinner-icon" style="font-size:18px">⏳</span> Загружаем разбивку по кампаниям…</div>';
   }
-  if(adsData.noAccess){
+  // 🔥 v0.7.12.6: диагностический log — чтобы при будущих странностях можно было сразу увидеть
+  // что реально пришло в Console (window.__DEBUG_ADS=1 → включает подробный лог).
+  try {
+    if(window.__DEBUG_ADS) console.info('[renderAdsCampaigns]', JSON.stringify({
+      noAccess: adsData.noAccess, byCampaignLen: (adsData.byCampaign||[]).length,
+      totalSpend: adsData.totalSpend, _httpError: adsData._httpError, _netError: adsData._netError
+    }));
+  } catch(_) {}
+
+  function noAccessPlate(reason){
     return '<div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:10px;padding:14px;font-size:13px;line-height:1.5;color:var(--text)">'+
       '<div style="font-weight:600;margin-bottom:6px">🔒 Разбивка по кампаниям недоступна</div>'+
-      '<div style="color:var(--muted)">Чтобы видеть расход и ROAS по каждой рекламной кампании, добавьте право <b>«Продвижение»</b> в WB-токен (Настройки WB → Доступ к API). Без этого ДРР продолжает считаться по списаниям из «Статистики», и весь остальной дашборд работает.</div>'+
+      '<div style="color:var(--muted)">'+
+        (reason === 'heuristic'
+          ? 'WB advert-api не отдал список ваших кампаний, хотя в финансовом отчёте реклама была. Скорее всего <b>у токена нет права «Продвижение»</b> — добавьте его в WB-токен (Настройки WB → Доступ к API). '
+          : 'Чтобы видеть расход и ROAS по каждой рекламной кампании, добавьте право <b>«Продвижение»</b> в WB-токен (Настройки WB → Доступ к API). '
+        )+
+        'Без этого ДРР продолжает считаться по списаниям из «Статистики», и весь остальной дашборд работает.'+
+      '</div>'+
     '</div>';
   }
-  if(!adsData.byCampaign || !adsData.byCampaign.length){
+
+  // (2) Бэк уверен — нет прав. Строгая === true проверка чтобы не сработать на случайное truthy-значение.
+  if(adsData.noAccess === true){
+    return noAccessPlate('explicit');
+  }
+
+  // Сетевой/HTTP сбой — не путаем с «нет данных».
+  if(adsData._httpError || adsData._netError){
+    return '<div class="home-empty-mini">Не удалось загрузить разбивку по кампаниям (HTTP '+(adsData._httpError||'нет сети')+'). Попробуйте позже.</div>';
+  }
+
+  // (3) Эвристика: byCampaign пустой, но в snapshots видна реклама (s.ads > 0).
+  // Признак того что у токена скорее всего нет права «Продвижение» — WB вернул пустой массив.
+  var byCampEmpty = !adsData.byCampaign || !adsData.byCampaign.length;
+  if(byCampEmpty){
+    var totalAdsFromSnaps = 0;
+    (snaps||[]).forEach(function(s){ totalAdsFromSnaps += Number(s.ads||0); });
+    if(totalAdsFromSnaps > 0){
+      return noAccessPlate('heuristic');
+    }
+    // (4) Рекламы не было в принципе — настоящий empty state.
     return '<div class="home-empty-mini">За этот период по рекламным кампаниям расходов не зафиксировано.</div>';
   }
 
