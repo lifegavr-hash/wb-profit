@@ -6,7 +6,9 @@
     { "source": "/blog/kak-poschitat-chistuyu-pribyl-wildberries", "destination": "/blog/kak-poschitat-chistuyu-pribyl-wildberries.html" },
     { "source": "/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti", "destination": "/blog/yunit-ekonomika-wildberries-tochka-bezubytochnosti.html" },
     { "source": "/blog/marzha-na-wildberries-kak-schitat", "destination": "/blog/marzha-na-wildberries-kak-schitat.html" },
-    { "source": "/blog/kak-poluchit-api-token-wildberries", "destination": "/blog/kak-poluchit-api-token-wildberries.html" }
+    { "source": "/blog/kak-poluchit-api-token-wildberries", "destination": "/blog/kak-poluchit-api-token-wildberries.html" },
+    { "source": "/blog/drr-na-wildberries-chto-eto", "destination": "/blog/drr-na-wildberries-chto-eto.html" },
+    { "source": "/blog/komissiya-wildberries-2026", "destination": "/blog/komissiya-wildberries-2026.html" }
   ],
   "headers": [
     {
