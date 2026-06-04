@@ -8058,6 +8058,44 @@ function getOrLoadSnaps90(){
 }
 function invalidateSnaps90(){ __snaps90Cache = null; }
 
+// 🔥 v0.7.12.5: кэш рекламной разбивки по кампаниям.
+// Ключ = df+dt+wb_account_id; TTL 5 мин (advert-api медленный, лимит на токен).
+// Если бэк отдал noAccess=true (нет права «Продвижение») — больше не звоним этому
+// сочетанию ключей в течение TTL: защита от спама в Vercel-логи и WB-лимит.
+var __adsCampaignsCache = {}; // {key: {promise, ts}}
+function _adsCacheKey(df, dt){
+  var acc = (typeof getActiveWbAccountId === 'function') ? (getActiveWbAccountId() || '') : '';
+  return df+'_'+dt+'_'+acc;
+}
+async function getOrLoadAdsCampaigns(df, dt){
+  var key = _adsCacheKey(df, dt);
+  var entry = __adsCampaignsCache[key];
+  if(entry && (Date.now() - entry.ts) < 5*60*1000){
+    return entry.promise;
+  }
+  var tok = localStorage.getItem('wb_token');
+  if(!tok) return Promise.resolve({totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_noToken:true});
+  var jwt = (typeof getJwt === 'function') ? getJwt() : (window.currentJwt || '');
+  var promise = (async function(){
+    try {
+      var headers = {Authorization: tok};
+      if(jwt) headers['X-User-Auth'] = 'Bearer '+jwt;
+      var r = await fetch('/api/wb-adv?from='+df+'&to='+dt, {headers: headers});
+      if(!r.ok){
+        // 403 SUBSCRIPTION_EXPIRED — тихо отдаём empty; expired-banner уже виден юзеру.
+        return {totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_httpError:r.status};
+      }
+      return await r.json();
+    } catch(e){
+      console.warn('[ads-campaigns] fetch failed:', e);
+      return {totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_netError:true};
+    }
+  })();
+  __adsCampaignsCache[key] = {promise: promise, ts: Date.now()};
+  return promise;
+}
+function invalidateAdsCampaigns(){ __adsCampaignsCache = {}; }
+
 // === ГЛАВНАЯ ===
 function renderHomeIdle(reason){
   var el=document.getElementById('homeContent');
@@ -9062,6 +9100,20 @@ async function loadAnalytics(){
   }
   snapshots.sort(function(a,b){return a.day<b.day?-1:1;});
   renderAnalytics(snapshots);
+  // 🔥 v0.7.12.5: lazy-load разбивки по рекламным кампаниям через advert-api.
+  // Не блокирует рендер аналитики — placeholder уже показан в карточке #adsCampaignsContent.
+  // Кэш на 5 мин по ключу df+dt+wb_account: повторные открытия Аналитики идут из памяти.
+  try {
+    var df = snapshots[0].day;
+    var dt = snapshots[snapshots.length-1].day;
+    var adsData = await getOrLoadAdsCampaigns(df, dt);
+    var slot = document.getElementById('adsCampaignsContent');
+    if(slot) slot.innerHTML = renderAdsCampaigns(snapshots, adsData);
+  } catch(e){
+    console.warn('[loadAnalytics] ads campaigns failed:', e);
+    var slotErr = document.getElementById('adsCampaignsContent');
+    if(slotErr) slotErr.innerHTML = '<div class="home-empty-mini">Не удалось загрузить разбивку по кампаниям. Попробуйте ещё раз позже.</div>';
+  }
 }
 // 🔥 v0.7.12.1: честная формулировка охвата. Если у юзера снапшотов меньше выбранного
 // периода (например 60 из 90 — реальные дни без онбординг-импорта) — показываем
@@ -9105,6 +9157,12 @@ function renderAnalytics(snaps){
   h+='<div class="an-card">';
   h+='<div class="an-card-title">🎯 ТОП-5 ТОВАРОВ: РЕКЛАМА СЪЕДАЕТ ПРИБЫЛЬ</div>';
   h+=renderTopBadDrr(snaps);
+  h+='</div>';
+  // 🔥 v0.7.12.5: Виджет «Рекламные кампании» — разбивка по advert-api.
+  // Сначала рисуем placeholder, потом lazy-loader подменит содержимое (см. ниже).
+  h+='<div class="an-card" id="adsCampaignsCard">';
+  h+='<div class="an-card-title">🎯 РЕКЛАМНЫЕ КАМПАНИИ ЗА '+periodLbl+'</div>';
+  h+='<div id="adsCampaignsContent">'+renderAdsCampaigns(snaps, null)+'</div>';
   h+='</div>';
   // Виджет 4: ABC-анализ
   h+='<div class="an-card">';
@@ -9474,6 +9532,104 @@ function renderTopBadDrr(snaps){
   });
   h += '</tbody></table>';
   h += '<div style="font-size:11px;color:#94a3b8;margin-top:8px">Норма ДРР до 30% (зелёный), 30-50% — внимание, выше 50% — реклама съедает прибыль (красный).</div>';
+  return h;
+}
+
+// 🔥 v0.7.12.5: Виджет «Рекламные кампании» — разбивка расходов по кампаниям с ROAS.
+// Данные приходят из /api/wb-adv (расширен в v0.7.12.5). ROAS считаем на фронте:
+// выручка по nm_ids кампании из snapshots[].top_items[] / расход на кампанию.
+// Это приближение — точной атрибуции у WB API нет. Юзеру показываем «приблиз.»
+function renderAdsCampaigns(snaps, adsData){
+  // Состояния:
+  // 1) adsData еще не пришёл → placeholder (его рисует loader, сюда не попадаем)
+  // 2) noAccess === true → подсказка про право «Продвижение»
+  // 3) byCampaign пустой → empty state
+  // 4) есть данные → таблица top-10 + опц. "+N других"
+  if(!adsData){
+    return '<div class="home-empty-mini"><span class="home-spinner-icon" style="font-size:18px">⏳</span> Загружаем разбивку по кампаниям…</div>';
+  }
+  if(adsData.noAccess){
+    return '<div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:10px;padding:14px;font-size:13px;line-height:1.5;color:var(--text)">'+
+      '<div style="font-weight:600;margin-bottom:6px">🔒 Разбивка по кампаниям недоступна</div>'+
+      '<div style="color:var(--muted)">Чтобы видеть расход и ROAS по каждой рекламной кампании, добавьте право <b>«Продвижение»</b> в WB-токен (Настройки WB → Доступ к API). Без этого ДРР продолжает считаться по списаниям из «Статистики», и весь остальной дашборд работает.</div>'+
+    '</div>';
+  }
+  if(!adsData.byCampaign || !adsData.byCampaign.length){
+    return '<div class="home-empty-mini">За этот период по рекламным кампаниям расходов не зафиксировано.</div>';
+  }
+
+  // Считаем выручку по nm_ids каждой кампании из snapshots.
+  // Карта nm → suma выручки за период.
+  var revByNm = {};
+  (snaps||[]).forEach(function(s){
+    (s.top_items||[]).forEach(function(it){
+      if(it.nm == null) return;
+      var k = String(it.nm);
+      revByNm[k] = (revByNm[k]||0) + Number(it.revenue||0);
+    });
+  });
+
+  // Обогащаем кампании: revenue + roas + alert.
+  var rows = adsData.byCampaign.map(function(c){
+    var rev = 0;
+    (c.nm_ids||[]).forEach(function(nm){ rev += revByNm[String(nm)] || 0; });
+    var roas = c.spend > 0 ? (rev / c.spend) : 0;
+    // Алерт «жжёт без отдачи»: spend >= 500 && ROAS < 1 (траты есть, отдача меньше расхода)
+    var alert = (c.spend >= 500 && roas < 1);
+    return Object.assign({}, c, {revenue: rev, roas: roas, alert: alert, nm_count: (c.nm_ids||[]).length});
+  });
+
+  // Top-10 + остальные сворачиваем в "+N других"
+  var TOP_N = 10;
+  var top = rows.slice(0, TOP_N);
+  var rest = rows.slice(TOP_N);
+  var restSpend = rest.reduce(function(a,r){return a+r.spend;},0);
+  var restRev   = rest.reduce(function(a,r){return a+r.revenue;},0);
+
+  function roasCell(roas, spend){
+    if(spend === 0) return '<span style="color:var(--hint)">—</span>';
+    if(roas === 0)  return '<span class="red"><b>0×</b></span>';
+    var cls = roas >= 3 ? 'green' : (roas >= 1.5 ? '' : 'red');
+    return '<span class="'+cls+'"><b>'+roas.toFixed(1)+'×</b></span>';
+  }
+  function statusBadge(c){
+    if(!c.statusLabel) return '<span style="color:var(--hint)">—</span>';
+    var icon = c.status===4?'🟢':(c.status===9?'⏸':(c.status===7?'✅':'⚪'));
+    return '<span title="код '+c.status+'">'+icon+' '+escHtml(c.statusLabel)+'</span>';
+  }
+
+  var h = '<table class="promo-table" style="width:100%;font-size:13px;margin-top:6px"><thead><tr>'+
+    '<th style="text-align:left">Кампания</th>'+
+    '<th style="text-align:left">Статус</th>'+
+    '<th style="text-align:right">Расход ₽</th>'+
+    '<th style="text-align:right">Товаров</th>'+
+    '<th style="text-align:right">ROAS</th>'+
+    '<th style="text-align:left">Алерт</th>'+
+  '</tr></thead><tbody>';
+  top.forEach(function(c){
+    h += '<tr>'+
+      '<td>'+escHtml(c.name||('#'+c.id))+'</td>'+
+      '<td>'+statusBadge(c)+'</td>'+
+      '<td style="text-align:right">'+fmtR(c.spend)+'</td>'+
+      '<td style="text-align:right">'+(c.nm_count||0)+'</td>'+
+      '<td style="text-align:right">'+roasCell(c.roas, c.spend)+'</td>'+
+      '<td>'+(c.alert ? '<span class="red" style="font-size:12px">⚠️ жжёт без отдачи</span>' : '')+'</td>'+
+    '</tr>';
+  });
+  if(rest.length > 0){
+    var restRoas = restSpend > 0 ? (restRev / restSpend) : 0;
+    h += '<tr style="background:rgba(0,0,0,0.02)">'+
+      '<td colspan="2" style="color:var(--muted)"><i>+ '+rest.length+' других кампаний</i></td>'+
+      '<td style="text-align:right">'+fmtR(restSpend)+'</td>'+
+      '<td style="text-align:right">—</td>'+
+      '<td style="text-align:right">'+roasCell(restRoas, restSpend)+'</td>'+
+      '<td></td>'+
+    '</tr>';
+  }
+  h += '</tbody></table>';
+  h += '<div style="font-size:11px;color:#94a3b8;margin-top:8px">'+
+    'ROAS = выручка по товарам кампании / расход на эту кампанию. <b>Приблизительный</b>: точной атрибуции «продажа → реклама» WB API не отдаёт. ROAS ≥3× — норма, 1.5–3× — на грани, &lt;1.5× — убыток.'+
+  '</div>';
   return h;
 }
 
