@@ -8001,16 +8001,29 @@ function toggleCalcAlerts(){
 }
 async function saveSnapshots(snapshots,token){
   if(!snapshots||!snapshots.length)return;
-  try{
-    var session=await sb.auth.getSession();
-    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
-    if(!jwt)return;
-    await fetch('/api/snapshots',{
-      method:'POST',
-      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
-      body:JSON.stringify({snapshots:snapshots, wb_account_id: getActiveWbAccountId()})
-    });
-  }catch(e){console.warn('saveSnapshots error',e);}
+  // 🔥 v0.7.12.1: проверяем r.ok и бросаем при не-200, чтобы вызывающий код
+  // (runHistoryImport / go / auto-save) узнал о проблеме, а не молча считал что записалось.
+  // Прежнее silent-поведение скрыло баг с trigger-функцией (пустой search_path) → 500 → блокер беты.
+  var session=await sb.auth.getSession();
+  var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+  if(!jwt) throw new Error('saveSnapshots: no JWT');
+  var r=await fetch('/api/snapshots',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+    body:JSON.stringify({snapshots:snapshots, wb_account_id: getActiveWbAccountId()})
+  });
+  if(!r.ok){
+    var errText='HTTP '+r.status;
+    try{
+      var j=await r.json();
+      if(j&&j.error) errText+=': '+j.error;
+      if(j&&j.message) errText+=' — '+j.message;
+    }catch(_){}
+    var err=new Error('saveSnapshots failed: '+errText);
+    console.error('[saveSnapshots]', err, 'first day:', snapshots[0] && snapshots[0].day, 'count:', snapshots.length);
+    throw err;
+  }
+  return true;
 }
 async function loadSnapshots(days){
   try{
@@ -9042,18 +9055,28 @@ async function loadAnalytics(){
   snapshots.sort(function(a,b){return a.day<b.day?-1:1;});
   renderAnalytics(snapshots);
 }
+// 🔥 v0.7.12.1: честная формулировка охвата. Если у юзера снапшотов меньше выбранного
+// периода (например 60 из 90 — реальные дни без онбординг-импорта) — показываем
+// «60 из 90» вместо «60 ДНЕЙ», чтобы не было ощущения «у меня неполные данные за месяц».
+function analyticsPeriodLabel(snaps){
+  var have = snaps.length;
+  var want = (typeof analyticsState !== 'undefined' && analyticsState.days) ? analyticsState.days : have;
+  if(have >= want) return want + ' ДН.';
+  return have + ' ИЗ ' + want + ' ДН.';
+}
 function renderAnalytics(snaps){
   var el=document.getElementById('analyticsContent');
   if(!el)return;
+  var periodLbl = analyticsPeriodLabel(snaps);
   var h='';
   // Виджет 1: график за период (по дням)
   h+='<div class="an-card">';
-  h+='<div class="an-card-title">📈 ПРИБЫЛЬ ЗА '+snaps.length+' ДНЕЙ</div>';
+  h+='<div class="an-card-title">📈 ПРИБЫЛЬ ЗА '+periodLbl+'</div>';
   h+=renderTimelineChart(snaps);
   h+='</div>';
   // Виджеты 2 и 3 в сетке
   h+='<div class="an-grid">';
-  h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ ЗА '+snaps.length+' ДН.</div>';
+  h+='<div class="an-card"><div class="an-card-title">🥧 СТРУКТУРА РАСХОДОВ ЗА '+periodLbl+'</div>';
   h+=renderExpenseStructure(snaps);
   h+='</div>';
   h+='<div class="an-card"><div class="an-card-title">⚠️ ТОП ПРОБЛЕМ</div>';
@@ -9062,7 +9085,7 @@ function renderAnalytics(snaps){
   h+='</div>';
   // 🔥 v0.5.10: История проблем за период — хроника событий по дням
   h+='<div class="an-card">';
-  h+='<div class="an-card-title">📊 ИСТОРИЯ ПРОБЛЕМ ЗА '+snaps.length+' ДН.</div>';
+  h+='<div class="an-card-title">📊 ИСТОРИЯ ПРОБЛЕМ ЗА '+periodLbl+'</div>';
   h+=renderEventHistory(snaps);
   h+='</div>';
   // 🔥 v0.7.4 A2: Top Movers — лидеры роста и падения
