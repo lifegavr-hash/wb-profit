@@ -2193,6 +2193,13 @@ body{padding-top:var(--beta-h)}
         <button class="btn-primary" onclick="openFeedbackModal()">Сообщить об ошибке / предложение</button>
       </div>
 
+      <!-- 🔥 v0.7.11.0: Экспорт данных (ФЗ-152 ст.14 — право на машиночитаемую выгрузку) -->
+      <div class="card" style="margin-top:14px">
+        <div class="ct">📦 Экспорт данных</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Выгрузка всех ваших расчётов, себестоимостей, расходов и истории в машиночитаемом формате JSON (ФЗ-152 ст.14). WB-токены не выгружаются.</p>
+        <button class="btn-primary" id="exportDataBtn" onclick="exportUserData()">Скачать мои данные (JSON)</button>
+      </div>
+
       <!-- 🔥 v0.7.7.13: Удаление аккаунта (152-ФЗ ст.9 — право на отзыв согласия) -->
       <!-- 🔥 v0.7.7.15: CSS-классы вместо inline-стилей для корректной работы в тёмной теме -->
       <div class="card danger-zone" style="margin-top:14px;border:1px solid #fecaca;background:#fef2f2">
@@ -3433,6 +3440,46 @@ async function logout(){
     keysToRemove.forEach(k => localStorage.removeItem(k));
   }catch(e){}
   window.location.href='/login.html';
+}
+
+// 🔥 v0.7.11.0: Экспорт данных пользователя (ФЗ-152 ст.14 — машиночитаемая выгрузка)
+async function exportUserData(){
+  var btn = document.getElementById('exportDataBtn');
+  if(!btn || btn.disabled) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Готовим выгрузку...';
+  try {
+    var jwt = window.currentJwt || '';
+    if(!jwt){ toast('error','Сессия истекла, войдите снова'); return; }
+    var r = await fetch('/api/profile?resource=export', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + jwt }
+    });
+    if(!r.ok){
+      var msg = 'HTTP ' + r.status;
+      try { var j = await r.json(); if(j && j.message) msg = j.message; } catch(_){}
+      toast('error', 'Не удалось получить экспорт: ' + msg);
+      return;
+    }
+    var blob = await r.blob();
+    var date = new Date().toISOString().slice(0,10);
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'swprofit-export-' + date + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    toast('success', 'Выгрузка скачана');
+  } catch(e){
+    console.warn('[exportUserData] failed:', e);
+    toast('error', 'Сбой сети, попробуйте ещё раз');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
 }
 
 // 🔥 v0.7.7.13: Удаление аккаунта пользователем (152-ФЗ ст.9)

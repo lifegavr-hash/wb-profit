@@ -1,4 +1,4 @@
-// /api/profile — возвращает полный профиль + управление WB-кабинетами.
+// /api/profile — возвращает полный профиль + управление WB-кабинетами + экспорт данных.
 //
 // === Основные endpoints ===
 // GET    /api/profile                    — профиль с лимитами тарифа
@@ -9,6 +9,10 @@
 // POST   /api/profile?resource=wb-accounts            — создать кабинет
 // PATCH  /api/profile?resource=wb-accounts&id=xxx     — обновить (name/is_default/last_used_at)
 // DELETE /api/profile?resource=wb-accounts&id=xxx     — удалить кабинет
+//
+// === Экспорт данных пользователя (v0.7.11.0, ФЗ-152 ст.14) ===
+// GET    /api/profile?resource=export                 — JSON-выгрузка всех данных юзера
+//        (БЕЗ wb_token, БЕЗ is_admin; user_id берётся ИЗ JWT)
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
@@ -251,6 +255,114 @@ async function handleWbAccounts(req, res, jwt) {
   return res.status(405).json({ error: 'Method not allowed for wb-accounts' });
 }
 
+// ====== Sub-router: экспорт данных пользователя (v0.7.11.0, ФЗ-152 ст.14) ======
+// Отдаёт ВСЕ данные текущего юзера одним JSON. user_id берётся из JWT, НЕ из query —
+// иначе юзер мог бы выгрузить чужие данные. wb_token и is_admin намеренно не включены.
+async function handleExport(req, res, jwt) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed for export' });
+  }
+
+  // Авторизация — тот же паттерн что у wb-accounts: JWT → user через plan-check
+  const planResult = await getUserPlanWithLimits(jwt);
+  if (planResult.error) {
+    return res.status(planResult.status || 500).json({ error: planResult.error, message: planResult.message });
+  }
+  const user = planResult.user; // user.id строго ИЗ JWT
+  const supa = makeServiceClient();
+
+  // Параллельная выборка всех таблиц по user_id
+  const [
+    profileRes,
+    accountsRes,
+    calcsRes,
+    productCostsRes,
+    userCostsRes,
+    snapshotsRes,
+  ] = await Promise.all([
+    // profiles: БЕЗ is_admin (чувствительный флаг)
+    supa.from('profiles')
+      .select('id, email, plan, plan_expires_at, trial_until, billing_period, first_name, created_at')
+      .eq('id', user.id)
+      .single(),
+    // wb_accounts: БЕЗ wb_token (секрет, никогда не экспортируем)
+    supa.from('wb_accounts')
+      .select('id, name, is_default, position, last_used_at, created_at, updated_at')
+      .eq('user_id', user.id)
+      .order('position', { ascending: true }),
+    // unit_calc_history — расчёты юзера (все поля)
+    supa.from('unit_calc_history')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true }),
+    // product_costs — себестоимости (все поля)
+    supa.from('product_costs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: true }),
+    // user_costs — личные расходы (все поля)
+    supa.from('user_costs')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: true }),
+    // daily_snapshots — история снапшотов (все поля)
+    supa.from('daily_snapshots')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('day', { ascending: true }),
+  ]);
+
+  // Если какая-то секция упала — экспорт всё равно отдаём, проблемы складываем в meta.errors
+  const errors = [];
+  if (profileRes.error)      errors.push({ section: 'profile',         message: profileRes.error.message });
+  if (accountsRes.error)     errors.push({ section: 'wb_accounts',     message: accountsRes.error.message });
+  if (calcsRes.error)        errors.push({ section: 'saved_calcs',     message: calcsRes.error.message });
+  if (productCostsRes.error) errors.push({ section: 'product_costs',   message: productCostsRes.error.message });
+  if (userCostsRes.error)    errors.push({ section: 'user_costs',      message: userCostsRes.error.message });
+  if (snapshotsRes.error)    errors.push({ section: 'daily_snapshots', message: snapshotsRes.error.message });
+
+  const exportedAt = new Date().toISOString();
+  const dateForFilename = exportedAt.slice(0, 10); // YYYY-MM-DD
+
+  const payload = {
+    meta: {
+      exported_at: exportedAt,
+      format_version: 1,
+      service: 'SW Profit',
+      note: 'персональные данные по ФЗ-152',
+      user_id: user.id,
+    },
+    profile:         profileRes.data || null,
+    wb_accounts:     accountsRes.data || [],
+    saved_calcs:     calcsRes.data || [],
+    product_costs:   productCostsRes.data || [],
+    user_costs:      userCostsRes.data || [],
+    daily_snapshots: snapshotsRes.data || [],
+  };
+  if (errors.length > 0) payload.meta.errors = errors;
+
+  // Audit-лог через console (audit_log CHECK constraint пока не разрешает 'data_exported' —
+  // если решим логировать в таблицу, нужна отдельная миграция на расширение whitelist).
+  console.log('[profile?resource=export]', JSON.stringify({
+    user_id: user.id,
+    user_email: user.email,
+    counts: {
+      wb_accounts:     payload.wb_accounts.length,
+      saved_calcs:     payload.saved_calcs.length,
+      product_costs:   payload.product_costs.length,
+      user_costs:      payload.user_costs.length,
+      daily_snapshots: payload.daily_snapshots.length,
+    },
+    section_errors: errors.length || 0,
+    ip: (req.headers?.['x-forwarded-for'] || req.headers?.['x-real-ip'] || null),
+  }));
+
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="swprofit-export-${dateForFilename}.json"`);
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(200).send(JSON.stringify(payload, null, 2));
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -264,6 +376,10 @@ export default async function handler(req, res) {
   const resource = req.query?.resource;
   if (resource === 'wb-accounts') {
     return handleWbAccounts(req, res, jwt);
+  }
+  // 🔥 v0.7.11.0: sub-router для экспорта данных юзера (ФЗ-152 ст.14)
+  if (resource === 'export') {
+    return handleExport(req, res, jwt);
   }
 
   // Основной маршрут — GET профиль / DELETE аккаунт
