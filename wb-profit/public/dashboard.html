@@ -688,6 +688,13 @@ html[data-theme="dark"] .wb-account-item.is-default{background:rgba(124,58,237,.
 .wb-account-meta{font-size:12px;color:var(--muted)}
 .wb-account-badge{display:inline-block;background:#7c3aed;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;letter-spacing:.04em;text-transform:uppercase;margin-left:6px}
 .wb-account-actions{display:flex;gap:6px;flex-shrink:0}
+/* 🔥 v0.7.12.15: блок отображения текущего токена кабинета в развёрнутой форме */
+.wb-current-token-box{display:flex;gap:8px;align-items:flex-start;background:#f7f7f5;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.wb-current-token-text{font-family:'SF Mono','Monaco','Consolas',monospace;font-size:12px;color:var(--text);word-break:break-all;flex:1;line-height:1.5;user-select:all;background:transparent;padding:0}
+html[data-theme="dark"] .wb-current-token-box{background:rgba(255,255,255,.04)}
+@media (max-width:640px){
+  .wb-current-token-box{flex-direction:column;gap:6px}
+}
 .wb-acc-btn{background:transparent;border:1px solid var(--border);padding:5px 10px;border-radius:7px;font-size:12px;cursor:pointer;color:var(--muted);transition:all .15s}
 .wb-acc-btn:hover{border-color:#7c3aed;color:#7c3aed}
 .wb-acc-btn.danger:hover{border-color:#dc2626;color:#dc2626}
@@ -4301,7 +4308,7 @@ function renderWbAccountsList(){
       '<div class="wb-account-actions">' +
         (a.is_default ? '' : '<button class="wb-acc-btn" onclick="switchWbAccount(\'' + a.id + '\')">Сделать активным</button>') +
         '<button class="wb-acc-btn" onclick="renameWbAccount(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\')">Переименовать</button>' +
-        '<button class="wb-acc-btn" onclick="editWbAccountToken(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\', ' + (a.is_default ? 'true' : 'false') + ')">Изменить токен</button>' +
+        '<button class="wb-acc-btn" onclick="editWbAccountToken(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\', ' + (a.is_default ? 'true' : 'false') + ')">🔑 Показать / изменить</button>' +
         (accs.length > 1 ? '<button class="wb-acc-btn danger" onclick="deleteWbAccount(\'' + a.id + '\', \'' + escapeAttr(a.name) + '\')">Удалить</button>' : '') +
       '</div>' +
     '</div>' +
@@ -4497,23 +4504,84 @@ function editWbAccountToken(id, name, isDefault){
   });
   const form = document.getElementById('editTokenForm_' + id);
   if(!form) return;
+
+  // 🔥 v0.7.12.15: показываем текущий токен в развёрнутом виде.
+  // Бэкенд GET /wb-accounts намеренно НЕ возвращает wb_token (только метаданные).
+  // Поэтому для default-кабинета берём токен из localStorage (он уже в браузере юзера);
+  // для не-default — показываем маску с пояснением (токен есть в БД, но не в браузере).
+  var currentSection = '';
+  if(isDefault){
+    var curTok = (localStorage.getItem('wb_token') || '').trim();
+    if(curTok){
+      currentSection =
+        '<div style="margin-bottom:14px">' +
+          '<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Текущий токен</label>' +
+          '<div class="wb-current-token-box">' +
+            '<code id="curTokenView_' + id + '" class="wb-current-token-text">' + escapeHtml(curTok) + '</code>' +
+            '<button class="bulk-btn" type="button" onclick="copyWbTokenToClipboard(\'' + id + '\')" style="white-space:nowrap;align-self:flex-start">📋 Скопировать</button>' +
+          '</div>' +
+          '<p class="hint" style="margin:6px 0 0;font-size:11px">Этот токен хранится в вашем браузере (localStorage) и в защищённой базе. Никому его не передавайте.</p>' +
+        '</div>';
+    } else {
+      currentSection =
+        '<div style="margin-bottom:14px"><p class="hint" style="margin:0;font-size:12px">Текущий токен сейчас не виден в браузере. Введите новый ниже, чтобы заменить.</p></div>';
+    }
+  } else {
+    currentSection =
+      '<div style="margin-bottom:14px">' +
+        '<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Текущий токен</label>' +
+        '<div class="wb-current-token-box">' +
+          '<code class="wb-current-token-text" style="opacity:.6">•••••••••• скрыт</code>' +
+        '</div>' +
+        '<p class="hint" style="margin:6px 0 0;font-size:11px">Полный токен не-активного кабинета не хранится в вашем браузере (передаётся только при переключении). Чтобы увидеть — сделайте этот кабинет активным, либо введите новый ниже для замены.</p>' +
+      '</div>';
+  }
+
   form.innerHTML =
-    '<div style="margin-bottom:6px;font-weight:600;font-size:13px">Изменить токен для «' + escapeHtml(name) + '»</div>' +
-    '<p class="hint" style="margin:0 0 10px">Старый токен будет полностью заменён. Используйте, если текущий токен сломался, просрочен или вы выпустили новый в WB.</p>' +
+    '<div style="margin-bottom:10px;font-weight:600;font-size:13px">🔑 Токен кабинета «' + escapeHtml(name) + '»</div>' +
+    currentSection +
     '<div style="margin-bottom:10px">' +
-      '<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Новый API токен WB</label>' +
+      '<label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Заменить токен (необязательно)</label>' +
       '<input type="text" id="editTokenInput_' + id + '" placeholder="eyJhbGciOiJFUzI1NiIs..." class="wb-token-input" autocomplete="off" data-lpignore="true" data-1p-ignore="true" spellcheck="false" style="width:100%">' +
+      '<p class="hint" style="margin:6px 0 0;font-size:11px">Старый токен будет полностью заменён. Используйте, если текущий сломался, просрочен или вы выпустили новый в WB.</p>' +
     '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
       '<button class="btn-primary" onclick="saveWbAccountToken(\'' + id + '\', \'' + escapeAttr(name) + '\', ' + (isDefault ? 'true' : 'false') + ')">Сохранить новый токен</button>' +
-      '<button class="bulk-btn" onclick="cancelEditWbAccountToken(\'' + id + '\')">Отмена</button>' +
+      '<button class="bulk-btn" onclick="cancelEditWbAccountToken(\'' + id + '\')">Свернуть</button>' +
       '<button class="bulk-btn" onclick="openOnboarding()">📖 Как получить токен</button>' +
     '</div>';
   form.style.display = '';
+  // Прокручиваем форму в зону видимости (она может быть ниже карточки)
+  try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
   setTimeout(function(){
     const inp = document.getElementById('editTokenInput_' + id);
     if(inp) inp.focus();
-  }, 50);
+  }, 250);
+}
+
+// 🔥 v0.7.12.15: копирование текущего токена в буфер обмена
+function copyWbTokenToClipboard(id){
+  var el = document.getElementById('curTokenView_' + id);
+  if(!el) return;
+  var text = (el.textContent || '').trim();
+  if(!text) return;
+  function done(){ toast('success', '📋 Токен скопирован'); }
+  function fail(){ toast('warning', 'Не удалось скопировать автоматически — выделите и скопируйте вручную'); }
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){
+        // fallback на execCommand
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+          done();
+        } catch(_){ fail(); }
+      });
+      return;
+    }
+  } catch(_){}
+  fail();
 }
 
 // Отмена редактирования токена
