@@ -3854,7 +3854,9 @@ function showSection(name,el){
 }
 
 async function applyPromo(){
-  var code=document.getElementById('promoCode').value.trim();
+  // 🔥 v0.7.12.16: симметрично с регистрацией — нормализуем код (trim+upper) на фронте,
+  // бэк api/promo.js тоже нормализует. Защита от пробелов/смешанного регистра.
+  var code=document.getElementById('promoCode').value.trim().toUpperCase();
   var errBox=document.getElementById('promoErr');
   var okBox=document.getElementById('promoOk');
   errBox.style.display='none'; okBox.style.display='none';
@@ -3867,7 +3869,8 @@ async function applyPromo(){
 }
 
 async function createPromo(){
-  var code=document.getElementById('newCode').value.trim();
+  // 🔥 v0.7.12.16: нормализация при создании — чтобы код в БД всегда trim+upper.
+  var code=document.getElementById('newCode').value.trim().toUpperCase();
   var plan=document.getElementById('newPlan').value;
   var days=parseInt(document.getElementById('newDays').value);
   var maxUses=parseInt(document.getElementById('newMaxUses').value);

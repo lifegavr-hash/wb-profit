@@ -26,8 +26,11 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { action, code, plan, days, maxUses, id } = req.body;
     if (action === 'create_promo') {
+      // 🔥 v0.7.12.16: trim+upper при создании — чтобы в БД всегда чистый код без пробелов.
+      const normCode = (code || '').trim().toUpperCase();
+      if (!normCode) return res.status(400).json({ error: 'Введите код' });
       const { data, error: err } = await supabase.from('promo_codes').insert({
-        code: code.toUpperCase(), plan, days, max_uses: maxUses
+        code: normCode, plan, days, max_uses: maxUses
       }).select().single();
       if (err) return res.status(400).json({ error: err.message });
       await audit({
@@ -35,7 +38,7 @@ export default async function handler(req, res) {
         event_status: 'success',
         user_id: user.id,
         user_email: user.email,
-        meta: { code: code.toUpperCase(), plan, days, max_uses: maxUses, promo_id: data.id },
+        meta: { code: normCode, plan, days, max_uses: maxUses, promo_id: data.id },
         req
       });
       return res.status(200).json({ success: true, promo: data });
