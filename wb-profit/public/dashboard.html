@@ -95,14 +95,62 @@ window.__ANALYTICS_CONFIG = {
   // Перехват beforeinstallprompt: сохраняем event, открываем UI install-карточки.
   // Listener вешаем максимально рано — событие стреляет ровно один раз.
   window.__pwaDeferredPrompt = null;
+
+  // 🔥 v0.7.12.11: helpers для нового sticky-баннера + sidebar-pill.
+  // Приоритет: expired-баннер выше PWA. Dismiss-флаг 30 дней.
+  function _pwaIsStandalone(){
+    try {
+      if(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+      if(window.navigator && window.navigator.standalone === true) return true; // iOS Safari
+      return false;
+    } catch(_){ return false; }
+  }
+  function _pwaWasDismissed(){
+    try {
+      var ts = parseInt(localStorage.getItem('pwa_install_dismissed_at') || '0', 10);
+      if(!ts) return false;
+      var DAYS_30 = 30*24*60*60*1000;
+      return (Date.now() - ts) < DAYS_30;
+    } catch(_){ return false; }
+  }
+  function _pwaIsExpiredUser(){
+    try {
+      var ext = window.__profileExtended || {};
+      var isAdmin = window.currentProfile && window.currentProfile.is_admin;
+      return !!ext.is_expired && !isAdmin;
+    } catch(_){ return false; }
+  }
+  // Пересчёт видимости баннера и pill — зовём при beforeinstallprompt, при appinstalled,
+  // при изменении trial/expired состояния (см. updateTrialExpiredBanners).
+  window.pwaUpdateUI = function(){
+    var banner = document.getElementById('pwaInstallBanner');
+    var pill = document.getElementById('pwaInstallPill');
+    var canInstall = !!window.__pwaDeferredPrompt && !_pwaIsStandalone();
+    // Баннер: уважает dismiss и expired-приоритет.
+    var bannerShow = canInstall && !_pwaWasDismissed() && !_pwaIsExpiredUser();
+    if(banner) banner.style.display = bannerShow ? 'flex' : 'none';
+    // Pill: запасная точка для тех, кто закрыл баннер. Не уважает dismiss,
+    // но прячется в standalone (уже установлено) и для expired (пусть видят expired).
+    var pillShow = canInstall && !_pwaIsExpiredUser();
+    if(pill) pill.style.display = pillShow ? 'inline-flex' : 'none';
+  };
+  window.pwaDismissBanner = function(){
+    try { localStorage.setItem('pwa_install_dismissed_at', String(Date.now())); } catch(_){}
+    var banner = document.getElementById('pwaInstallBanner');
+    if(banner) banner.style.display = 'none';
+    // Pill остаётся — это и есть запасной канал после dismiss.
+  };
+
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     window.__pwaDeferredPrompt = e;
-    // Если карточка уже в DOM (после прогрузки UI) — показываем её.
+    // Старая карточка в Settings — оставляем для тех, кто откроет настройки.
     try {
       var card = document.getElementById('pwaInstallCard');
       if(card) card.style.display = 'block';
     } catch(_) {}
+    // 🔥 v0.7.12.11: пересчёт нового баннера + pill (с учётом standalone/dismiss/expired).
+    window.pwaUpdateUI();
   });
 
   // Если приложение уже установлено — Chrome шлёт appinstalled.
@@ -111,6 +159,10 @@ window.__ANALYTICS_CONFIG = {
     try {
       var card = document.getElementById('pwaInstallCard');
       if(card) card.style.display = 'none';
+      var banner = document.getElementById('pwaInstallBanner');
+      if(banner) banner.style.display = 'none';
+      var pill = document.getElementById('pwaInstallPill');
+      if(pill) pill.style.display = 'none';
       if(window._YM_ID && window.ym) ym(window._YM_ID, 'reachGoal', 'pwa_installed');
     } catch(_) {}
   });
@@ -125,6 +177,10 @@ window.__ANALYTICS_CONFIG = {
       if(choice && choice.outcome === 'accepted'){
         var card = document.getElementById('pwaInstallCard');
         if(card) card.style.display = 'none';
+        var banner = document.getElementById('pwaInstallBanner');
+        if(banner) banner.style.display = 'none';
+        var pill = document.getElementById('pwaInstallPill');
+        if(pill) pill.style.display = 'none';
       }
     } catch(_) {}
     window.__pwaDeferredPrompt = null;
@@ -539,6 +595,21 @@ html[data-theme="dark"] .trial-banner-btn{background:#fbbf24;color:#1a0f3c}
 html[data-theme="dark"] .trial-banner-btn:hover{background:#f59e0b}
 html[data-theme="dark"] .expired-banner{background:linear-gradient(135deg,rgba(220,38,38,.15) 0%,rgba(185,28,28,.15) 100%);color:#fecaca;border-bottom-color:rgba(248,113,113,.3)}
 html[data-theme="dark"] .expired-banner-text b{color:#f87171}
+/* 🔥 v0.7.12.11: PWA install — sticky-баннер (визуально мягче expired, чтобы не пугать) */
+.pwa-banner{display:flex;align-items:center;gap:14px;padding:12px 1.5rem;border-bottom:1px solid var(--border);font-size:14px;background:linear-gradient(135deg,#ede9fe 0%,#ddd6fe 100%);color:#4c1d95}
+.pwa-banner-icon{font-size:22px;flex-shrink:0}
+.pwa-banner-text{flex:1;line-height:1.4}
+.pwa-banner-text b{color:#5b21b6}
+.pwa-banner-btn{padding:7px 14px;background:#7c3aed;color:#fff;border:0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s}
+.pwa-banner-btn:hover{background:#6d28d9}
+.pwa-banner-close{background:transparent;border:0;color:#7c3aed;font-size:22px;cursor:pointer;padding:0 4px;line-height:1;opacity:.6;flex-shrink:0;transition:opacity .15s}
+.pwa-banner-close:hover{opacity:1}
+html[data-theme="dark"] .pwa-banner{background:linear-gradient(135deg,rgba(124,58,237,.18) 0%,rgba(167,139,250,.18) 100%);color:#c4b5fd;border-bottom-color:rgba(167,139,250,.3)}
+html[data-theme="dark"] .pwa-banner-text b{color:#a78bfa}
+html[data-theme="dark"] .pwa-banner-close{color:#a78bfa}
+/* PWA install pill в sidebar — резервная точка */
+.pwa-install-pill{display:none;align-items:center;justify-content:center;gap:6px;width:100%;margin-bottom:10px;padding:8px 12px;background:rgba(124,58,237,.18);color:#c4b5fd;border:1px solid rgba(167,139,250,.3);border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;text-align:center;transition:all .15s}
+.pwa-install-pill:hover{background:rgba(124,58,237,.28);border-color:rgba(167,139,250,.5);color:#fff}
 
 .content{padding:1.5rem;overflow-y:auto;flex:1}
 .topbar-title{font-size:16px;font-weight:500}
@@ -1661,6 +1732,11 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
   .trial-banner,.expired-banner{padding:12px;font-size:13px;flex-wrap:wrap}
   .trial-banner-text,.expired-banner-text{font-size:13px;min-width:0}
   .trial-banner-btn,.expired-banner-btn{padding:7px 14px;font-size:12px}
+  /* 🔥 v0.7.12.11: PWA-баннер на мобильном — текст переносится, кнопка справа */
+  .pwa-banner{padding:10px 12px;font-size:13px;flex-wrap:wrap}
+  .pwa-banner-text{font-size:13px;min-width:0;flex-basis:100%}
+  .pwa-banner-btn{padding:6px 12px;font-size:12px}
+  .pwa-banner-close{font-size:20px}
   .period-picker{flex-wrap:wrap!important;justify-content:stretch!important;gap:4px!important;display:grid!important;grid-template-columns:repeat(5,1fr)!important}
   .period-pill{flex:none!important;min-width:0!important;font-size:10px!important;padding:8px 2px!important;text-align:center;white-space:nowrap}
   /* Кнопка "Загрузить" full-width */
@@ -2006,6 +2082,11 @@ body{padding-top:var(--beta-h)}
     <button class="nav-item" id="nav-admin" style="display:none" onclick="showSection('admin',this)">⚙️ Админ-панель</button>
   </div>
   <div class="sidebar-bottom">
+    <!-- 🔥 v0.7.12.11: PWA install pill — резервная точка для тех, кто закрыл sticky-баннер.
+         Видна только если PWA installable И не установлена; не зависит от dismiss-флага. -->
+    <button class="pwa-install-pill" id="pwaInstallPill" style="display:none" onclick="pwaInstall()" title="Установить SW Profit как приложение">
+      📲 Установить как приложение
+    </button>
     <div class="user-row">
       <div class="avatar" id="userAvatar">?</div>
       <div>
@@ -2069,6 +2150,18 @@ body{padding-top:var(--beta-h)}
     <div class="trial-banner-text">
       <b>Загружаем вашу историю за 90 дней:</b> <span id="importProgressText">подготовка…</span>
     </div>
+  </div>
+
+  <!-- 🔥 v0.7.12.11: PWA-баннер «Установить приложение» — sticky, виден на всех разделах.
+       Показывается только когда: beforeinstallprompt поймано И НЕ standalone И не было dismiss
+       И юзер НЕ expired (приоритет — expired-баннер про подписку). См. pwaUpdateUI(). -->
+  <div id="pwaInstallBanner" class="pwa-banner" style="display:none">
+    <div class="pwa-banner-icon">📲</div>
+    <div class="pwa-banner-text">
+      <b>Установите SW Profit как приложение</b> — быстрый доступ с экрана, запуск без браузера.
+    </div>
+    <button class="pwa-banner-btn" onclick="pwaInstall()">Установить</button>
+    <button class="pwa-banner-close" onclick="pwaDismissBanner()" aria-label="Закрыть">×</button>
   </div>
 
   <div class="content">
@@ -3587,6 +3680,9 @@ function updateTrialExpiredBanners(){
     trialBanner.style.display='none';
     expiredBanner.style.display='none';
   }
+  // 🔥 v0.7.12.11: пересчитываем PWA-баннер — expired-state мог измениться
+  // (loadPlanLimits асинхронен → expired приходит после beforeinstallprompt).
+  if(typeof window.pwaUpdateUI === 'function') window.pwaUpdateUI();
 }
 
 async function logout(){
