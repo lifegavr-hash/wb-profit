@@ -90,7 +90,7 @@ input:focus{border-color:var(--purple)}
 
   <div id="formReg" style="display:none">
     <div class="field"><label>Email</label><input type="email" id="regEmail" placeholder="you@example.com"></div>
-    <div class="field"><label>Пароль</label><input type="password" id="regPass" placeholder="Минимум 6 символов"></div>
+    <div class="field"><label>Пароль</label><input type="password" id="regPass" placeholder="Минимум 8 символов"></div>
     <div class="field"><label>Промокод</label><input type="text" id="regPromo" placeholder="BETA2024" style="text-transform:uppercase" required></div>
     <!-- 🔥 v0.7.10.3: honeypot для защиты от ботов. Не показывать юзеру! -->
     <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden" aria-hidden="true">
@@ -291,7 +291,7 @@ async function register() {
   var btn = document.getElementById('regBtn');
   errBox.style.display='none'; okBox.style.display='none';
   if (!email||!pass){errBox.textContent='Заполните все поля';errBox.style.display='block';return;}
-  if (pass.length<6){errBox.textContent='Пароль минимум 6 символов';errBox.style.display='block';return;}
+  if (pass.length<8){errBox.textContent='Пароль минимум 8 символов';errBox.style.display='block';return;}
   if (!promo){errBox.textContent='Введите промокод';errBox.style.display='block';return;}
   btn.disabled=true; btn.textContent='Проверяем промокод...';
   var vr = await sb.rpc('validate_beta_code', { p_code: promo });
