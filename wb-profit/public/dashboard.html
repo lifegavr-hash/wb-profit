@@ -835,6 +835,27 @@ html[data-theme="dark"] .theme-btn.active{background:rgba(167,139,250,.15);color
 .metrics .m::after{content:'';position:absolute;top:6px;right:8px;width:5px;height:5px;border-right:1.5px solid #cbd5e1;border-top:1.5px solid #cbd5e1;transform:rotate(45deg);opacity:0;transition:opacity .15s}
 .metrics .m:hover::after{opacity:1}
 .ct{font-size:14px;font-weight:500;margin-bottom:1rem}
+/* 🔥 v0.7.12.9: FAQ-аккордеон (нативный details/summary) */
+.faq-group{margin-top:18px}
+.faq-group:first-of-type{margin-top:6px}
+.faq-group-title{font-size:13px;font-weight:600;color:var(--purple);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 10px;opacity:.9}
+.faq-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+.faq-item:hover{border-color:rgba(124,58,237,.35)}
+.faq-item summary{padding:12px 16px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text);list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;user-select:none}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-item summary::after{content:'+';font-size:18px;color:var(--muted);font-weight:400;transition:transform .15s;flex-shrink:0}
+.faq-item[open] summary::after{content:'−'}
+.faq-item summary:hover{color:var(--purple)}
+.faq-body{padding:0 16px 14px;border-top:1px solid var(--border)}
+.faq-body p{font-size:13px;line-height:1.55;color:var(--text);margin:10px 0}
+.faq-body p:first-child{margin-top:12px}
+.faq-body ol,.faq-body ul{font-size:13px;line-height:1.55;color:var(--text);margin:8px 0 8px 22px}
+.faq-body li{margin-bottom:4px}
+.faq-body a{color:var(--purple);text-decoration:none}
+.faq-body a:hover{text-decoration:underline}
+html[data-theme="dark"] .faq-item{background:#1e1e2e;border-color:rgba(255,255,255,.08)}
+html[data-theme="dark"] .faq-item:hover{border-color:rgba(167,139,250,.4)}
+html[data-theme="dark"] .faq-body{border-top-color:rgba(255,255,255,.06)}
 .btn-primary{padding:9px 20px;background:var(--purple);color:#fff;border:none;border-radius:var(--rs);font-size:14px;font-weight:500;cursor:pointer}
 .btn-primary:hover{opacity:.9}
 input[type=password],input[type=date],input[type=number],input[type=text]{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--rs);font-size:14px;color:var(--text);background:var(--surface);outline:none}
@@ -1980,6 +2001,7 @@ body{padding-top:var(--beta-h)}
     <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
     <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)">💰 Подбор товара</button>
     <div class="nav-sec">Аккаунт</div>
+    <button class="nav-item" id="nav-help" onclick="showSection('help',this)">❓ Помощь</button>
     <button class="nav-item" id="nav-settings" onclick="showSection('settings',this)">⚙️ Настройки</button>
     <button class="nav-item" id="nav-admin" style="display:none" onclick="showSection('admin',this)">⚙️ Админ-панель</button>
   </div>
@@ -2558,6 +2580,130 @@ body{padding-top:var(--beta-h)}
       </div>
     </div>
 
+    <!-- 🔥 v0.7.12.9: Помощь / FAQ — справка прямо в дашборде, чтобы тестер не уходил на блог -->
+    <div class="section" id="sectionHelp">
+      <div class="card">
+        <div class="ct">❓ Частые вопросы</div>
+        <p class="hint" style="margin-bottom:14px">Ответы на типичные вопросы новых пользователей. Если ответа нет — напишите нам.</p>
+
+        <div class="faq-group">
+          <div class="faq-group-title">🚀 Начало работы</div>
+
+          <details class="faq-item">
+            <summary>Как подключить мой магазин Wildberries?</summary>
+            <div class="faq-body">
+              <p>Перейдите в <a href="#" onclick="showSection('settings',document.getElementById('nav-settings'));return false">Настройки</a> → «+ Добавить кабинет WB» и вставьте API-токен.</p>
+              <p>Где взять токен: личный кабинет WB → Настройки → Доступ к API → Создать новый токен. Достаточно категории <b>«Статистика»</b> (там и продажи, и остатки, и рекламные списания). Категория <b>«Продвижение»</b> опциональна — нужна только для детальной разбивки по рекламным кампаниям в Аналитике.</p>
+              <p>Пошаговая инструкция со скриншотами: <a href="/blog/kak-poluchit-api-token-wildberries" target="_blank" rel="noopener">«Как получить API-токен Wildberries»</a>.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Почему у меня мало данных в Аналитике?</summary>
+            <div class="faq-body">
+              <p>При первом входе сервис автоматически загружает историю за 90 дней (занимает до минуты — видно полоску прогресса вверху страницы). Дальше данные накапливаются ежедневно.</p>
+              <p>Если у вас новый магазин и история продаж в WB короче — это нормально. В заголовке Аналитики тогда видно «за N из 90 дней» — показано всё, что есть.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Что делать, если токен перестал работать?</summary>
+            <div class="faq-body">
+              <p>WB-токены имеют срок действия и могут быть отозваны вручную. Если сервис перестал получать свежие данные:</p>
+              <ol>
+                <li>Откройте <a href="#" onclick="showSection('settings',document.getElementById('nav-settings'));return false">Настройки</a> и проверьте статус кабинета.</li>
+                <li>Создайте новый токен в личном кабинете WB и вставьте его в сервис.</li>
+                <li>Все ранее загруженные данные сохранятся — обновится только подключение.</li>
+              </ol>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <div class="faq-group-title">💰 Как считается прибыль</div>
+
+          <details class="faq-item">
+            <summary>Откуда берётся себестоимость товара?</summary>
+            <div class="faq-body">
+              <p>Wildberries не передаёт себестоимость через API — её вводит сам продавец. В <a href="#" onclick="showSection('calc',document.getElementById('nav-calc'));return false">Калькуляторе</a> можно указать себестоимость по каждому артикулу. Без неё прибыль будет завышена: WB-выплата не вычтет ваши закупочные расходы.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Что такое ДРР и какой считается нормальным?</summary>
+            <div class="faq-body">
+              <p>ДРР — доля рекламных расходов: реклама ÷ выручка × 100%. На старте вывода новой карточки 20–40% — это норма (вы платите за набор статистики и позиций), на устоявшихся продажах здоровый ДРР 5–15%.</p>
+              <p>Главное правило: <b>ДРР должен быть меньше валовой маржи товара</b>. Иначе каждая рекламная продажа уменьшает прибыль.</p>
+              <p>Подробный разбор: <a href="/blog/drr-na-wildberries-chto-eto" target="_blank" rel="noopener">«ДРР на Wildberries: что это и какой нормальный»</a>.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Почему мои цифры отличаются от кабинета WB?</summary>
+            <div class="faq-body">
+              <p>Мы показываем <b>чистую прибыль</b>: выручка минус все удержания WB (комиссия, логистика, хранение, эквайринг, штрафы) плюс себестоимость и расходы на рекламу. Кабинет WB обычно показывает оборот без вычета себестоимости — отсюда разница.</p>
+              <p>Для чистой картинки нужны заполненные себестоимости — см. вопрос выше.</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <div class="faq-group-title">🎁 Подписка</div>
+
+          <details class="faq-item">
+            <summary>Что входит в бесплатный период?</summary>
+            <div class="faq-body">
+              <p>Приглашённые на бету получают тариф PRO на 14 дней бесплатно, без платёжных данных. Доступна вся аналитика, импорт за 90 дней, экспорт.</p>
+              <p>После окончания пробного периода просмотр сохранённых данных остаётся, а свежие данные из WB временно перестают подтягиваться до подписки.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Что будет, когда закончится пробный период?</summary>
+            <div class="faq-body">
+              <p>Вы продолжите видеть всё, что уже было загружено — графики, расчёты, историю. Сохранятся ваши настройки, себестоимости и история снапшотов.</p>
+              <p>Приостановится только подгрузка <b>свежих</b> данных из WB до возобновления подписки. Удаление аккаунта и выгрузка данных доступны всегда.</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="faq-group">
+          <div class="faq-group-title">🔒 Данные и поддержка</div>
+
+          <details class="faq-item">
+            <summary>Как выгрузить мои данные?</summary>
+            <div class="faq-body">
+              <p>Полная выгрузка: <a href="#" onclick="showSection('settings',document.getElementById('nav-settings'));return false">Настройки</a> → «📦 Экспорт данных» → «Скачать мои данные (JSON)». Внутри будут профиль, кабинеты (без токенов), сохранённые расчёты, себестоимости, история снапшотов.</p>
+              <p>По товарам: в Калькуляторе можно выгрузить таблицу в Excel (доступно на тарифах с этой функцией).</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Куда писать, если что-то не работает?</summary>
+            <div class="faq-body">
+              <p>Пишите на <a href="mailto:support@swprofit.ru">support@swprofit.ru</a> — мы на бете, отвечаем оперативно. Если это баг — приложите скриншот и опишите шаги.</p>
+              <p>Также можно сообщить об ошибке прямо из сервиса: Настройки → «Обратная связь» — мы получим контекст вашего аккаунта автоматически.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Безопасны ли мои данные?</summary>
+            <div class="faq-body">
+              <p><b>Пароли</b> не хранятся в открытом виде — Supabase Auth сохраняет только криптографический хеш.</p>
+              <p><b>WB-токен</b> хранится в защищённой базе с построковым доступом по владельцу (Row-Level Security): к нему имеете доступ только вы и наш бэкенд при синхронизации с WB API. Третьим лицам токен не передаётся, для аналитики и графиков не используется.</p>
+              <p>Вы можете <b>выгрузить все свои данные</b> в любой момент (Настройки → Экспорт данных) или <b>полностью удалить аккаунт</b> вместе со всеми связанными записями (Настройки → внизу).</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="ct">Не нашли ответ?</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Напишите нам, ответим в течение дня. Бета — это значит мы рядом и реально читаем каждое сообщение.</p>
+        <a href="mailto:support@swprofit.ru" class="btn-primary" style="display:inline-block;text-decoration:none">✉️ support@swprofit.ru</a>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -2679,6 +2825,7 @@ var _cmdkActions = [
   {icon:'🔍', label:'Детализация расходов', sub:'Куда уходят деньги', action:function(){showSection('detail',document.getElementById('nav-detail'));}},
   {icon:'📈', label:'Аналитика', sub:'Графики, ABC, тренды', action:function(){showSection('analytics',document.getElementById('nav-analytics'));}},
   {icon:'💰', label:'Подбор товара', sub:'Расчёт прибыли до закупки', action:function(){showSection('unit',document.getElementById('nav-unit'));}},
+  {icon:'❓', label:'Помощь', sub:'Частые вопросы и поддержка', action:function(){showSection('help',document.getElementById('nav-help'));}},
   {icon:'⚙️', label:'Настройки', sub:'Тарифы, токен, расходы', action:function(){showSection('settings',document.getElementById('nav-settings'));}},
   {icon:'🎁', label:'Активировать промокод', sub:'Получить триал по коду', action:function(){showSection('promo',null);}},
   {icon:'🚪', label:'Выйти', sub:'Завершить сессию', action:function(){if(confirm('Выйти из аккаунта?'))logout();}},
@@ -3606,7 +3753,7 @@ function showSection(name,el){
   // 🔥 v0.7.7.22: При expired доступ только к Главной и Настройкам (для оплаты)
   var ext = window.__profileExtended || {};
   var isAdmin = currentProfile && currentProfile.is_admin;
-  if(ext.is_expired && !isAdmin && name!=='home' && name!=='settings'){
+  if(ext.is_expired && !isAdmin && name!=='home' && name!=='settings' && name!=='help'){
     // 🔥 v0.7.11.1: честный текст для беты — оплаты пока нет, продление через промокод.
     showInfoModal('⏰ Подписка закончилась',
       '<p>Свежие данные не поступают. Доступен просмотр <b>Главной</b> с уже сохранёнными данными.</p>'+
