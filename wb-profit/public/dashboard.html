@@ -3768,8 +3768,8 @@ function showSection(name,el){
     requirePRO(featureName);
     return;
   }
-  var sections=['home','calc','detail','analytics','unit','settings','promo','admin'];
-  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',unit:'Подбор товара',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
+  var sections=['home','calc','detail','analytics','unit','help','settings','promo','admin'];
+  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',unit:'Подбор товара',help:'Помощь',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
     var sec=document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1));
     if(sec) sec.classList.toggle('active',s===name);
