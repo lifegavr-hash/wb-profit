@@ -1895,7 +1895,12 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
 .detail-expand{display:inline-block;width:14px;color:#94a3b8;font-size:10px;margin-left:6px;transition:transform .15s}
 .detail-expansion{padding:8px 12px 12px;background:#fafafa;border-radius:8px;margin-top:6px;margin-bottom:6px}
 .detail-expansion-empty{color:#94a3b8;font-size:12px;padding:8px;text-align:center}
+/* 🔥 v0.7.12.19: скролл-бокс списка операций — вертикальный скролл (длинный список листается
+   в компактном боксе) + горизонтальный (широкие имена не режутся родительским overflow:hidden) */
+.detail-ops-wrap{max-height:360px;overflow:auto;border-radius:8px;-webkit-overflow-scrolling:touch}
 .detail-ops-table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;border-radius:8px;overflow:hidden}
+/* 🔥 v0.7.12.19: ячейка «Товар» — переносим неразрывные имена (быть_воином_крас…); art-tag остаётся nowrap */
+.detail-ops-table td.detail-ops-prod{overflow-wrap:anywhere;word-break:break-word;min-width:120px}
 .detail-ops-table th{text-align:left;padding:8px 10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e2e8f0}
 .detail-ops-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9}
 .detail-ops-table tr:last-child td{border-bottom:0}
@@ -6221,7 +6226,7 @@ function toggleDetailOp(rowKey, source, opName){
   // Собираем все строки rawData относящиеся к этой операции
   var matches = [];
   if(window.rawData && window.rawData.length){
-    var ITEMS_LIMIT = 200;
+    var ITEMS_LIMIT = 500; // 🔥 v0.7.12.19: 200→500 — полнее список операций в попапе для активных статей (на ИТОГИ не влияет — те из computeFinancials по всем данным)
     for(var i=0;i<window.rawData.length && matches.length<ITEMS_LIMIT;i++){
       var r = window.rawData[i];
       var operMatch = (r.supplier_oper_name === opName) || (r.bonus_type_name === opName);
@@ -6293,7 +6298,8 @@ function toggleDetailOp(rowKey, source, opName){
   if(matches.length === 0){
     html = '<div class="detail-expansion-empty">Нет данных по этой операции</div>';
   } else {
-    html += '<table class="detail-ops-table">';
+    // 🔥 v0.7.12.19: таблица в скролл-боксе (.detail-ops-wrap) — вертикальный/горизонтальный скролл.
+    html += '<div class="detail-ops-wrap"><table class="detail-ops-table">';
     html += '<thead><tr>';
     if(source==='commission' || source==='cost'){
       html += '<th>Товар</th><th>Детали</th><th style="text-align:right">Сумма</th>';
@@ -6301,13 +6307,13 @@ function toggleDetailOp(rowKey, source, opName){
       html += '<th>Дата</th><th>Товар</th><th style="text-align:right">Сумма</th>';
     }
     html += '</tr></thead><tbody>';
-    var maxRows = 50;
+    var maxRows = 200; // 🔥 v0.7.12.19: 50→200 — весь список доступен внутри скролл-бокса (в пределах ITEMS_LIMIT)
     var shown = matches.slice(0, maxRows);
     shown.forEach(function(m){
       html += '<tr>';
       if(source==='commission' || source==='cost'){
         // 🔥 v0.5.7: через itemHtml
-        html += '<td>'+itemHtml(m.sa||'?', m.nm)+'</td>';
+        html += '<td class="detail-ops-prod">'+itemHtml(m.sa||'?', m.nm)+'</td>';
         html += '<td class="detail-ops-meta">'+(m.meta||'')+'</td>';
       } else {
         var dateStr = m.date ? m.date.split('-').reverse().slice(0,2).join('.') : '—';
@@ -6315,12 +6321,12 @@ function toggleDetailOp(rowKey, source, opName){
         var saLbl = m.sa ? itemHtml(m.sa, m.nm) : '<span style="color:#94a3b8">(без товара)</span>';
         if(m.count > 1) saLbl += ' <span class="detail-ops-count">×'+m.count+'</span>';
         html += '<td class="detail-ops-date">'+dateStr+'</td>';
-        html += '<td>'+saLbl+'</td>';
+        html += '<td class="detail-ops-prod">'+saLbl+'</td>';
       }
       html += '<td class="detail-ops-amount">−'+fmt(m.amount)+' ₽</td>';
       html += '</tr>';
     });
-    html += '</tbody></table>';
+    html += '</tbody></table></div>';
     if(matches.length > maxRows){
       html += '<div class="detail-ops-more">Показано '+maxRows+' из '+matches.length+'. Топ по сумме.</div>';
     }
