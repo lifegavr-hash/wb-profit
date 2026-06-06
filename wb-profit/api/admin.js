@@ -20,11 +20,16 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { data: promos } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
     const { data: users } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
-    return res.status(200).json({ promos, users });
+    // 🔥 v0.7.12.17: фидбэк целиком (все статусы) для управления в админке.
+    const { data: feedback } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200);
+    return res.status(200).json({ promos, users, feedback });
   }
 
   if (req.method === 'POST') {
-    const { action, code, plan, days, maxUses, id } = req.body;
+    const { action, code, plan, days, maxUses, id, status, response: fbResponse, isActive } = req.body;
+
+    // 🔥 v0.7.12.17: допустимые статусы фидбэка (синхронно с фронтом-дропдауном).
+    const FEEDBACK_STATUSES = ['new', 'in_progress', 'done', 'rejected'];
     if (action === 'create_promo') {
       // 🔥 v0.7.12.16: trim+upper при создании — чтобы в БД всегда чистый код без пробелов.
       const normCode = (code || '').trim().toUpperCase();
@@ -55,5 +60,114 @@ export default async function handler(req, res) {
       });
       return res.status(200).json({ success: true });
     }
+
+    // 🔥 v0.7.12.17: вкл/выкл промокода (универсальная замена deactivate_promo).
+    if (action === 'toggle_promo') {
+      if (!id) return res.status(400).json({ error: 'Нет id' });
+      const nextActive = isActive === true;
+      const { error: err } = await supabase.from('promo_codes').update({ is_active: nextActive }).eq('id', id);
+      if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: nextActive ? 'promo_updated_by_admin' : 'promo_deactivated_by_admin',
+        event_status: 'success',
+        user_id: user.id, user_email: user.email,
+        meta: { promo_id: id, is_active: nextActive },
+        req
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    // 🔥 v0.7.12.17: редактирование срока/лимита промокода.
+    if (action === 'update_promo') {
+      if (!id) return res.status(400).json({ error: 'Нет id' });
+      const patch = {};
+      if (days !== undefined && days !== null && days !== '') {
+        const d = parseInt(days, 10);
+        if (!Number.isFinite(d) || d < 1 || d > 365) return res.status(400).json({ error: 'Дней: 1–365' });
+        patch.days = d;
+      }
+      if (maxUses !== undefined && maxUses !== null && maxUses !== '') {
+        const m = parseInt(maxUses, 10);
+        if (!Number.isFinite(m) || m < 1) return res.status(400).json({ error: 'Лимит ≥ 1' });
+        patch.max_uses = m;
+      }
+      if (!Object.keys(patch).length) return res.status(400).json({ error: 'Нечего обновлять' });
+      const { error: err } = await supabase.from('promo_codes').update(patch).eq('id', id);
+      if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: 'promo_updated_by_admin',
+        event_status: 'success',
+        user_id: user.id, user_email: user.email,
+        meta: { promo_id: id, ...patch },
+        req
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    // 🔥 v0.7.12.17: удаление промокода (опасное — confirm на фронте).
+    if (action === 'delete_promo') {
+      if (!id) return res.status(400).json({ error: 'Нет id' });
+      const { error: err } = await supabase.from('promo_codes').delete().eq('id', id);
+      if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: 'promo_deleted_by_admin',
+        event_status: 'success',
+        user_id: user.id, user_email: user.email,
+        meta: { promo_id: id },
+        req
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    // 🔥 v0.7.12.17: смена статуса фидбэка.
+    if (action === 'update_feedback_status') {
+      if (!id) return res.status(400).json({ error: 'Нет id' });
+      if (!FEEDBACK_STATUSES.includes(status)) return res.status(400).json({ error: 'Недопустимый статус' });
+      const { error: err } = await supabase.from('feedback').update({ status }).eq('id', id);
+      if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: 'feedback_updated_by_admin',
+        event_status: 'success',
+        user_id: user.id, user_email: user.email,
+        meta: { feedback_id: id, status },
+        req
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    // 🔥 v0.7.12.17: ответ админа на фидбэк.
+    if (action === 'respond_feedback') {
+      if (!id) return res.status(400).json({ error: 'Нет id' });
+      const text = (fbResponse || '').trim();
+      if (!text) return res.status(400).json({ error: 'Пустой ответ' });
+      const { error: err } = await supabase.from('feedback')
+        .update({ admin_response: text, admin_response_at: new Date().toISOString() }).eq('id', id);
+      if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: 'feedback_updated_by_admin',
+        event_status: 'success',
+        user_id: user.id, user_email: user.email,
+        meta: { feedback_id: id, responded: true },
+        req
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    // 🔥 v0.7.12.17: удаление фидбэка (опасное — confirm на фронте).
+    if (action === 'delete_feedback') {
+      if (!id) return res.status(400).json({ error: 'Нет id' });
+      const { error: err } = await supabase.from('feedback').delete().eq('id', id);
+      if (err) return res.status(400).json({ error: err.message });
+      await audit({
+        event_type: 'feedback_deleted_by_admin',
+        event_status: 'success',
+        user_id: user.id, user_email: user.email,
+        meta: { feedback_id: id },
+        req
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    return res.status(400).json({ error: 'Неизвестное действие' });
   }
 }

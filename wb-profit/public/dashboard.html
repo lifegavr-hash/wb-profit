@@ -2586,6 +2586,12 @@ body{padding-top:var(--beta-h)}
         <div class="ct">📬 Новый фидбэк</div>
         <div class="tw" id="adminNewFeedback" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
       </div>
+      <!-- 🔥 v0.7.12.17: управление фидбэком — статус / ответ / удаление -->
+      <div class="card">
+        <div class="ct">🛠️ Управление фидбэком</div>
+        <p class="hint" style="margin-bottom:12px">Меняйте статус, отвечайте и удаляйте обращения. Показаны все статусы (последние 200).</p>
+        <div id="feedbackBody"><div class="hint">Загружаем...</div></div>
+      </div>
       <div class="card">
         <div class="ct">🎟️ Доступные промокоды</div>
         <div class="tw" id="adminAvailableCodes" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
@@ -3891,14 +3897,72 @@ async function deactivatePromo(id){
   loadAdminData(session.access_token);
 }
 
+// 🔥 v0.7.12.17: общий хелпер админ-POST. Возвращает {ok, data, token}.
+async function adminPost(payload){
+  var {data:{session}}=await sb.auth.getSession();
+  if(!session){ return {ok:false}; }
+  var r=await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify(payload)});
+  var data=await r.json().catch(function(){return {};});
+  if(!r.ok){ showToast((data&&data.error)||'Ошибка операции','error'); return {ok:false,data:data,token:session.access_token}; }
+  return {ok:true,data:data,token:session.access_token};
+}
+
+// ── Промокоды ──
+async function togglePromo(id, isActive){
+  var res=await adminPost({action:'toggle_promo',id:id,isActive:isActive});
+  if(res.ok) loadAdminData(res.token);
+}
+async function updatePromo(id){
+  var days=document.getElementById('pd_'+id).value;
+  var maxUses=document.getElementById('pm_'+id).value;
+  var res=await adminPost({action:'update_promo',id:id,days:days,maxUses:maxUses});
+  if(res.ok){ showToast('Промокод обновлён','success'); loadAdminData(res.token); }
+}
+async function deletePromo(id, code){
+  if(!confirm('Удалить промокод '+code+' безвозвратно?\nИстория его активаций (кто использовал) сохранится, но сам код пропадёт.')) return;
+  var res=await adminPost({action:'delete_promo',id:id});
+  if(res.ok){ showToast('Промокод удалён','success'); loadAdminData(res.token); }
+}
+
+// ── Фидбэк ──
+async function updateFeedbackStatus(id, status){
+  var res=await adminPost({action:'update_feedback_status',id:id,status:status});
+  if(res.ok) showToast('Статус обновлён','success');
+}
+async function respondFeedback(id){
+  var text=(document.getElementById('fr_'+id).value||'').trim();
+  if(!text){ showToast('Введите текст ответа','error'); return; }
+  var res=await adminPost({action:'respond_feedback',id:id,response:text});
+  if(res.ok){ showToast('Ответ сохранён','success'); loadAdminData(res.token); }
+}
+async function deleteFeedback(id){
+  if(!confirm('Удалить это обращение безвозвратно?')) return;
+  var res=await adminPost({action:'delete_feedback',id:id});
+  if(res.ok){ showToast('Обращение удалено','success'); loadAdminData(res.token); }
+}
+
 async function loadAdminData(token){
   // 🔥 v0.7.7.33: доп. защита — функция дёргается только админами
   if(!(window.currentProfile && currentProfile.is_admin)) return;
   var r=await fetch('/api/admin',{headers:{'Authorization':'Bearer '+token}});
   var d=await r.json();
   if(d.promos){
+    // 🔥 v0.7.12.17: на каждую строку — редактируемые поля (дней/лимит), вкл/выкл, удалить.
+    var btnStyle='font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent';
+    var inStyle='width:62px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--surface);color:var(--text)';
     document.getElementById('promoBody').innerHTML=d.promos.map(function(p){
-      return '<tr><td style="font-family:monospace">'+p.code+'</td><td><span class="badge badge-pro">'+p.plan+'</span></td><td>'+p.days+'</td><td>'+p.used_count+'</td><td>'+p.max_uses+'</td><td><span class="badge '+(p.is_active?'badge-active':'badge-inactive')+'">'+(p.is_active?'Активен':'Неактивен')+'</span></td><td>'+(p.is_active?'<button onclick="deactivatePromo(\''+p.id+'\')" style="font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent">Деактивировать</button>':'')+'</td></tr>';
+      return '<tr>'+
+        '<td style="font-family:monospace">'+esc(p.code)+'</td>'+
+        '<td><span class="badge badge-pro">'+esc(p.plan)+'</span></td>'+
+        '<td><input type="number" id="pd_'+p.id+'" value="'+p.days+'" min="1" max="365" style="'+inStyle+'"></td>'+
+        '<td>'+p.used_count+'</td>'+
+        '<td><input type="number" id="pm_'+p.id+'" value="'+p.max_uses+'" min="1" style="'+inStyle+'"></td>'+
+        '<td><span class="badge '+(p.is_active?'badge-active':'badge-inactive')+'">'+(p.is_active?'Активен':'Неактивен')+'</span></td>'+
+        '<td style="white-space:nowrap">'+
+          '<button onclick="updatePromo(\''+p.id+'\')" style="'+btnStyle+'" title="Сохранить дней/лимит">💾</button> '+
+          '<button onclick="togglePromo(\''+p.id+'\','+(p.is_active?'false':'true')+')" style="'+btnStyle+'">'+(p.is_active?'Выкл':'Вкл')+'</button> '+
+          '<button onclick="deletePromo(\''+p.id+'\',\''+esc(p.code)+'\')" style="'+btnStyle+';color:var(--red,#c0392b)" title="Удалить">🗑</button>'+
+        '</td></tr>';
     }).join('');
   }
   if(d.users){
@@ -3907,8 +3971,41 @@ async function loadAdminData(token){
       return '<tr><td>'+u.email+'</td><td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+u.plan+'</span></td><td>'+exp+'</td><td>'+new Date(u.created_at).toLocaleDateString('ru-RU')+'</td></tr>';
     }).join('');
   }
+  if(d.feedback){ renderFeedbackAdmin(d.feedback); }
   // 🔥 v0.7.7.33: 4 view беты — параллельно
   loadAdminBetaViews();
+}
+
+// 🔥 v0.7.12.17: безопасный эскейп для вставки в HTML.
+function esc(v){
+  return String(v===null||v===undefined?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 🔥 v0.7.12.17: рендер управляемого списка фидбэка (статус / ответ / удаление).
+function renderFeedbackAdmin(rows){
+  var el=document.getElementById('feedbackBody');
+  if(!el)return;
+  if(!rows.length){ el.innerHTML='<div class="hint">Обращений пока нет</div>'; return; }
+  var STATUSES=[['new','Новый'],['in_progress','В работе'],['done','Готово'],['rejected','Отклонено']];
+  var btn='font-size:12px;padding:4px 10px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent';
+  el.innerHTML=rows.map(function(f){
+    var opts=STATUSES.map(function(s){return '<option value="'+s[0]+'"'+(f.status===s[0]?' selected':'')+'>'+s[1]+'</option>';}).join('');
+    var when=f.created_at?new Date(f.created_at).toLocaleString('ru-RU'):'';
+    var resp=f.admin_response?'<div class="hint" style="margin-top:6px">Ответ: '+esc(f.admin_response)+(f.admin_response_at?' · '+new Date(f.admin_response_at).toLocaleDateString('ru-RU'):'')+'</div>':'';
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)">'+
+        '<span><b>'+esc(f.category||'—')+'</b> · '+esc(f.user_email||'аноним')+'</span>'+
+        '<span>'+when+' · '+esc(f.page||'')+' · '+esc(f.app_version||'')+'</span>'+
+      '</div>'+
+      '<div style="margin:8px 0;white-space:pre-wrap">'+esc(f.message||'')+'</div>'+
+      resp+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">'+
+        '<select onchange="updateFeedbackStatus(\''+f.id+'\',this.value)" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);font-size:12px">'+opts+'</select>'+
+        '<input type="text" id="fr_'+f.id+'" placeholder="Ответ пользователю..." style="flex:1;min-width:160px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text);font-size:12px"'+(f.admin_response?' value="'+esc(f.admin_response)+'"':'')+'>'+
+        '<button onclick="respondFeedback(\''+f.id+'\')" style="'+btn+'">Ответить</button>'+
+        '<button onclick="deleteFeedback(\''+f.id+'\')" style="'+btn+';color:var(--red,#c0392b)">Удалить</button>'+
+      '</div></div>';
+  }).join('');
 }
 
 // 🔥 v0.7.7.33: универсальный рендер таблицы из массива объектов
