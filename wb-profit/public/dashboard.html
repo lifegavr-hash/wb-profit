@@ -2625,7 +2625,7 @@ body{padding-top:var(--beta-h)}
       </div>
       <div class="card">
         <div class="ct">Пользователи</div>
-        <div class="tw"><table class="promo-table"><thead><tr><th>Email</th><th>Тариф</th><th>Действует до</th><th>Зарегистрирован</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+        <div class="tw" style="overflow-x:auto"><table class="promo-table" style="min-width:780px"><thead><tr><th>Email</th><th>Тариф</th><th>Триал</th><th>Снап.</th><th>Расч.</th><th>Каб.</th><th>Фидб.</th><th>Активность</th><th>Регистрация</th></tr></thead><tbody id="usersBody"></tbody></table></div>
       </div>
     </div>
 
@@ -3966,9 +3966,32 @@ async function loadAdminData(token){
     }).join('');
   }
   if(d.users){
+    // 🔥 v0.7.12.18: расширенный список — триал-статус + активность + последняя активность.
     document.getElementById('usersBody').innerHTML=d.users.map(function(u){
-      var exp=u.plan_expires_at?new Date(u.plan_expires_at).toLocaleDateString('ru-RU'):'—';
-      return '<tr><td>'+u.email+'</td><td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+u.plan+'</span></td><td>'+exp+'</td><td>'+new Date(u.created_at).toLocaleDateString('ru-RU')+'</td></tr>';
+      var reg=u.registered_at?new Date(u.registered_at).toLocaleDateString('ru-RU'):'—';
+      var last=u.last_activity?new Date(u.last_activity).toLocaleString('ru-RU'):'<span style="color:var(--hint)">—</span>';
+      var trial;
+      if(u.trial_until){
+        var td=new Date(u.trial_until).toLocaleDateString('ru-RU');
+        trial=u.trial_active
+          ?'<span class="badge badge-active">активен до '+td+'</span>'
+          :'<span class="badge badge-inactive">истёк '+td+'</span>';
+      } else if(u.billing_period && u.billing_period!=='trial'){
+        // Платный без триала — показываем период оплаты для контекста.
+        var perMap={yearly:'годовой',monthly:'месячный'};
+        trial='<span class="badge badge-pro">'+(perMap[u.billing_period]||u.billing_period)+'</span>';
+      } else { trial='<span style="color:var(--hint)">—</span>'; }
+      var codeline=u.used_code?'<div style="font-size:11px;color:var(--hint);font-family:monospace">'+u.used_code+'</div>':'';
+      return '<tr>'+
+        '<td>'+u.email+codeline+'</td>'+
+        '<td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+u.plan+'</span></td>'+
+        '<td>'+trial+'</td>'+
+        '<td>'+(u.snapshots_count||0)+'</td>'+
+        '<td>'+(u.calcs_count||0)+'</td>'+
+        '<td>'+(u.wb_accounts_count||0)+'</td>'+
+        '<td>'+(u.feedback_count||0)+'</td>'+
+        '<td>'+last+'</td>'+
+        '<td>'+reg+'</td></tr>';
     }).join('');
   }
   if(d.feedback){ renderFeedbackAdmin(d.feedback); }

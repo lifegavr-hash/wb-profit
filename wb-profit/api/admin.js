@@ -19,7 +19,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const { data: promos } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
-    const { data: users } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    // 🔥 v0.7.12.18: users — из вью admin_all_users (все юзеры + счётчики активности),
+    // НЕ из admin_beta_users (та фильтрует только инвайт-когорту). Живые сверху.
+    const { data: users } = await supabase.from('admin_all_users').select('*').order('last_activity', { ascending: false, nullsFirst: false });
     // 🔥 v0.7.12.17: фидбэк целиком (все статусы) для управления в админке.
     const { data: feedback } = await supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200);
     return res.status(200).json({ promos, users, feedback });
