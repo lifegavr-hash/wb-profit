@@ -98,6 +98,14 @@ input:focus{border-color:var(--purple)}
     <div class="ok" id="regOk">Проверьте почту — отправили письмо для подтверждения!</div>
   </div>
 
+  <!-- 🔥 v0.7.12.22: экран успеха после подтверждения email (type=signup) -->
+  <div id="formSuccess" style="display:none;text-align:center">
+    <div style="font-size:32px;margin-bottom:1rem">✓</div>
+    <h2 style="font-size:18px;font-weight:600;color:var(--text);margin:0 0 0.5rem">Регистрация прошла успешно!</h2>
+    <p style="font-size:14px;color:var(--muted);margin:0 0 1.5rem">Аккаунт создан и подтверждён. Добро пожаловать в SW Profit!</p>
+    <button class="btn" id="successBtn" onclick="goToDashboard()">Перейти в кабинет</button>
+  </div>
+
   <p class="hint-text">14 дней PRO бесплатно · Карта не нужна</p>
   <p class="hint-text" style="margin-top:10px;font-size:13px"><a href="/demo" style="color:#5433c6;font-weight:600;text-decoration:none">🎭 Посмотреть демо без регистрации →</a></p>
   <p class="hint-text" style="margin-top:14px;font-size:11px;opacity:.8;line-height:1.5">ИП Чиркова Алиса Викторовна · ИНН 233304659652 · ОГРНИП 321237500373856</p>
@@ -130,6 +138,9 @@ function sendYmGoalOnce(name) {
 }
 
 async function initSupabase() {
+  // 🔥 v0.7.12.22: сохраняем исходный hash ДО того как supabase-js его очистит через detectSessionInUrl
+  var initialHash = location.hash || '';
+
   // 🔥 v0.7.7.6+hotfix: чистим демо-флаг чтобы при следующем входе в /dashboard.html
   // не сработала /demo-проверка и пользователь попал в нормальный auth-режим
   try{localStorage.removeItem('wb_demo_active');}catch(e){}
@@ -146,7 +157,24 @@ async function initSupabase() {
   // 🔥 v0.7.10.1: вешаем глобальный логгер JS-ошибок (копия с dashboard.html v0.7.7.33)
   installFrontendErrorLogger();
   var { data: { session } } = await sb.auth.getSession();
-  if (session) window.location.href = '/dashboard.html';
+
+  // 🔥 v0.7.12.22: type=signup + access_token в сохранённом хеше = подтверждение регистрации
+  var isSignupConfirmation = initialHash.includes('type=signup') &&
+                              initialHash.includes('access_token') &&
+                              !initialHash.includes('type=recovery');
+
+  if (session) {
+    if (isSignupConfirmation) {
+      // Показываем экран успеха вместо прямого редиректа
+      document.getElementById('formLogin').style.display = 'none';
+      document.getElementById('formReg').style.display = 'none';
+      document.getElementById('formForgot').style.display = 'none';
+      document.getElementById('formSuccess').style.display = 'block';
+    } else {
+      // Обычный редирект: уже логинизирован или пришёл через recovery (password reset)
+      window.location.href = '/dashboard.html';
+    }
+  }
   // Если ?signup=1 — сразу открываем вкладку регистрации
   if(new URLSearchParams(location.search).get('signup') === '1'){
     showTab('reg');
@@ -291,6 +319,11 @@ async function register() {
     btn.disabled=false; btn.textContent='Создать аккаунт';
     if (data.session) window.location.href = '/dashboard.html';
   }
+}
+
+// 🔥 v0.7.12.22: переход в кабинет со страницы успеха регистрации
+function goToDashboard() {
+  window.location.href = '/dashboard.html';
 }
 
 document.getElementById('loginPass').addEventListener('keydown', function(e){if(e.key==='Enter') login();});
