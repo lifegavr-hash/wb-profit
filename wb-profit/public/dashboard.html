@@ -2987,7 +2987,6 @@ function sendYmGoal(name) {
     var ymId = (window.__ANALYTICS_CONFIG && window.__ANALYTICS_CONFIG.YM_COUNTER_ID);
     if (typeof ym === 'function' && ymId) {
       ym(parseInt(ymId, 10), 'reachGoal', name);
-      console.log('[ym] goal sent:', name);
     }
   } catch(e) {}
 }
@@ -3534,7 +3533,6 @@ async function fetchPlanLimits(jwt){
     };
     // Сразу обновляем баннеры если функция уже определена
     if(typeof updateTrialExpiredBanners === 'function') updateTrialExpiredBanners();
-    console.log('[plan-limits] loaded:', d.plan, d.features, 'trial:', d.is_trial, 'expired:', d.is_expired);
   }catch(e){
     console.warn('[plan-limits] fetch error:', e);
   }
@@ -4382,7 +4380,6 @@ async function maybeMigrateLocalStorageToken(){
       body: JSON.stringify({ name: 'Магазин 1', wb_token: lsToken.trim(), is_default: true })
     });
     if(r.ok){
-      console.log('[wb-accounts] migrated localStorage token → wb_accounts');
       // Перезагружаем список
       const list = await _wbAccApiFetch('/api/profile?resource=wb-accounts');
       if(list.ok){
@@ -4842,7 +4839,6 @@ async function tryRestoreDataFromCache(){
     // Проверка возраста (< 4 часов)
     var ageHours=(Date.now()-cache.ts)/1000/3600;
     if(ageHours>4){
-      console.log('[cache] устарел ('+ageHours.toFixed(1)+'ч), удаляем');
       localStorage.removeItem('wb_cache_processed');
       return false;
     }
@@ -4859,7 +4855,6 @@ async function tryRestoreDataFromCache(){
       expDf=a.toISOString().slice(0,10);
     }
     if(cache.df!==expDf || cache.dt!==expDt){
-      console.log('[cache] период не совпал (кеш '+cache.df+'..'+cache.dt+' vs выбран '+expDf+'..'+expDt+')');
       return false;
     }
     // Восстанавливаем глобальное состояние
@@ -4924,7 +4919,6 @@ async function tryRestoreDataFromCache(){
       var resultsEl=document.getElementById('results');
       if(resultsEl) resultsEl.style.display='block';
     }
-    console.log('[cache] восстановлено '+cache.rows.length+' товаров за '+cache.df+'..'+cache.dt+' (возраст '+ageHours.toFixed(1)+'ч)');
     return true;
   }catch(e){
     console.warn('[cache] restore failed:', e);
@@ -5171,7 +5165,6 @@ function getMonth(r){var d=r.rr_dt||r.sale_dt||r.order_dt||r.date||'';if(!d) ret
 async function go(tokenArg){
   // 🔥 v0.6.9: защита от двойного запуска — если уже идёт загрузка, игнорируем
   if(window._loadInProgress){
-    console.log('[go] already loading, skipping duplicate call');
     return;
   }
   window._loadInProgress = true;
@@ -5264,7 +5257,6 @@ async function go(tokenArg){
           localStorage.setItem('wb_cache_processed', json);
           // Старый кеш raw больше не нужен (от v0.6.2)
           localStorage.removeItem('wb_cache_raw');
-          console.log('[cache] сохранено '+(json.length/1024).toFixed(0)+' КБ ('+window.rows.length+' товаров за '+df+'..'+dt+')');
         } else {
           localStorage.removeItem('wb_cache_processed');
           console.warn('[cache] >4МБ ('+(json.length/1024/1024).toFixed(1)+'МБ), пропускаем');
@@ -5848,10 +5840,6 @@ async function process(raw){
       r._distrib = {stor:orphanStor*share, adv:orphanAdv*share, pen:orphanPen*share};
     });
     
-    // Для дебага в консоль
-    if(orphanStor > 0 || orphanAdv > 0){
-      console.log('[v0.5.4 distribute] orphan storage:', orphanStor.toFixed(2), 'adv:', orphanAdv.toFixed(2), 'pen:', orphanPen.toFixed(2), 'distributed across', rows.length, 'rows by revenue share');
-    }
   })();
   // Free: лимит 30 товаров. Оставляем самые продаваемые.
   window._freeLimitTriggered=false;
@@ -8612,7 +8600,6 @@ function maybeAutoRefresh(snapshots){
     info.textContent='🔄 Обновляем данные за вчера... (фоном)';
     setTimeout(function(){if(info.textContent.indexOf('Обновляем')===0)info.textContent=orig;},20000);
   }
-  console.log('[auto-refresh] starting, latest snap='+maxDay+', need '+yIso);
   setPeriod(7); // 7 дней, чтобы быстро (1 запрос обычно покрывает)
   goFromHome().finally(function(){window._autoRefreshing=false;});
 }
