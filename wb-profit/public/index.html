@@ -592,11 +592,14 @@ html{scroll-behavior:smooth}
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:1000px;margin:0 auto}
 
 /* 🔥 v0.7.7.23: Скидка интегрирована в цены, никакого отдельного баннера */
-.plan-price-wrap{margin:14px 0 4px}
-.price-old{display:block;font-size:18px;color:#94a3b8;text-decoration:line-through;font-weight:500;margin-bottom:2px;transition:opacity .25s}
+.plan-price-wrap{margin:16px 0 6px}
+/* 🔥 v0.7.12.25: «было» + бейдж экономии в одну строку */
+.price-was{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;min-height:22px}
+.price-old{display:block;font-size:17px;color:#9ca3af;text-decoration:line-through;font-weight:500;transition:opacity .25s}
 .pricing.show-yearly .price-old{display:block;animation:fadeInDown .35s ease}
-/* 🔥 v0.7.12.24: маркетинговая надпись над карточками тарифов */
-.pricing-promo{display:block;max-width:560px;margin:0 auto 32px;text-align:center;font-size:14px;font-weight:600;color:var(--purple);background:rgba(84,51,198,.07);border:1px solid rgba(84,51,198,.16);border-radius:10px;padding:10px 18px;line-height:1.45}
+.price-cut{display:inline-block;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(135deg,#5433c6,#7c5ce0);padding:2px 8px;border-radius:6px;letter-spacing:.02em;box-shadow:0 2px 6px rgba(84,51,198,.25)}
+/* 🔥 v0.7.12.24: маркетинговая надпись над карточками тарифов (v0.7.12.25: ярче) */
+.pricing-promo{display:block;max-width:580px;margin:0 auto 36px;text-align:center;font-size:14px;font-weight:700;color:var(--purple);background:linear-gradient(135deg,rgba(84,51,198,.10),rgba(124,92,224,.05));border:1px solid rgba(84,51,198,.22);border-radius:12px;padding:12px 20px;line-height:1.45;box-shadow:0 4px 14px rgba(84,51,198,.07)}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .price-save{display:none;font-size:12px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 9px;border-radius:6px;margin-top:6px;letter-spacing:.02em}
 .pricing.show-yearly .price-save{display:inline-block;animation:fadeInUp .35s ease .1s both}
@@ -609,33 +612,35 @@ html{scroll-behavior:smooth}
 .billing-btn.active{background:#fff;color:#1a0f3c;box-shadow:0 2px 8px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04)}
 .billing-save{font-size:11px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;padding:3px 8px;border-radius:6px;font-weight:700;letter-spacing:.04em;box-shadow:0 2px 4px rgba(220,38,38,.3)}
 
-/* Hover lift на карточках */
-.plan{transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
-.plan:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(124,58,237,.12),0 4px 12px rgba(0,0,0,.08)}
-.plan.popular{position:relative}
-.plan.popular::before{content:'';position:absolute;inset:-2px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:18px;z-index:-1;opacity:.35;filter:blur(8px);transition:opacity .25s}
-.plan.popular:hover::before{opacity:.55}
-.plan{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;padding:28px 24px}
-.plan.popular{border-color:#5433c6;box-shadow:0 0 0 4px rgba(84,51,198,.08)}
-.plan-badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.05em;margin-bottom:14px}
-.plan-badge.starter{background:#f0ede4;color:#5f5e5a}
-.plan-badge.biz{background:#5433c6;color:#fff}
-.plan-badge.pro{background:#1a0f3c;color:#a78bfa}
+/* 🔥 v0.7.12.25: карточки — больше воздуха, мягкая тень, плавный hover */
+.plan{background:var(--surface);border:1.5px solid var(--border);border-radius:22px;padding:32px 26px;box-shadow:0 4px 24px rgba(20,15,60,.05);transition:transform .25s cubic-bezier(.4,0,.2,1),box-shadow .25s cubic-bezier(.4,0,.2,1)}
+.plan:hover{transform:translateY(-6px);box-shadow:0 18px 44px rgba(84,51,198,.14),0 6px 16px rgba(0,0,0,.06)}
+.plan.popular{position:relative;border-color:#5433c6;box-shadow:0 16px 48px rgba(84,51,198,.20),0 0 0 4px rgba(84,51,198,.07)}
+.plan.popular::before{content:'';position:absolute;inset:-2px;background:linear-gradient(135deg,#7c3aed,#a78bfa);border-radius:22px;z-index:-1;opacity:.4;filter:blur(10px);transition:opacity .25s}
+.plan.popular:hover{transform:translateY(-6px);box-shadow:0 24px 60px rgba(84,51,198,.28),0 0 0 4px rgba(84,51,198,.09)}
+.plan.popular:hover::before{opacity:.6}
+.plan-badge{display:inline-block;font-size:11px;font-weight:800;padding:5px 13px;border-radius:99px;letter-spacing:.03em;margin-bottom:16px}
+.plan-badge.starter{background:rgba(84,51,198,.08);color:#6b5bc4}
+.plan-badge.pro{background:rgba(84,51,198,.14);color:#5433c6}
+.plan-badge.biz{background:linear-gradient(135deg,#5433c6,#7c5ce0);color:#fff;box-shadow:0 4px 12px rgba(84,51,198,.35);transform:translateY(-2px)}
 .plan-name{font-size:18px;font-weight:800;margin-bottom:4px}
-.plan-price-main{font-size:48px;font-weight:800;letter-spacing:-.03em;color:#1a0f3c;line-height:1.05}
-.plan-price-main span{font-size:16px;font-weight:500;color:var(--muted)}
+.plan-price-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;line-height:1}
+.price-now{font-size:60px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#5433c6 0%,#9170ec 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#5433c6}
+.price-unit{font-size:16px;font-weight:600;color:var(--muted)}
 .plan-price-sub{font-size:12px;color:var(--muted);margin-bottom:6px}
 .plan-desc{font-size:13px;color:var(--muted);padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
-.plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
-.plan-features li{font-size:13px;display:flex;align-items:flex-start;gap:8px}
-.plan-features li::before{content:'✓';color:#1a7a4a;font-weight:700;flex-shrink:0}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:26px}
+.plan-features li{font-size:13.5px;display:flex;align-items:flex-start;gap:10px;line-height:1.4}
+.plan-features li::before{content:'✓';flex-shrink:0;width:18px;height:18px;border-radius:50%;background:rgba(84,51,198,.12);color:#5433c6;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
 /* 🔥 v0.7.7.27: фичи "скоро" — приглушённо + бейдж */
 .plan-features li.feature-soon{color:var(--muted);opacity:.7}
-.plan-features li.feature-soon::before{content:'⏳';color:#9ca3af}
+.plan-features li.feature-soon::before{content:'⏳';background:rgba(0,0,0,.05);color:#9ca3af}
 .soon-tag{display:inline-block;margin-left:6px;font-size:10px;font-weight:700;background:#f1f5f9;color:#64748b;padding:1px 7px;border-radius:5px;letter-spacing:.05em;text-transform:uppercase;vertical-align:middle}
-.plan-btn{display:block;width:100%;text-align:center;padding:12px;border-radius:10px;font-size:14px;font-weight:700;text-decoration:none}
+.plan-btn{display:block;width:100%;text-align:center;padding:14px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;transition:all .2s cubic-bezier(.4,0,.2,1)}
 .plan-btn.outline{border:1.5px solid var(--border);color:var(--text)}
-.plan-btn.filled{background:#5433c6;color:#fff}
+.plan-btn.outline:hover{border-color:#5433c6;color:#5433c6;background:rgba(84,51,198,.05)}
+.plan-btn.filled{background:linear-gradient(135deg,#5433c6,#7c5ce0);color:#fff;box-shadow:0 6px 18px rgba(84,51,198,.32)}
+.plan-btn.filled:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(84,51,198,.42)}
 .faq{background:var(--surface);padding:72px 5%}
 .faq-list{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:2px}
 .faq-item{border-bottom:1px solid var(--border)}
@@ -734,8 +739,8 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   /* PRICING */
   .pricing{padding:48px 4%}
   .pricing-grid{grid-template-columns:1fr}
-  .plan{padding:22px 18px}
-  .plan-price-main{font-size:32px}
+  .plan{padding:24px 20px}
+  .price-now{font-size:46px}
 
   /* FAQ */
   .faq{padding:48px 4%}
@@ -757,8 +762,8 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   .billing-btn{padding:9px 18px;font-size:13px}
   .billing-save{font-size:10px;padding:2px 6px}
   .price-old{font-size:16px;display:block;margin-bottom:2px}
-  .plan-price-main{font-size:42px}
-  .pricing-promo{font-size:13px;margin-bottom:24px;padding:9px 14px}
+  .price-now{font-size:46px}
+  .pricing-promo{font-size:13px;margin-bottom:24px;padding:11px 16px}
 
   /* 🔥 v0.7.7.23: новые блоки на мобиле */
   .case{padding:48px 4%}
@@ -1022,7 +1027,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-badge starter">Базовый</div>
       <div class="plan-name">Старт</div>
       <div class="plan-price-wrap">
-        <span class="price-old" data-monthly-old="990 ₽" data-yearly-old="5 880 ₽">990 ₽</span>
+        <div class="price-was"><span class="price-old" data-monthly-old="990 ₽" data-yearly-old="5 880 ₽">990 ₽</span><span class="price-cut" data-monthly-cut="−50%" data-yearly-cut="−30%">−50%</span></div>
         <div class="plan-price-main"><span class="price-now" data-monthly="490" data-yearly="4 100">490</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 1 780 ₽">Экономия 1 780 ₽</div>
       </div>
@@ -1035,7 +1040,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-badge pro">Выгодный</div>
       <div class="plan-name">PRO</div>
       <div class="plan-price-wrap">
-        <span class="price-old" data-monthly-old="1 490 ₽" data-yearly-old="11 880 ₽">1 490 ₽</span>
+        <div class="price-was"><span class="price-old" data-monthly-old="1 490 ₽" data-yearly-old="11 880 ₽">1 490 ₽</span><span class="price-cut" data-monthly-cut="−34%" data-yearly-cut="−30%">−34%</span></div>
         <div class="plan-price-main"><span class="price-now" data-monthly="990" data-yearly="8 300">990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 3 580 ₽">Экономия 3 580 ₽</div>
       </div>
@@ -1048,7 +1053,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-badge biz">⭐ Популярный</div>
       <div class="plan-name">Бизнес</div>
       <div class="plan-price-wrap">
-        <span class="price-old" data-monthly-old="3 990 ₽" data-yearly-old="23 880 ₽">3 990 ₽</span>
+        <div class="price-was"><span class="price-old" data-monthly-old="3 990 ₽" data-yearly-old="23 880 ₽">3 990 ₽</span><span class="price-cut" data-monthly-cut="−50%" data-yearly-cut="−30%">−50%</span></div>
         <div class="plan-price-main"><span class="price-now" data-monthly="1 990" data-yearly="16 700">1 990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 7 180 ₽">Экономия 7 180 ₽</div>
       </div>
@@ -1279,6 +1284,11 @@ function setBilling(period) {
   // 🔥 v0.7.12.24: зачёркнутые старые цены (было/стало) — работают в обоих режимах
   document.querySelectorAll('.price-old').forEach(function(el) {
     var v = el.getAttribute('data-' + period + '-old');
+    if(v) el.textContent = v;
+  });
+  // 🔥 v0.7.12.25: бейдж экономии (−50% / −30%) — пересчёт при переключении
+  document.querySelectorAll('.price-cut').forEach(function(el) {
+    var v = el.getAttribute('data-' + period + '-cut');
     if(v) el.textContent = v;
   });
   // Подзаголовки
