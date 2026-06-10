@@ -1022,13 +1022,16 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
 
   <p class="pricing-promo">🚀 Стартовые цены — для первых пользователей. Успейте подключиться до повышения</p>
 
+  <!-- 🔥 v0.7.12.27: с основной цены (price-now/price-unit) убран ₽ — число воспринимается мягче.
+       Зачёркнутая (price-old) ₽ СОХРАНЯЕТ: контраст «было дорого в ₽ → стало просто 990».
+       Валюта обозначена один раз строкой «Все цены в рублях ₽» под карточками. -->
   <div class="pricing-grid">
     <div class="plan reveal" data-reveal-delay="0">
       <div class="plan-badge starter">Базовый</div>
       <div class="plan-name">Старт</div>
       <div class="plan-price-wrap">
         <div class="price-was"><span class="price-old" data-monthly-old="990 ₽" data-yearly-old="5 880 ₽">990 ₽</span><span class="price-cut" data-monthly-cut="−50%" data-yearly-cut="−30%">−50%</span></div>
-        <div class="plan-price-main"><span class="price-now" data-monthly="490" data-yearly="4 100">490</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+        <div class="plan-price-main"><span class="price-now" data-monthly="490" data-yearly="4 100">490</span> <span class="price-unit" data-monthly="/мес" data-yearly="/год">/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 1 780 ₽">Экономия 1 780 ₽</div>
       </div>
       <div class="plan-price-sub" data-monthly="Для одного магазина" data-yearly="Эффективно 342 ₽/мес">Для одного магазина</div>
@@ -1040,8 +1043,8 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-badge pro">Выгодный</div>
       <div class="plan-name">PRO</div>
       <div class="plan-price-wrap">
-        <div class="price-was"><span class="price-old" data-monthly-old="1 490 ₽" data-yearly-old="11 880 ₽">1 490 ₽</span><span class="price-cut" data-monthly-cut="−34%" data-yearly-cut="−30%">−34%</span></div>
-        <div class="plan-price-main"><span class="price-now" data-monthly="990" data-yearly="8 300">990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+        <div class="price-was"><span class="price-old" data-monthly-old="1 990 ₽" data-yearly-old="11 880 ₽">1 990 ₽</span><span class="price-cut" data-monthly-cut="−50%" data-yearly-cut="−30%">−50%</span></div>
+        <div class="plan-price-main"><span class="price-now" data-monthly="990" data-yearly="8 300">990</span> <span class="price-unit" data-monthly="/мес" data-yearly="/год">/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 3 580 ₽">Экономия 3 580 ₽</div>
       </div>
       <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="Эффективно 692 ₽/мес">Безлимит и все возможности</div>
@@ -1054,7 +1057,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-name">Бизнес</div>
       <div class="plan-price-wrap">
         <div class="price-was"><span class="price-old" data-monthly-old="3 990 ₽" data-yearly-old="23 880 ₽">3 990 ₽</span><span class="price-cut" data-monthly-cut="−50%" data-yearly-cut="−30%">−50%</span></div>
-        <div class="plan-price-main"><span class="price-now" data-monthly="1 990" data-yearly="16 700">1 990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
+        <div class="plan-price-main"><span class="price-now" data-monthly="1 990" data-yearly="16 700">1 990</span> <span class="price-unit" data-monthly="/мес" data-yearly="/год">/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 7 180 ₽">Экономия 7 180 ₽</div>
       </div>
       <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="Эффективно 1 392 ₽/мес">Для команды и нескольких магазинов</div>
@@ -1063,7 +1066,8 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <a href="/login.html" class="plan-btn filled">Выбрать Бизнес</a>
     </div>
   </div>
-  <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px;">14 дней бесплатно — все возможности PRO · Карта не нужна · Отмена в любой момент</p>
+  <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:18px;">Все цены в рублях ₽</p>
+  <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:8px;">14 дней бесплатно — все возможности PRO · Карта не нужна · Отмена в любой момент</p>
 </section>
 <section class="faq">
   <div class="section-label">Вопросы и ответы</div>
