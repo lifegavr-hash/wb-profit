@@ -931,6 +931,12 @@ tr.loss td{background:#fff5f5}
 .badge-inactive{background:#f1efe8;color:#5f5e5a}
 .badge-pro{background:#EEEDFE;color:#3C3489}
 .badge-free{background:#f1efe8;color:#5f5e5a}
+/* 🔥 v0.7.12.26: фильтры и пагинация списка пользователей */
+.ufilter{font-size:12px;padding:5px 12px;border:1px solid var(--border);border-radius:99px;background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+.ufilter:hover{border-color:var(--purple);color:var(--purple)}
+.ufilter.active{background:var(--purple);color:#fff;border-color:var(--purple)}
+.users-pager button{font-size:13px;padding:6px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer}
+.users-pager button:disabled{opacity:.4;cursor:default}
 .upgrade-banner{background:#1a0f3c;border-radius:var(--r);padding:1.5rem;color:#fff;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .upgrade-text h3{font-size:16px;font-weight:500;margin-bottom:4px}
 .upgrade-text p{font-size:13px;color:rgba(255,255,255,.6)}
@@ -2638,11 +2644,26 @@ body{padding-top:var(--beta-h)}
       </div>
       <div class="card">
         <div class="ct">Промокоды</div>
-        <div class="tw"><table class="promo-table"><thead><tr><th>Код</th><th>Тариф</th><th>Дней</th><th>Использовано</th><th>Лимит</th><th>Статус</th><th></th></tr></thead><tbody id="promoBody"></tbody></table></div>
+        <div class="tw"><table class="promo-table" style="min-width:820px"><thead><tr><th>Код</th><th>Тариф</th><th>Дней</th><th>Использовано</th><th>Кем</th><th>Сейчас</th><th>Лимит</th><th>Статус</th><th></th></tr></thead><tbody id="promoBody"></tbody></table></div>
       </div>
       <div class="card">
         <div class="ct">Пользователи</div>
+        <!-- 🔥 v0.7.12.26: поиск + фильтры + серверная пагинация -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px">
+          <input type="text" id="usersSearch" placeholder="Поиск по email…" oninput="onUsersSearch()" style="flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text)">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="ufilter active" data-filter="all" onclick="setUsersFilter('all',this)">Все</button>
+            <button class="ufilter" data-filter="paid" onclick="setUsersFilter('paid',this)">Платные</button>
+            <button class="ufilter" data-filter="trial" onclick="setUsersFilter('trial',this)">Триал</button>
+            <button class="ufilter" data-filter="active" onclick="setUsersFilter('active',this)">Активные</button>
+          </div>
+        </div>
         <div class="tw" style="overflow-x:auto"><table class="promo-table" style="min-width:780px"><thead><tr><th>Email</th><th>Тариф</th><th>Триал</th><th>Снап.</th><th>Расч.</th><th>Каб.</th><th>Фидб.</th><th>Активность</th><th>Регистрация</th></tr></thead><tbody id="usersBody"></tbody></table></div>
+        <div class="users-pager" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px">
+          <button id="usersPrev" onclick="usersPrevPage()">← Назад</button>
+          <span id="usersPageInfo" style="font-size:13px;color:var(--muted)"></span>
+          <button id="usersNext" onclick="usersNextPage()">Вперёд →</button>
+        </div>
       </div>
     </div>
 
@@ -3966,11 +3987,23 @@ async function loadAdminData(token){
     var btnStyle='font-size:12px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:transparent';
     var inStyle='width:62px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--surface);color:var(--text)';
     document.getElementById('promoBody').innerHTML=d.promos.map(function(p){
+      // 🔥 v0.7.12.26: данные использования (uses[] приходят с бэка).
+      var uses=p.uses||[];
+      var usedCount=p.used_count||0;
+      var usedCell='<span style="font-weight:700;color:'+(usedCount>0?'var(--purple)':'var(--hint)')+'">'+usedCount+' / '+p.max_uses+'</span>';
+      var whoCell=uses.length?'<span style="font-size:12px">'+uses.map(function(x){return esc(x.email);}).join(', ')+'</span>':'<span style="color:var(--hint)">—</span>';
+      // «Сейчас»: есть активация с непросроченным периодом → используется; все истекли → использован; нет активаций → —
+      var nowCell;
+      if(!uses.length) nowCell='<span style="color:var(--hint)">—</span>';
+      else if(uses.some(function(x){return x.period_active;})) nowCell='<span class="badge badge-active">🟢 используется</span>';
+      else nowCell='<span class="badge badge-inactive">использован</span>';
       return '<tr>'+
         '<td style="font-family:monospace">'+esc(p.code)+'</td>'+
         '<td><span class="badge badge-pro">'+esc(p.plan)+'</span></td>'+
         '<td><input type="number" id="pd_'+p.id+'" value="'+p.days+'" min="1" max="365" style="'+inStyle+'"></td>'+
-        '<td>'+p.used_count+'</td>'+
+        '<td>'+usedCell+'</td>'+
+        '<td style="max-width:240px;white-space:normal;word-break:break-word">'+whoCell+'</td>'+
+        '<td>'+nowCell+'</td>'+
         '<td><input type="number" id="pm_'+p.id+'" value="'+p.max_uses+'" min="1" style="'+inStyle+'"></td>'+
         '<td><span class="badge '+(p.is_active?'badge-active':'badge-inactive')+'">'+(p.is_active?'Активен':'Неактивен')+'</span></td>'+
         '<td style="white-space:nowrap">'+
@@ -3980,38 +4013,102 @@ async function loadAdminData(token){
         '</td></tr>';
     }).join('');
   }
-  if(d.users){
-    // 🔥 v0.7.12.18: расширенный список — триал-статус + активность + последняя активность.
-    document.getElementById('usersBody').innerHTML=d.users.map(function(u){
-      var reg=u.registered_at?new Date(u.registered_at).toLocaleDateString('ru-RU'):'—';
-      var last=u.last_activity?new Date(u.last_activity).toLocaleString('ru-RU'):'<span style="color:var(--hint)">—</span>';
-      var trial;
-      if(u.trial_until){
-        var td=new Date(u.trial_until).toLocaleDateString('ru-RU');
-        trial=u.trial_active
-          ?'<span class="badge badge-active">активен до '+td+'</span>'
-          :'<span class="badge badge-inactive">истёк '+td+'</span>';
-      } else if(u.billing_period && u.billing_period!=='trial'){
-        // Платный без триала — показываем период оплаты для контекста.
-        var perMap={yearly:'годовой',monthly:'месячный'};
-        trial='<span class="badge badge-pro">'+(perMap[u.billing_period]||u.billing_period)+'</span>';
-      } else { trial='<span style="color:var(--hint)">—</span>'; }
-      var codeline=u.used_code?'<div style="font-size:11px;color:var(--hint);font-family:monospace">'+u.used_code+'</div>':'';
-      return '<tr>'+
-        '<td>'+u.email+codeline+'</td>'+
-        '<td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+u.plan+'</span></td>'+
-        '<td>'+trial+'</td>'+
-        '<td>'+(u.snapshots_count||0)+'</td>'+
-        '<td>'+(u.calcs_count||0)+'</td>'+
-        '<td>'+(u.wb_accounts_count||0)+'</td>'+
-        '<td>'+(u.feedback_count||0)+'</td>'+
-        '<td>'+last+'</td>'+
-        '<td>'+reg+'</td></tr>';
-    }).join('');
-  }
+  // 🔥 v0.7.12.26: первая страница юзеров из общего ответа; дальше — через loadUsers (серверная пагинация).
+  usersState.page=(typeof d.usersPage==='number')?d.usersPage:0;
+  usersState.total=d.usersTotal||0;
+  usersState.search=''; usersState.filter='all';
+  var _us=document.getElementById('usersSearch'); if(_us) _us.value='';
+  syncUsersFilterButtons('all');
+  if(d.users){ renderUsersRows(d.users); updateUsersPager(); }
   if(d.feedback){ renderFeedbackAdmin(d.feedback); }
   // 🔥 v0.7.7.33: 4 view беты — параллельно
   loadAdminBetaViews();
+}
+
+// 🔥 v0.7.12.26: состояние списка пользователей (серверные поиск/фильтр/пагинация).
+var usersState={ page:0, total:0, search:'', filter:'all', pageSize:25 };
+var _usersSearchTimer=null;
+
+function renderUsersRows(list){
+  var body=document.getElementById('usersBody');
+  if(!body) return;
+  if(!list || !list.length){
+    body.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--hint);padding:18px">Ничего не найдено</td></tr>';
+    return;
+  }
+  body.innerHTML=list.map(function(u){
+    var reg=u.registered_at?new Date(u.registered_at).toLocaleDateString('ru-RU'):'—';
+    var last=u.last_activity?new Date(u.last_activity).toLocaleString('ru-RU'):'<span style="color:var(--hint)">—</span>';
+    var trial;
+    if(u.trial_until){
+      var td=new Date(u.trial_until).toLocaleDateString('ru-RU');
+      trial=u.trial_active
+        ?'<span class="badge badge-active">активен до '+td+'</span>'
+        :'<span class="badge badge-inactive">истёк '+td+'</span>';
+    } else if(u.billing_period && u.billing_period!=='trial'){
+      // Платный без триала — показываем период оплаты для контекста.
+      var perMap={yearly:'годовой',monthly:'месячный'};
+      trial='<span class="badge badge-pro">'+(perMap[u.billing_period]||u.billing_period)+'</span>';
+    } else { trial='<span style="color:var(--hint)">—</span>'; }
+    var codeline=u.used_code?'<div style="font-size:11px;color:var(--hint);font-family:monospace">'+esc(u.used_code)+'</div>':'';
+    return '<tr>'+
+      '<td>'+esc(u.email)+codeline+'</td>'+
+      '<td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+esc(u.plan)+'</span></td>'+
+      '<td>'+trial+'</td>'+
+      '<td>'+(u.snapshots_count||0)+'</td>'+
+      '<td>'+(u.calcs_count||0)+'</td>'+
+      '<td>'+(u.wb_accounts_count||0)+'</td>'+
+      '<td>'+(u.feedback_count||0)+'</td>'+
+      '<td>'+last+'</td>'+
+      '<td>'+reg+'</td></tr>';
+  }).join('');
+}
+function updateUsersPager(){
+  var ps=usersState.pageSize, total=usersState.total, page=usersState.page;
+  var pages=Math.max(1, Math.ceil(total/ps));
+  var info=document.getElementById('usersPageInfo');
+  if(info) info.textContent='Стр. '+(page+1)+' / '+pages+' · всего '+total;
+  var prev=document.getElementById('usersPrev'), next=document.getElementById('usersNext');
+  if(prev) prev.disabled=page<=0;
+  if(next) next.disabled=page>=pages-1;
+}
+function syncUsersFilterButtons(f){
+  document.querySelectorAll('.ufilter').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-filter')===f);
+  });
+}
+async function loadUsers(){
+  if(!(window.currentProfile && currentProfile.is_admin)) return;
+  var s=await sb.auth.getSession();
+  var session=s && s.data && s.data.session;
+  if(!session) return;
+  var url='/api/admin?resource=users&page='+usersState.page
+    +'&filter='+encodeURIComponent(usersState.filter)
+    +'&search='+encodeURIComponent(usersState.search);
+  var r=await fetch(url,{headers:{'Authorization':'Bearer '+session.access_token}});
+  var d=await r.json().catch(function(){return {};});
+  usersState.total=d.usersTotal||0;
+  if(typeof d.usersPage==='number') usersState.page=d.usersPage;
+  renderUsersRows(d.users);
+  updateUsersPager();
+}
+function onUsersSearch(){
+  clearTimeout(_usersSearchTimer);
+  _usersSearchTimer=setTimeout(function(){
+    usersState.search=(document.getElementById('usersSearch').value||'').trim();
+    usersState.page=0;
+    loadUsers();
+  },300);
+}
+function setUsersFilter(f){
+  usersState.filter=f; usersState.page=0;
+  syncUsersFilterButtons(f);
+  loadUsers();
+}
+function usersPrevPage(){ if(usersState.page>0){ usersState.page--; loadUsers(); } }
+function usersNextPage(){
+  var pages=Math.max(1, Math.ceil(usersState.total/usersState.pageSize));
+  if(usersState.page<pages-1){ usersState.page++; loadUsers(); }
 }
 
 // 🔥 v0.7.12.17: безопасный эскейп для вставки в HTML.
