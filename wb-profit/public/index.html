@@ -593,8 +593,10 @@ html{scroll-behavior:smooth}
 
 /* 🔥 v0.7.7.23: Скидка интегрирована в цены, никакого отдельного баннера */
 .plan-price-wrap{margin:14px 0 4px}
-.price-old{display:none;font-size:16px;color:#94a3b8;text-decoration:line-through;font-weight:500;margin-bottom:4px;transition:opacity .25s}
+.price-old{display:block;font-size:18px;color:#94a3b8;text-decoration:line-through;font-weight:500;margin-bottom:2px;transition:opacity .25s}
 .pricing.show-yearly .price-old{display:block;animation:fadeInDown .35s ease}
+/* 🔥 v0.7.12.24: маркетинговая надпись над карточками тарифов */
+.pricing-promo{display:block;max-width:560px;margin:0 auto 32px;text-align:center;font-size:14px;font-weight:600;color:var(--purple);background:rgba(84,51,198,.07);border:1px solid rgba(84,51,198,.16);border-radius:10px;padding:10px 18px;line-height:1.45}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .price-save{display:none;font-size:12px;font-weight:700;color:#16a34a;background:#dcfce7;padding:3px 9px;border-radius:6px;margin-top:6px;letter-spacing:.02em}
 .pricing.show-yearly .price-save{display:inline-block;animation:fadeInUp .35s ease .1s both}
@@ -620,8 +622,8 @@ html{scroll-behavior:smooth}
 .plan-badge.biz{background:#5433c6;color:#fff}
 .plan-badge.pro{background:#1a0f3c;color:#a78bfa}
 .plan-name{font-size:18px;font-weight:800;margin-bottom:4px}
-.plan-price-main{font-size:38px;font-weight:800;letter-spacing:-.03em;color:#1a0f3c}
-.plan-price-main span{font-size:15px;font-weight:500;color:var(--muted)}
+.plan-price-main{font-size:48px;font-weight:800;letter-spacing:-.03em;color:#1a0f3c;line-height:1.05}
+.plan-price-main span{font-size:16px;font-weight:500;color:var(--muted)}
 .plan-price-sub{font-size:12px;color:var(--muted);margin-bottom:6px}
 .plan-desc{font-size:13px;color:var(--muted);padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
@@ -754,7 +756,9 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   .billing-toggle{margin-bottom:24px}
   .billing-btn{padding:9px 18px;font-size:13px}
   .billing-save{font-size:10px;padding:2px 6px}
-  .price-old{font-size:14px;display:block;margin-bottom:2px}
+  .price-old{font-size:16px;display:block;margin-bottom:2px}
+  .plan-price-main{font-size:42px}
+  .pricing-promo{font-size:13px;margin-bottom:24px;padding:9px 14px}
 
   /* 🔥 v0.7.7.23: новые блоки на мобиле */
   .case{padding:48px 4%}
@@ -1011,12 +1015,14 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
     <button type="button" class="billing-btn" id="billBtnYear" onclick="setBilling('yearly')">За год <span class="billing-save">−30%</span></button>
   </div>
 
+  <p class="pricing-promo">🚀 Стартовые цены — для первых пользователей. Успейте подключиться до повышения</p>
+
   <div class="pricing-grid">
     <div class="plan reveal" data-reveal-delay="0">
-      <div class="plan-badge starter">Старт</div>
+      <div class="plan-badge starter">Базовый</div>
       <div class="plan-name">Старт</div>
       <div class="plan-price-wrap">
-        <span class="price-old" data-monthly-old="" data-yearly-old="5 880 ₽">5 880 ₽</span>
+        <span class="price-old" data-monthly-old="990 ₽" data-yearly-old="5 880 ₽">990 ₽</span>
         <div class="plan-price-main"><span class="price-now" data-monthly="490" data-yearly="4 100">490</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 1 780 ₽">Экономия 1 780 ₽</div>
       </div>
@@ -1025,31 +1031,31 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <ul class="plan-features"><li>Калькулятор до 50 SKU</li><li>Период до 30 дней</li><li>Главная: защита от потерь и советы</li><li>Email-уведомления раз в день</li><li>1 кабинет WB</li><li>История 30 дней</li></ul>
       <a href="/login.html" class="plan-btn outline">Выбрать Старт</a>
     </div>
-    <div class="plan popular reveal" data-reveal-delay="100">
-      <div class="plan-badge pro">⭐ Популярный</div>
+    <div class="plan reveal" data-reveal-delay="100">
+      <div class="plan-badge pro">Выгодный</div>
       <div class="plan-name">PRO</div>
       <div class="plan-price-wrap">
-        <span class="price-old" data-monthly-old="" data-yearly-old="11 880 ₽">11 880 ₽</span>
+        <span class="price-old" data-monthly-old="1 490 ₽" data-yearly-old="11 880 ₽">1 490 ₽</span>
         <div class="plan-price-main"><span class="price-now" data-monthly="990" data-yearly="8 300">990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 3 580 ₽">Экономия 3 580 ₽</div>
       </div>
       <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="Эффективно 692 ₽/мес">Безлимит и все возможности</div>
       <div class="plan-desc">Для серьёзного селлера</div>
       <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>Telegram-уведомления</li><li>1 кабинет WB</li><li>История 1 год</li></ul>
-      <a href="/login.html" class="plan-btn filled">Начать 14 дней бесплатно</a>
+      <a href="/login.html" class="plan-btn outline">Начать 14 дней бесплатно</a>
     </div>
-    <div class="plan reveal" data-reveal-delay="200">
-      <div class="plan-badge biz">Бизнес</div>
+    <div class="plan popular reveal" data-reveal-delay="200">
+      <div class="plan-badge biz">⭐ Популярный</div>
       <div class="plan-name">Бизнес</div>
       <div class="plan-price-wrap">
-        <span class="price-old" data-monthly-old="" data-yearly-old="23 880 ₽">23 880 ₽</span>
+        <span class="price-old" data-monthly-old="3 990 ₽" data-yearly-old="23 880 ₽">3 990 ₽</span>
         <div class="plan-price-main"><span class="price-now" data-monthly="1 990" data-yearly="16 700">1 990</span> <span class="price-unit" data-monthly="₽/мес" data-yearly="₽/год">₽/мес</span></div>
         <div class="price-save" data-monthly="" data-yearly="Экономия 7 180 ₽">Экономия 7 180 ₽</div>
       </div>
       <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="Эффективно 1 392 ₽/мес">Для команды и нескольких магазинов</div>
       <div class="plan-desc">2 кабинета WB + Excel + команда</div>
       <ul class="plan-features"><li>Всё что в PRO</li><li>Экспорт в Excel/CSV</li><li>2 кабинета WB</li><li>Приоритетная поддержка (4 часа)</li><li>История 2 года</li></ul>
-      <a href="/login.html" class="plan-btn outline">Выбрать Бизнес</a>
+      <a href="/login.html" class="plan-btn filled">Выбрать Бизнес</a>
     </div>
   </div>
   <p style="text-align:center;font-size:13px;color:var(--muted);margin-top:24px;">14 дней бесплатно — все возможности PRO · Карта не нужна · Отмена в любой момент</p>
@@ -1268,6 +1274,11 @@ function setBilling(period) {
   // Единицы (₽/мес → ₽/год)
   document.querySelectorAll('.price-unit').forEach(function(el) {
     var v = el.getAttribute('data-' + period);
+    if(v) el.textContent = v;
+  });
+  // 🔥 v0.7.12.24: зачёркнутые старые цены (было/стало) — работают в обоих режимах
+  document.querySelectorAll('.price-old').forEach(function(el) {
+    var v = el.getAttribute('data-' + period + '-old');
     if(v) el.textContent = v;
   });
   // Подзаголовки
