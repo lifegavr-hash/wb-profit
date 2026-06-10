@@ -1442,6 +1442,13 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
 #unitHistory::-webkit-scrollbar-thumb{background:#c0c0c0;border-radius:4px}
 #unitHistory::-webkit-scrollbar-thumb:hover{background:#888}
 
+/* 🔥 v0.7.12.23: баннер расширения SW Profit */
+.ext-banner{background:linear-gradient(135deg,rgba(84,51,198,.06) 0%,rgba(84,51,198,.03) 100%);border:1px solid rgba(84,51,198,.2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.5;color:var(--text)}
+.ext-banner strong{color:var(--purple);font-weight:600}
+.ext-banner strong:hover{color:var(--purple)}
+html[data-theme="dark"] .ext-banner{background:linear-gradient(135deg,rgba(167,139,250,.08) 0%,rgba(167,139,250,.04) 100%);border-color:rgba(167,139,250,.25)}
+html[data-theme="dark"] .ext-banner strong{color:#a78bfa}
+
 /* ═══════════════════════════════════════════════════════════════════════
    🆕 v0.4.2 МОБИЛЬНАЯ АДАПТАЦИЯ
    ═══════════════════════════════════════════════════════════════════════ */
@@ -2426,6 +2433,11 @@ body{padding-top:var(--beta-h)}
       <div class="card">
         <div class="ct">Калькулятор подбора товара</div>
         <p class="hint" style="margin-bottom:14px">Рассчитайте маржу и прибыль <strong>до закупки</strong>. Все ставки берутся из WB API: 7411 категорий и 89 складов.</p>
+
+        <!-- 🔥 v0.7.12.23: баннер расширения SW Profit для Chrome -->
+        <div class="ext-banner">
+          <div style="font-size:13px;line-height:1.5">🧩 <strong>Установите расширение SW Profit</strong> для Wildberries — анализ прибыли, комиссии и логистики прямо на карточке товара, пока вы подбираете идеи. Доступно для Chrome.</div>
+        </div>
 
         <!-- Блок 1: товар -->
         <div class="unit-grid">
