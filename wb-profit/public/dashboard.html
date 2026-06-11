@@ -1920,6 +1920,11 @@ html[data-theme="dark"] .ext-banner strong{color:#a78bfa}
 .detail-ops-date{color:#64748b;font-size:11px;white-space:nowrap}
 .detail-ops-nm{color:#94a3b8;font-size:10px;font-weight:400}
 .detail-ops-count{color:#94a3b8;font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;margin-left:4px}
+/* 🔥 v0.7.12.28: заголовок детализации + иконка-подсказка ⓘ (вне overflow-контейнера, поповер не обрежется) */
+.detail-head{display:flex;align-items:center;gap:8px;position:relative;margin-bottom:14px;font-size:16px;font-weight:700;color:var(--text)}
+.info-ic{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--purple);color:#fff;font-size:11px;font-weight:700;font-style:normal;line-height:1;cursor:pointer;flex-shrink:0;user-select:none}
+.info-pop{position:absolute;top:calc(100% + 4px);left:0;z-index:3000;width:min(360px,90vw);background:var(--surface,#fff);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:12.5px;font-weight:400;line-height:1.5;box-shadow:0 8px 28px rgba(0,0,0,.16);display:none}
+.info-ic:hover ~ .info-pop,.info-pop:hover,.detail-head.open .info-pop{display:block}
 .detail-ops-amount{text-align:right;color:#dc2626;font-weight:600;white-space:nowrap}
 .detail-ops-meta{color:#64748b;font-size:11px}
 .detail-ops-more{font-size:11px;color:#94a3b8;text-align:center;margin-top:8px;padding-top:8px;border-top:1px dashed #e2e8f0}
@@ -2412,6 +2417,16 @@ body{padding-top:var(--beta-h)}
       </div>
       <div id="detailContent" style="display:none">
         <div id="detailProtect" class="detail-protect"></div>
+        <!-- 🔥 v0.7.12.28: заголовок + подсказка ⓘ (объясняет детализацию и «×N») -->
+        <div class="detail-head" id="detailHead">
+          Детализация расходов
+          <span class="info-ic" onclick="toggleDetailInfo(event)" role="button" tabindex="0" aria-label="Что показывает детализация и что значит ×N">i</span>
+          <span class="info-pop">
+            <strong>Разбивка всех расходов WB</strong> по группам (логистика, хранение, реклама, штрафы, удержания…) с суммами за выбранный период. Нажмите на строку группы, чтобы раскрыть операции.
+            <br><br>
+            <strong>×N</strong> рядом с товаром — сколько отдельных операций этого типа WB провёл по этому товару за эту дату. Например <strong>×41</strong> — 41 операция за день, а сумма в строке — их общий итог. Это число операций, <u>не</u> количество штук товара.
+          </span>
+        </div>
         <div class="metrics" id="detailMetrics"></div>
         <div id="detailGrid" class="detail-grid"></div>
       </div>
@@ -2730,6 +2745,14 @@ body{padding-top:var(--beta-h)}
             <div class="faq-body">
               <p>Мы показываем <b>чистую прибыль</b>: выручка минус все удержания WB (комиссия, логистика, хранение, эквайринг, штрафы) плюс себестоимость и расходы на рекламу. Кабинет WB обычно показывает оборот без вычета себестоимости — отсюда разница.</p>
               <p>Для чистой картинки нужны заполненные себестоимости — см. вопрос выше.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary>Что означает «×N» в детализации расходов?</summary>
+            <div class="faq-body">
+              <p>В <a href="#" onclick="showSection('detail',document.getElementById('nav-detail'));return false">Детализации расходов</a> при раскрытии статьи (логистика, хранение, реклама и т.д.) операции по одному товару за один день объединяются в строку. <b>«×N»</b> — это сколько отдельных операций этого типа WB провёл по данному товару за эту дату.</p>
+              <p>Например, <b>×41</b> у логистики означает, что за день было 41 списание логистики по этому артикулу, а сумма в строке — их общий итог. Это <b>число операций, а не количество штук</b> товара.</p>
             </div>
           </details>
         </div>
@@ -6434,6 +6457,18 @@ function toggleDetailOp(rowKey, source, opName){
   body.style.display = 'block';
   exp.textContent = '▼';
 }
+
+// 🔥 v0.7.12.28: подсказка ⓘ в детализации — тап на мобиле (hover там не работает).
+function toggleDetailInfo(e){
+  if(e) e.stopPropagation();
+  var h = document.getElementById('detailHead');
+  if(h) h.classList.toggle('open');
+}
+// Закрытие поповера по клику вне (один слушатель на документ).
+document.addEventListener('click', function(e){
+  var h = document.getElementById('detailHead');
+  if(h && h.classList.contains('open') && !h.contains(e.target)) h.classList.remove('open');
+});
 
 // === v0.7.3: фильтры, сортировка и пресеты Калькулятора ===
 // Состояние
