@@ -957,7 +957,7 @@ tr.loss td{background:#fff5f5}
 .detail-formula-row .red{color:#dc2626}
 .detail-card-header{padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg)}
 .detail-card-title{font-size:13px;font-weight:500;color:var(--text)}
-.detail-card-total{font-size:14px;font-weight:600;color:var(--red)}
+.detail-card-total{font-size:15px;font-weight:700;color:var(--red)}
 .detail-row{display:flex;align-items:center;justify-content:space-between;padding:8px 1rem;border-bottom:0.5px solid var(--border);font-size:13px}
 .detail-row:last-child{border-bottom:none}
 .detail-name{color:var(--text);flex:1;padding-right:12px}
@@ -967,6 +967,16 @@ tr.loss td{background:#fff5f5}
 .no-data{text-align:center;padding:2rem;color:var(--hint);font-size:14px}
 .detail-bar{height:3px;background:#f0f0ee;margin:0 1rem 8px;border-radius:99px}
 .detail-bar-fill{height:100%;background:var(--red);border-radius:99px}
+/* 🔥 v0.7.12.31: переиспользуемая подстрока расхода — ОБРАЗЕЦ для всех категорий.
+   Текстовая иерархия (без баров): слева название + серый пояснитель, справа сумма + кол-во/доля. */
+.expense-subrow-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:9px 1rem 9px 1.75rem;border-bottom:.5px solid var(--border)}
+.expense-subrow:last-child .expense-subrow-head{border-bottom:none}
+.expense-subrow-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.expense-subrow-name{font-size:13px;color:var(--text);font-weight:500}
+.expense-subrow-hint{font-size:11px;color:var(--hint);line-height:1.35}
+.expense-subrow-figs{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap;flex-shrink:0}
+.expense-subrow-amount{font-size:13px;font-weight:600;color:var(--red)}
+.expense-subrow-meta{font-size:11px;color:var(--hint)}
 .expand-btn{font-size:11px;color:var(--purple);cursor:pointer;padding:4px 1rem 8px;display:block;background:none;border:none;text-align:left}
 .expand-btn:hover{text-decoration:underline}
 .pen-table{width:100%;border-collapse:collapse;font-size:12px;margin:0}
@@ -6180,8 +6190,8 @@ function renderDetail(){
   Object.keys(byOper).forEach(function(name){
     var o=byOper[name];
     // 🔥 v0.7.12.30: две подстроки — выкуп и возврат/невыкуп (их сумма ≡ o.delivery)
-    if(o.deliveryBuyout>0) groups['Логистика и доставка'].ops.push({name:name+' · выкуп', matchName:name, count:o.countBuyout, amount:o.deliveryBuyout, source:'delivery_buyout'});
-    if(o.deliveryReturn>0) groups['Логистика и доставка'].ops.push({name:name+' · возврат/невыкуп', matchName:name, count:o.countReturn, amount:o.deliveryReturn, source:'delivery_return'});
+    if(o.deliveryBuyout>0) groups['Логистика и доставка'].ops.push({name:'Логистика — доставка проданного', hint:'доставка товаров, которые купили', matchName:name, count:o.countBuyout, amount:o.deliveryBuyout, source:'delivery_buyout'});
+    if(o.deliveryReturn>0) groups['Логистика и доставка'].ops.push({name:'Логистика — возврат (невыкуп)', hint:'обратная логистика по невыкупленным заказам', matchName:name, count:o.countReturn, amount:o.deliveryReturn, source:'delivery_return'});
     if(o.storage>0)  groups['Хранение'].ops.push({name:name, count:o.count, amount:o.storage, source:'storage'});
     if(o.ads>0)      groups['Реклама и продвижение'].ops.push({name:name, count:o.count, amount:o.ads, source:'ads'});
     var penAmount=o.penalty+o.acceptance+o.deduction;
@@ -6254,7 +6264,6 @@ function renderDetail(){
     if(grp.total<=0) continue; // пустые группы скрываем
     // Сортируем операции по убыванию суммы
     grp.ops.sort(function(a,b){return b.amount-a.amount;});
-    var maxAmt=grp.ops.length?grp.ops[0].amount:1;
 
     html+='<div class="detail-card">';
     html+='<div class="detail-card-header">';
@@ -6277,18 +6286,23 @@ function renderDetail(){
 
     for(var k=0;k<grp.ops.length;k++){
       var op=grp.ops[k];
-      var pct=maxAmt>0?Math.round(op.amount/maxAmt*100):0;
-      // 🔥 v0.5.4: кликабельная строка — раскрывает детали операций
+      // 🔥 v0.7.12.31: переиспользуемая подстрока расхода (.expense-subrow) — текстовая, без баров.
+      // Долю «X% категории» показываем только когда категория разбита на >1 подстроки
+      // (для одиночной операции 100% — лишний шум). Образец масштабируется на любую категорию.
       var rowKey = 'detail-' + g + '-' + k;
-      html+='<div class="detail-op-block" data-key="'+rowKey+'">';
-      html+='<div class="detail-row detail-clickable" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.matchName||op.name)+'\')">';
-      html+='<span class="detail-name">'+escHtml(op.name)+' <span class="detail-expand" id="exp-'+rowKey+'">▶</span></span>';
-      html+='<span class="detail-count">'+fmt(op.count)+' оп.</span>';
-      html+='<span class="detail-amount">−'+fmt(op.amount)+' ₽</span>';
+      var sharePct = grp.total>0 ? Math.round(op.amount/grp.total*100) : 0;
+      var metaTxt = fmt(op.count)+' '+plurOps(op.count) + (grp.ops.length>1 ? ' · '+sharePct+'% категории' : '');
+      html+='<div class="detail-op-block expense-subrow" data-key="'+rowKey+'">';
+      html+='<div class="detail-clickable expense-subrow-head" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.matchName||op.name)+'\')">';
+      html+=  '<div class="expense-subrow-info">';
+      html+=    '<span class="expense-subrow-name">'+escHtml(op.name)+' <span class="detail-expand" id="exp-'+rowKey+'">▶</span></span>';
+      if(op.hint) html+= '<span class="expense-subrow-hint">'+escHtml(op.hint)+'</span>';
+      html+=  '</div>';
+      html+=  '<div class="expense-subrow-figs">';
+      html+=    '<span class="expense-subrow-amount">−'+fmt(op.amount)+' ₽</span>';
+      html+=    '<span class="expense-subrow-meta">'+metaTxt+'</span>';
+      html+=  '</div>';
       html+='</div>';
-      if(pct>0){
-        html+='<div class="detail-bar"><div class="detail-bar-fill" style="width:'+pct+'%"></div></div>';
-      }
       html+='<div class="detail-expansion" id="body-'+rowKey+'" style="display:none"></div>';
       html+='</div>';
     }
@@ -6341,6 +6355,15 @@ function renderDetail(){
   }
   
   document.getElementById('detailGrid').innerHTML = html;
+}
+
+// 🔥 v0.7.12.31: склонение «операция/операции/операций» для подписи кол-ва операций.
+function plurOps(n){
+  n=Math.abs(Number(n)||0)%100; var n1=n%10;
+  if(n>10&&n<20) return 'операций';
+  if(n1===1) return 'операция';
+  if(n1>1&&n1<5) return 'операции';
+  return 'операций';
 }
 
 // 🔥 v0.5.4: Раскрытие/свёртка деталей операции в Детализации
