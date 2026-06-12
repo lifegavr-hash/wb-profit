@@ -608,6 +608,14 @@ html[data-theme="dark"] .pwa-banner-close{color:#a78bfa}
 /* Предупреждение о free-лимите товаров */
 .free-limit-warn{background:linear-gradient(135deg,#fef3c7,#fff);border:1px solid #f5c842;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13px;color:#7a5c00}
 .free-limit-warn a{color:#7c3aed;font-weight:600;text-decoration:none;margin-left:6px}
+/* 🔥 v0.7.12.36: ненавязчивая метка «данные из кэша от …» + кнопка Обновить */
+.cache-fresh-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f1f5f9;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin:0 0 14px;font-size:12px;color:var(--muted)}
+.cache-fresh-banner.stale{background:#fff7ed;border-color:#fdba74;color:#9a5b00}
+.cache-fresh-banner span{flex:1;min-width:0}
+.cache-fresh-refresh{flex-shrink:0;background:var(--purple);color:#fff;border:none;border-radius:7px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer}
+.cache-fresh-refresh:hover{opacity:.9}
+html[data-theme="dark"] .cache-fresh-banner{background:#16213e;border-color:#2a2a44}
+html[data-theme="dark"] .cache-fresh-banner.stale{background:#2e1f10;border-color:#7a4a12;color:#f0b86e}
 .free-limit-warn a:hover{text-decoration:underline}
 .section{display:none}
 .section.active{display:block}
@@ -4974,9 +4982,49 @@ var _currentPeriod=(function(){
 function savePeriod(){
   try{localStorage.setItem('wb_current_period',JSON.stringify(_currentPeriod));}catch(e){}
 }
+// 🔥 v0.7.12.36: «слим» сырого отчёта для кэша — ТОЛЬКО поля, которые реально читают
+// computeFinancials + toggleDetailOp + aggregateRowsByDay. Полный raw (~50 полей) для 90 дней ~9МБ
+// не влезает в localStorage; слим (26 полей) ≈ в 2-3 раза меньше и помещается. Расчёт идентичен.
+var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
+function _slimRawForCache(raw){
+  if(!Array.isArray(raw)||!raw.length) return null;
+  var out=new Array(raw.length);
+  for(var i=0;i<raw.length;i++){
+    var r=raw[i]||{}, s={};
+    for(var f=0;f<_CACHE_RAW_FIELDS.length;f++){
+      var k=_CACHE_RAW_FIELDS[f];
+      if(r[k]!==undefined && r[k]!==null) s[k]=r[k];
+    }
+    out[i]=s;
+  }
+  return out;
+}
+// 🔥 v0.7.12.36: ненавязчивая метка свежести кэша + кнопка «Обновить» (честность данных —
+// не выдаём старый кэш за свежие данные молча). stale=true → подсветка «возможно устарели».
+function showCacheFreshnessBanner(ts, stale){
+  try{
+    if(!ts) return;
+    var w=new Date(ts), p2=function(n){return (n<10?'0':'')+n;};
+    var ageH=(Date.now()-ts)/3600000;
+    var ageTxt=ageH<1?Math.max(1,Math.round(ageH*60))+' мин назад':ageH<24?Math.round(ageH)+' ч назад':Math.round(ageH/24)+' дн назад';
+    var el=document.getElementById('cacheFreshBanner');
+    if(!el){
+      el=document.createElement('div');
+      el.id='cacheFreshBanner'; el.className='cache-fresh-banner';
+      var res=document.getElementById('results');
+      if(res&&res.parentNode) res.parentNode.insertBefore(el,res);
+      else return;
+    }
+    el.classList.toggle('stale',!!stale);
+    el.innerHTML=(stale?'⚠️ ':'📦 ')+'<span>Данные из кэша от '+p2(w.getDate())+'.'+p2(w.getMonth()+1)+' '+p2(w.getHours())+':'+p2(w.getMinutes())+' ('+ageTxt+')'+(stale?' — возможно устарели, обновите':'')+'</span><button type="button" class="cache-fresh-refresh" onclick="go()">Обновить</button>';
+    el.style.display='flex';
+  }catch(e){}
+}
+function hideCacheFreshnessBanner(){
+  var el=document.getElementById('cacheFreshBanner'); if(el) el.style.display='none';
+}
 // 🔥 v0.6.3: восстановить обработанные WB-данные из localStorage если они свежие и совпадают с текущим периодом.
-// Кешируем processed (rows + totals + alerts), а НЕ raw — это в 50-100 раз компактнее (raw для 90 дней ~9МБ
-// не помещается в localStorage). Восстановление = прямой рендер плиток и таблицы, без повторного process().
+// 🔥 v0.7.12.36: теперь также восстанавливаем слим-raw → Детализация/Аналитика работают сразу после reload.
 async function tryRestoreDataFromCache(){
   try{
     // Удаляем legacy-ключ от v0.6.2 если остался (а не наш свежий кеш!)
@@ -4984,12 +5032,23 @@ async function tryRestoreDataFromCache(){
     var raw=localStorage.getItem('wb_cache_processed');
     if(!raw) return false;
     var cache=JSON.parse(raw);
-    // Проверка возраста (< 4 часов)
+    // 🔥 v0.7.12.36: данные принадлежат текущему юзеру и активному кабинету WB (не смешиваем аккаунты).
+    // userId известен синхронно. Кабинеты (_wbAccounts) грузятся асинхронно и могут быть ещё не готовы —
+    // тогда accountId не проверяем (доверяем кэшу), иначе был бы ложный кэш-промах при каждом reload.
+    var curUid=(currentUser&&currentUser.id)||null;
+    if((cache.userId||null)!==curUid) return false;
+    var accountsReady=Array.isArray(window._wbAccounts)&&window._wbAccounts.length>0;
+    if(accountsReady && (cache.accountId||null)!==(getActiveWbAccountId()||null)){
+      return false; // активен другой кабинет — его данные не показываем
+    }
+    // 🔥 v0.7.12.36: возраст. Жёстко выбрасываем только совсем старое (>7 дней). 6-168ч — показываем
+    // с пометкой «устарело» (не блокируем — селлер сам решит обновить).
     var ageHours=(Date.now()-cache.ts)/1000/3600;
-    if(ageHours>4){
+    if(ageHours>168){
       localStorage.removeItem('wb_cache_processed');
       return false;
     }
+    var isStale = ageHours>6;
     // Проверка совпадения периода
     var today=new Date();
     var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
@@ -5008,6 +5067,10 @@ async function tryRestoreDataFromCache(){
     // Восстанавливаем глобальное состояние
     window.rows = cache.rows;
     rows = cache.rows; // также в локальную var, как делает process()
+    // 🔥 v0.7.12.36: восстанавливаем слим-raw → Детализация расходов и Аналитика считаются сразу,
+    // без повторного запроса к WB. Если raw в кэше нет (был >4МБ) — останется [], детализация попросит обновить.
+    rawData = Array.isArray(cache.rawSlim) ? cache.rawSlim : [];
+    window.rawData = rawData;
     window._lastTotals = cache.totals;
     window._richAlerts = cache.richAlerts || [];
     window._freeLimitTriggered = cache.freeLimitTriggered || false;
@@ -5066,6 +5129,8 @@ async function tryRestoreDataFromCache(){
       renderTable(t.ppvz,t.delivery,t.storage,t.ads,t.penalty,t.salesCount,t.returnsCount,t.cost,t.profit,t.commission);
       var resultsEl=document.getElementById('results');
       if(resultsEl) resultsEl.style.display='block';
+      // 🔥 v0.7.12.36: метка свежести кэша + «Обновить»
+      showCacheFreshnessBanner(cache.ts, isStale);
     }
     return true;
   }catch(e){
@@ -5356,6 +5421,7 @@ async function go(tokenArg){
     var stocks=await stocksPromise;
     window._stocksMap=buildStocksMap(stocks);
     await process(rawData);
+    hideCacheFreshnessBanner(); // 🔥 v0.7.12.36: данные только что обновлены — метка кэша больше не нужна
   }catch(e){
     // 🔥 v0.6.6+v0.6.8: дружелюбные сообщения для типичных ошибок WB API
     var msg=e.message||'';
@@ -5392,15 +5458,24 @@ async function go(tokenArg){
         var cache={
           ts: Date.now(),
           df: df, dt: dt,
+          userId: (currentUser&&currentUser.id)||null,   // 🔥 v0.7.12.36: привязка к юзеру
+          accountId: getActiveWbAccountId()||null,        //   и активному кабинету WB
           rows: window.rows,
           totals: window._lastTotals||null,
           richAlerts: window._richAlerts||[],
           freeLimitTriggered: window._freeLimitTriggered||false,
           stocksMap: window._stocksMap||null,
           raw_count: rawData ? rawData.length : 0,
-          rowsPeriodDays: window._rowsPeriodDays||null
+          rowsPeriodDays: window._rowsPeriodDays||null,
+          rawSlim: _slimRawForCache(rawData)              // 🔥 v0.7.12.36: слим сырого отчёта для Детализации/Аналитики
         };
         var json=JSON.stringify(cache);
+        // 🔥 v0.7.12.36: если со слим-raw не влезает — выкидываем raw, processed сохраняем (как раньше).
+        if(json.length >= 4*1024*1024 && cache.rawSlim){
+          console.warn('[cache] со слим-raw '+(json.length/1024/1024).toFixed(1)+'МБ — сохраняю без raw (Детализация попросит обновить)');
+          cache.rawSlim=null;
+          json=JSON.stringify(cache);
+        }
         if(json.length < 4*1024*1024){
           localStorage.setItem('wb_cache_processed', json);
           // Старый кеш raw больше не нужен (от v0.6.2)
