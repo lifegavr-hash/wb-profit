@@ -2425,6 +2425,8 @@ body{padding-top:var(--beta-h)}
             <strong>Разбивка всех расходов WB</strong> по группам (логистика, хранение, реклама, штрафы, удержания…) с суммами за выбранный период. Нажмите на строку группы, чтобы раскрыть операции.
             <br><br>
             <strong>×N</strong> рядом с товаром — сколько отдельных операций этого типа WB провёл по этому товару за эту дату. Например <strong>×41</strong> — 41 операция за день, а сумма в строке — их общий итог. Это число операций, <u>не</u> количество штук товара.
+            <br><br>
+            <strong>Логистика</strong> делится на <strong>выкуп</strong> (доставка проданного товара) и <strong>возврат/невыкуп</strong> (обратная логистика по невыкупленным заказам). Сумма обеих = общая логистика.
           </span>
         </div>
         <div class="metrics" id="detailMetrics"></div>
@@ -5786,6 +5788,7 @@ function stopLoadTimer(){
 function computeFinancials(rawData, rows){
   var t={
     revenue:0, commission:0, ppvz:0, delivery:0, storage:0,
+    deliveryBuyout:0, deliveryReturn:0,   // 🔥 v0.7.12.30: логистика выкуп/невыкуп (сумма ≡ delivery)
     ads:0, penalty:0, wbFinance:0, cost:0,
     wbAdjust:0,   // корректировка WB = ppvz - (revenue - commission). +доплата / −удержание
     profit:0,
@@ -5796,7 +5799,7 @@ function computeFinancials(rawData, rows){
   var byOper={};
   function getOper(name){
     if(!byOper[name]){
-      byOper[name]={count:0, delivery:0, storage:0, penalty:0, ads:0, wbFinance:0, deduction:0, acceptance:0, rebill:0, total:0};
+      byOper[name]={count:0, delivery:0, deliveryBuyout:0, deliveryReturn:0, countBuyout:0, countReturn:0, storage:0, penalty:0, ads:0, wbFinance:0, deduction:0, acceptance:0, rebill:0, total:0};
     }
     return byOper[name];
   }
@@ -5811,10 +5814,24 @@ function computeFinancials(rawData, rows){
     // Выплата от WB (учитывается ОТДЕЛЬНО, не входит в total группы — это поступление)
     t.ppvz+=Number(r.ppvz_for_pay||0);
     // Логистика: delivery_rub + rebill_logistic_cost (rebill — допплата за возврат)
-    var delLine=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
+    var delRub=Number(r.delivery_rub||0);
+    var rebill=Number(r.rebill_logistic_cost||0);
+    var delLine=delRub+rebill;
     t.delivery+=delLine;
     o.delivery+=delLine;
-    o.rebill+=Number(r.rebill_logistic_cost||0);
+    o.rebill+=rebill;
+    // 🔥 v0.7.12.30: разбивка по подтверждённому признаку delivery_amount/return_amount.
+    // Выкуп = delivery_rub прямой доставки (delivery_amount>0); невыкуп = delivery_rub обратной
+    // логистики (return_amount>0 при delivery_amount<=0) + rebill_logistic_cost (допплата за возврат).
+    // buyoutLine+returnLine ≡ delLine в каждой строке ⇒ сумма логистики не меняется.
+    var delAmt=Number(r.delivery_amount||0), retAmt=Number(r.return_amount||0);
+    var buyoutLine=0, returnLine=rebill;                 // rebill всегда → невыкуп
+    if(retAmt>0 && delAmt<=0){ returnLine+=delRub; }     // обратная логистика (возврат/невыкуп)
+    else { buyoutLine+=delRub; }                         // прямая доставка; оба>0 и fallback (оба=0) → выкуп
+    t.deliveryBuyout+=buyoutLine; t.deliveryReturn+=returnLine;
+    o.deliveryBuyout+=buyoutLine; o.deliveryReturn+=returnLine;
+    if(buyoutLine!==0) o.countBuyout++;
+    if(returnLine!==0) o.countReturn++;
     // Хранение
     var stLine=Number(r.storage_fee||0);
     t.storage+=stLine;
@@ -6162,7 +6179,9 @@ function renderDetail(){
   // Раскидываем операции по группам — по доминирующей сумме
   Object.keys(byOper).forEach(function(name){
     var o=byOper[name];
-    if(o.delivery>0) groups['Логистика и доставка'].ops.push({name:name, count:o.count, amount:o.delivery, source:'delivery'});
+    // 🔥 v0.7.12.30: две подстроки — выкуп и возврат/невыкуп (их сумма ≡ o.delivery)
+    if(o.deliveryBuyout>0) groups['Логистика и доставка'].ops.push({name:name+' · выкуп', matchName:name, count:o.countBuyout, amount:o.deliveryBuyout, source:'delivery_buyout'});
+    if(o.deliveryReturn>0) groups['Логистика и доставка'].ops.push({name:name+' · возврат/невыкуп', matchName:name, count:o.countReturn, amount:o.deliveryReturn, source:'delivery_return'});
     if(o.storage>0)  groups['Хранение'].ops.push({name:name, count:o.count, amount:o.storage, source:'storage'});
     if(o.ads>0)      groups['Реклама и продвижение'].ops.push({name:name, count:o.count, amount:o.ads, source:'ads'});
     var penAmount=o.penalty+o.acceptance+o.deduction;
@@ -6262,7 +6281,7 @@ function renderDetail(){
       // 🔥 v0.5.4: кликабельная строка — раскрывает детали операций
       var rowKey = 'detail-' + g + '-' + k;
       html+='<div class="detail-op-block" data-key="'+rowKey+'">';
-      html+='<div class="detail-row detail-clickable" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.name)+'\')">';
+      html+='<div class="detail-row detail-clickable" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.matchName||op.name)+'\')">';
       html+='<span class="detail-name">'+escHtml(op.name)+' <span class="detail-expand" id="exp-'+rowKey+'">▶</span></span>';
       html+='<span class="detail-count">'+fmt(op.count)+' оп.</span>';
       html+='<span class="detail-amount">−'+fmt(op.amount)+' ₽</span>';
@@ -6355,6 +6374,14 @@ function toggleDetailOp(rowKey, source, opName){
       var amount = 0;
       if(source==='delivery'){
         amount = Number(r.delivery_rub||0) + Number(r.rebill_logistic_cost||0);
+      } else if(source==='delivery_buyout'){
+        // 🔥 v0.7.12.30: только прямая доставка (delivery_amount>0; оба=0 → выкуп по умолчанию)
+        var _dA=Number(r.delivery_amount||0), _rA=Number(r.return_amount||0);
+        amount = (_rA>0 && _dA<=0) ? 0 : Number(r.delivery_rub||0);
+      } else if(source==='delivery_return'){
+        // 🔥 v0.7.12.30: обратная логистика (return_amount>0) + rebill_logistic_cost
+        var _dA2=Number(r.delivery_amount||0), _rA2=Number(r.return_amount||0);
+        amount = ((_rA2>0 && _dA2<=0) ? Number(r.delivery_rub||0) : 0) + Number(r.rebill_logistic_cost||0);
       } else if(source==='storage'){
         amount = Number(r.storage_fee||0);
       } else if(source==='ads' || source==='penalty'){
