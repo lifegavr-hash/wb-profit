@@ -4518,6 +4518,9 @@ async function loadWbAccounts(){
       max: r.data.limits?.max_wb_accounts || 1,
       current: r.data.limits?.current_count || 0
     };
+    // 🔥 v0.7.12.38: запоминаем активный кабинет — чтобы кэш изолировался по кабинету даже до
+    // загрузки _wbAccounts (после reload restore читает этот id).
+    try{var _def=getActiveWbAccountId(); if(_def) localStorage.setItem('wb_active_account_id', _def);}catch(e){}
     renderWbAccountsList();
     renderWbSwitcher();
     // 🔥 Auto-migration: если в БД пусто, но в localStorage есть токен — мигрируем
@@ -4741,6 +4744,9 @@ async function switchWbAccount(id){
       localStorage.removeItem('wb_seller_name_at');
       window._sellerName = '';
     }
+    // 🔥 v0.7.12.38: фиксируем активный кабинет ДО reload — restore покажет кэш именно этого кабинета,
+    // а не предыдущего (combo-ключ кэша включает accountId).
+    try{ localStorage.setItem('wb_active_account_id', id); }catch(e){}
     toast('success', 'Переключено на «' + acc.name + '». Перезагружаю данные…');
     setTimeout(function(){ location.reload(); }, 600);
   } catch(e){
@@ -5027,33 +5033,68 @@ function showCacheFreshnessBanner(ts, stale){
 function hideCacheFreshnessBanner(){
   var el=document.getElementById('cacheFreshBanner'); if(el) el.style.display='none';
 }
+// 🔥 v0.7.12.38: МУЛЬТИ-ПЕРИОД кэш. Раньше хранилась одна последняя комбинация (ключ wb_cache_processed) —
+// переключение периода/кабинета всегда било в WB (лимит 1/мин). Теперь храним несколько комбинаций
+// (юзер × кабинет × период) с вытеснением по возрасту/размеру: вернулся к ранее загруженному периоду —
+// показываем мгновенно, без запроса к WB.
+var _CACHE_STORE_KEY='wb_cache_multi';
+var _CACHE_MAX_BYTES=4*1024*1024;   // суммарный бюджет (localStorage ~5МБ)
+var _CACHE_MAX_ENTRIES=8;           // и не больше N комбинаций
+// Активный кабинет для ключа кэша. _wbAccounts грузятся асинхронно — после reload/переключения они ещё
+// не готовы, поэтому держим id в localStorage (пишется здесь, в loadWbAccounts и switchWbAccount).
+function _activeAccountIdForCache(){
+  if(Array.isArray(window._wbAccounts)&&window._wbAccounts.length>0){
+    var id=getActiveWbAccountId();
+    if(id){ try{localStorage.setItem('wb_active_account_id',id);}catch(e){} return id; }
+  }
+  try{return localStorage.getItem('wb_active_account_id')||null;}catch(e){return null;}
+}
+function _cacheCombo(uid,acc,df,dt){ return (uid||'')+'|'+(acc||'')+'|'+df+'|'+dt; }
+function _readCacheStore(){
+  try{var s=localStorage.getItem(_CACHE_STORE_KEY); if(!s)return {}; var o=JSON.parse(s); return (o&&typeof o==='object')?o:{};}catch(e){return {};}
+}
+function _removeCacheEntry(entry){
+  try{var store=_readCacheStore(); delete store[_cacheCombo(entry.userId,entry.accountId,entry.df,entry.dt)]; localStorage.setItem(_CACHE_STORE_KEY,JSON.stringify(store));}catch(e){}
+}
+// Сохранить запись с вытеснением: лимит по числу комбинаций + по суммарному размеру (LRU по ts).
+function _saveCacheEntry(entry){
+  var store=_readCacheStore();
+  var myKey=_cacheCombo(entry.userId, entry.accountId, entry.df, entry.dt);
+  store[myKey]=entry;
+  var others=function(){ return Object.keys(store).filter(function(k){return k!==myKey;})
+    .sort(function(a,b){return (store[a].ts||0)-(store[b].ts||0);}); };
+  var o=others();
+  while(o.length+1>_CACHE_MAX_ENTRIES){ delete store[o.shift()]; } // самые старые чужие — за борт
+  var droppedRaw=false;
+  for(var guard=0; guard<64; guard++){
+    var json; try{json=JSON.stringify(store);}catch(e){json='';}
+    if(json && json.length<_CACHE_MAX_BYTES){
+      try{ localStorage.setItem(_CACHE_STORE_KEY,json); return; }catch(e){} // quota — продолжаем вытеснять
+    }
+    var rest=others();
+    if(rest.length){ delete store[rest[0]]; continue; }      // дропаем самый старый чужой и пробуем снова
+    if(!droppedRaw && store[myKey] && store[myKey].rawSlim){  // остались только мы и не влезаем
+      store[myKey].rawSlim=null; droppedRaw=true; continue;   // жертвуем raw текущего (processed оставляем)
+    }
+    break; // даже без raw не лезет — сдаёмся, старое не трогаем
+  }
+}
+// Найти запись под текущего юзера/кабинет/период.
+function _findCacheEntry(df,dt){
+  if(!df||!dt) return null;
+  var store=_readCacheStore();
+  var uid=(currentUser&&currentUser.id)||null;
+  var acc=_activeAccountIdForCache();
+  return store[_cacheCombo(uid,acc,df,dt)]||null;
+}
 // 🔥 v0.6.3: восстановить обработанные WB-данные из localStorage если они свежие и совпадают с текущим периодом.
-// 🔥 v0.7.12.36: теперь также восстанавливаем слим-raw → Детализация/Аналитика работают сразу после reload.
+// 🔥 v0.7.12.36: также восстанавливаем слим-raw → Детализация/Аналитика работают сразу после reload.
+// 🔥 v0.7.12.38: берём нужную комбинацию из мульти-кэша.
 async function tryRestoreDataFromCache(){
   try{
-    // Удаляем legacy-ключ от v0.6.2 если остался (а не наш свежий кеш!)
-    try{localStorage.removeItem('wb_cache_raw');}catch(e){}
-    var raw=localStorage.getItem('wb_cache_processed');
-    if(!raw) return false;
-    var cache=JSON.parse(raw);
-    // 🔥 v0.7.12.36: данные принадлежат текущему юзеру и активному кабинету WB (не смешиваем аккаунты).
-    // userId известен синхронно. Кабинеты (_wbAccounts) грузятся асинхронно и могут быть ещё не готовы —
-    // тогда accountId не проверяем (доверяем кэшу), иначе был бы ложный кэш-промах при каждом reload.
-    var curUid=(currentUser&&currentUser.id)||null;
-    if((cache.userId||null)!==curUid) return false;
-    var accountsReady=Array.isArray(window._wbAccounts)&&window._wbAccounts.length>0;
-    if(accountsReady && (cache.accountId||null)!==(getActiveWbAccountId()||null)){
-      return false; // активен другой кабинет — его данные не показываем
-    }
-    // 🔥 v0.7.12.36: возраст. Жёстко выбрасываем только совсем старое (>7 дней). 6-168ч — показываем
-    // с пометкой «устарело» (не блокируем — селлер сам решит обновить).
-    var ageHours=(Date.now()-cache.ts)/1000/3600;
-    if(ageHours>168){
-      localStorage.removeItem('wb_cache_processed');
-      return false;
-    }
-    var isStale = ageHours>6;
-    // Проверка совпадения периода
+    // Чистим legacy одиночные ключи (v0.6.2 / v0.7.12.36)
+    try{localStorage.removeItem('wb_cache_raw');localStorage.removeItem('wb_cache_processed');}catch(e){}
+    // Текущий период → ожидаемые df/dt
     var today=new Date();
     var yesterday=new Date(); yesterday.setDate(today.getDate()-1);
     var expDf, expDt;
@@ -5065,9 +5106,14 @@ async function tryRestoreDataFromCache(){
       expDt=yesterday.toISOString().slice(0,10);
       expDf=a.toISOString().slice(0,10);
     }
-    if(cache.df!==expDf || cache.dt!==expDt){
-      return false;
-    }
+    // 🔥 v0.7.12.38: ищем запись нужной комбинации (юзер+кабинет+период) в мульти-кэше
+    var cache=_findCacheEntry(expDf, expDt);
+    if(!cache) return false;
+    if((cache.userId||null)!==((currentUser&&currentUser.id)||null)) return false; // страховка
+    // Возраст: >7 дней выбрасываем, 6-168ч помечаем «возможно устарело» (не блокируем)
+    var ageHours=(Date.now()-cache.ts)/1000/3600;
+    if(ageHours>168){ _removeCacheEntry(cache); return false; }
+    var isStale = ageHours>6;
     // Восстанавливаем глобальное состояние
     window.rows = cache.rows;
     rows = cache.rows; // также в локальную var, как делает process()
@@ -5135,6 +5181,11 @@ async function tryRestoreDataFromCache(){
       if(resultsEl) resultsEl.style.display='block';
       // 🔥 v0.7.12.36: метка свежести кэша + «Обновить»
       showCacheFreshnessBanner(cache.ts, isStale);
+      // 🔥 v0.7.12.38: если открыта Главная/Детализация/Аналитика — перерисовать из восстановленных данных
+      // (при переключении периода пользователь может быть не на Калькуляторе).
+      var _hm=document.getElementById('sectionHome'); if(_hm&&_hm.classList.contains('active')&&typeof loadHomeData==='function')loadHomeData();
+      var _det=document.getElementById('sectionDetail'); if(_det&&_det.classList.contains('active')&&typeof renderDetail==='function')renderDetail();
+      var _an=document.getElementById('sectionAnalytics'); if(_an&&_an.classList.contains('active')&&typeof loadAnalytics==='function')loadAnalytics();
     }
     return true;
   }catch(e){
@@ -5163,8 +5214,6 @@ function setPeriod(days){
   }
   _currentPeriod={mode:'preset',days:days,df:null,dt:null};
   savePeriod();
-  // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
-  try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
   syncPeriodPills();
   // 🔥 v0.6.9: показать выбранный диапазон в подзаголовке
   var today=new Date();
@@ -5176,6 +5225,9 @@ function setPeriod(days){
   // 🔥 v0.6.9: для длинных периодов спросим подтверждение, для коротких — сразу грузим.
   // Это убирает лишний клик "Загрузить" — селлер кликнул период = хочет данные.
   if(localStorage.getItem('wb_token')){
+    // 🔥 v0.7.12.38: если этот период уже в свежем кэше (≤6ч) — показываем мгновенно, без запроса к WB.
+    var _ce=_findCacheEntry(dfStr,dtStr);
+    if(_ce && (Date.now()-_ce.ts)/3600000<=6){ tryRestoreDataFromCache(); return; }
     if(days>=90){
       var ok=confirm('Загрузить данные за '+days+' дней?\n\nДлинные периоды грузятся 1-3 минуты.');
       if(!ok) return;
@@ -5231,8 +5283,6 @@ function applyCustomPeriod(){
   }
   _currentPeriod={mode:'custom',days:null,df:df,dt:dt};
   savePeriod();
-  // 🔥 v0.6.2: при смене периода старый кеш raw больше не актуален
-  try{localStorage.removeItem('wb_cache_processed');localStorage.removeItem('wb_cache_raw');}catch(e){}
   document.querySelectorAll('.period-pill').forEach(function(b){b.classList.remove('active');});
   var btn=document.querySelector('.period-pill[data-period="custom"]');
   if(btn){
@@ -5244,6 +5294,9 @@ function applyCustomPeriod(){
   // 🔥 v0.6.9: показать период в подзаголовке "Обновлено" и СРАЗУ запустить загрузку
   refreshLastSync(df, dt);
   if(localStorage.getItem('wb_token')){
+    // 🔥 v0.7.12.38: тот же период уже в свежем кэше (≤6ч) — мгновенно из кэша, без запроса к WB.
+    var _ce=_findCacheEntry(df,dt);
+    if(_ce && (Date.now()-_ce.ts)/3600000<=6){ tryRestoreDataFromCache(); return; }
     goFromHome();
   }
 }
@@ -5453,17 +5506,16 @@ async function go(tokenArg){
     var ld=document.getElementById('ldBox');if(ld)ld.style.display='none';
     localStorage.setItem('wb_last_sync',Date.now().toString());
     refreshLastSync();
-    // 🔥 v0.6.3: кешируем УЖЕ ОБРАБОТАННЫЕ данные (rows + totals + alerts).
-    // raw для 90 дней = ~9 МБ, не помещается в localStorage (лимит ~5 МБ).
-    // А обработанные rows — это 30-100 товаров × ~30 полей = десятки КБ, влезает легко.
+    // 🔥 v0.6.3: кешируем УЖЕ ОБРАБОТАННЫЕ данные (rows + totals + alerts) + слим сырого отчёта.
+    // 🔥 v0.7.12.38: пишем в мульти-период стор (несколько комбинаций период×кабинет с вытеснением).
     // При init() рендерим напрямую из кеша БЕЗ повторного process().
     try{
       if(window.rows && window.rows.length){
-        var cache={
+        _saveCacheEntry({
           ts: Date.now(),
           df: df, dt: dt,
           userId: (currentUser&&currentUser.id)||null,   // 🔥 v0.7.12.36: привязка к юзеру
-          accountId: getActiveWbAccountId()||null,        //   и активному кабинету WB
+          accountId: _activeAccountIdForCache(),          //   и активному кабинету WB
           rows: window.rows,
           totals: window._lastTotals||null,
           richAlerts: window._richAlerts||[],
@@ -5472,22 +5524,10 @@ async function go(tokenArg){
           raw_count: rawData ? rawData.length : 0,
           rowsPeriodDays: window._rowsPeriodDays||null,
           rawSlim: _slimRawForCache(rawData)              // 🔥 v0.7.12.36: слим сырого отчёта для Детализации/Аналитики
-        };
-        var json=JSON.stringify(cache);
-        // 🔥 v0.7.12.36: если со слим-raw не влезает — выкидываем raw, processed сохраняем (как раньше).
-        if(json.length >= 4*1024*1024 && cache.rawSlim){
-          console.warn('[cache] со слим-raw '+(json.length/1024/1024).toFixed(1)+'МБ — сохраняю без raw (Детализация попросит обновить)');
-          cache.rawSlim=null;
-          json=JSON.stringify(cache);
-        }
-        if(json.length < 4*1024*1024){
-          localStorage.setItem('wb_cache_processed', json);
-          // Старый кеш raw больше не нужен (от v0.6.2)
-          localStorage.removeItem('wb_cache_raw');
-        } else {
-          localStorage.removeItem('wb_cache_processed');
-          console.warn('[cache] >4МБ ('+(json.length/1024/1024).toFixed(1)+'МБ), пропускаем');
-        }
+        });
+        // legacy одиночные ключи больше не нужны
+        localStorage.removeItem('wb_cache_raw');
+        localStorage.removeItem('wb_cache_processed');
       }
     }catch(e){console.warn('cache save failed',e);}
   }
