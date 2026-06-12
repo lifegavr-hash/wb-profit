@@ -6190,6 +6190,11 @@ function renderDetail(){
     'Комиссия WB':             {icon:'💼', total:t.commission,ops:[]},
     'Себестоимость товаров':   {icon:'📦', total:t.cost,      ops:[]}
   };
+  // 🔥 v0.7.12.35: «Штрафы и удержания» разбиваем на 3 ПОЛКИ по полю-источнику —
+  // ТОЛЬКО отображение, расчёт не меняется. Сумма 3 полок ≡ t.penalty:
+  //   t.penalty = Σ(penalty+acceptance) [строка t.penalty+=penLine] + Σ(прочие deduction) [t.penalty+=ded].
+  // Накапливаем поля раздельно и выпускаем до 3 подстрок ПОСЛЕ цикла.
+  var penShelf={penalty:0, penaltyCnt:0, acceptance:0, acceptanceCnt:0, deduction:0, deductionCnt:0};
   // Раскидываем операции по группам — по доминирующей сумме
   Object.keys(byOper).forEach(function(name){
     var o=byOper[name];
@@ -6202,10 +6207,16 @@ function renderDetail(){
     if(o.deliveryReturn>0) groups['Логистика и доставка'].ops.push({name:name+' — возврат', operName:name, role:'return', hint:'обратная логистика по невыкупленным/возвращённым заказам', matchName:name, count:o.countReturn, amount:o.deliveryReturn, source:'delivery_return'});
     if(o.storage>0)  groups['Хранение'].ops.push({name:name, count:o.count, amount:o.storage, source:'storage'});
     if(o.ads>0)      groups['Реклама и продвижение'].ops.push({name:name, count:o.count, amount:o.ads, source:'ads'});
-    var penAmount=o.penalty+o.acceptance+o.deduction;
-    if(penAmount>0) groups['Штрафы и удержания'].ops.push({name:name, count:o.count, amount:penAmount, source:'penalty'});
+    // 🔥 v0.7.12.35: вместо одной слитой строки — копим по 3 полям-источникам.
+    if(o.penalty>0){    penShelf.penalty+=o.penalty;       penShelf.penaltyCnt+=o.count; }
+    if(o.acceptance>0){ penShelf.acceptance+=o.acceptance; penShelf.acceptanceCnt+=o.count; }
+    if(o.deduction>0){  penShelf.deduction+=o.deduction;   penShelf.deductionCnt+=o.count; }
     if(o.wbFinance>0) groups['ВБ Финанс (кредит)'].ops.push({name:name, count:o.count, amount:o.wbFinance, source:'wbFinance'});
   });
+  // 🔥 v0.7.12.35: 3 полки штрафов/удержаний (пустые не показываем). Сумма ≡ t.penalty.
+  if(penShelf.penalty>0)    groups['Штрафы и удержания'].ops.push({name:'Штрафы WB',        hint:'штрафы за брак, упаковку, неверные данные поставки', count:penShelf.penaltyCnt,    amount:penShelf.penalty,    source:'penalty'});
+  if(penShelf.acceptance>0) groups['Штрафы и удержания'].ops.push({name:'Платная приёмка',  hint:'сбор WB за приёмку поставки на склад (это не штраф)', count:penShelf.acceptanceCnt, amount:penShelf.acceptance, source:'acceptance'});
+  if(penShelf.deduction>0)  groups['Штрафы и удержания'].ops.push({name:'Прочие удержания', hint:'прочие удержания WB',                                count:penShelf.deductionCnt,  amount:penShelf.deduction,  source:'deduction'});
   if(t.commission>0){
     groups['Комиссия WB'].ops.push({name:'Комиссия маркетплейса', count:t.salesCount+t.returnsCount, amount:t.commission, source:'commission'});
   }
@@ -6395,9 +6406,12 @@ function toggleDetailOp(rowKey, source, opName){
     var ITEMS_LIMIT = 500; // 🔥 v0.7.12.19: 200→500 — полнее список операций в попапе для активных статей (на ИТОГИ не влияет — те из computeFinancials по всем данным)
     for(var i=0;i<window.rawData.length && matches.length<ITEMS_LIMIT;i++){
       var r = window.rawData[i];
+      // 🔥 v0.7.12.35: полки штрафов фильтруем по ПОЛЮ-источнику, а не по имени операции
+      // (одна полка собирает все операции своего типа), остальные — по имени операции как раньше.
+      var fieldShelf = (source==='penalty' || source==='acceptance' || source==='deduction');
       var operMatch = (r.supplier_oper_name === opName) || (r.bonus_type_name === opName);
-      if(!operMatch) continue;
-      
+      if(!fieldShelf && !operMatch) continue;
+
       var amount = 0;
       if(source==='delivery'){
         amount = Number(r.delivery_rub||0) + Number(r.rebill_logistic_cost||0);
@@ -6411,8 +6425,16 @@ function toggleDetailOp(rowKey, source, opName){
         amount = ((_rA2>0 && _dA2<=0) ? Number(r.delivery_rub||0) : 0) + Number(r.rebill_logistic_cost||0);
       } else if(source==='storage'){
         amount = Number(r.storage_fee||0);
-      } else if(source==='ads' || source==='penalty'){
+      } else if(source==='ads'){
         amount = Math.abs(Number(r.deduction||0)) + Number(r.penalty||0) + Number(r.acceptance||0);
+      } else if(source==='penalty'){
+        amount = Number(r.penalty||0);                 // 🔥 v0.7.12.35: полка «Штрафы WB» — только поле penalty
+      } else if(source==='acceptance'){
+        amount = Number(r.acceptance||0);              // 🔥 v0.7.12.35: полка «Платная приёмка» — только поле acceptance
+      } else if(source==='deduction'){
+        // 🔥 v0.7.12.35: полка «Прочие удержания» — deduction без рекламы и ВБ Финанс (как в computeFinancials)
+        var _d = Math.abs(Number(r.deduction||0));
+        amount = (_d>0 && !isAdv(r.bonus_type_name, r.supplier_oper_name) && !isWbFin(r.bonus_type_name, r.supplier_oper_name)) ? _d : 0;
       } else if(source==='wbFinance'){
         amount = Math.abs(Number(r.deduction||0));
       }
