@@ -1947,12 +1947,18 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .orders-controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .orders-search{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;background:var(--surface);color:var(--text)}
 .orders-sort{padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer}
+/* 🔥 v0.7.12.43: кнопки фильтров/экспорта */
+.orders-csv-btn{padding:9px 14px;border:1px solid var(--border);border-radius:9px;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer;font-weight:600;white-space:nowrap}
+.orders-csv-btn:hover{background:rgba(124,58,237,.06)}
+.orders-csv-btn.primary{background:var(--purple);color:#fff;border-color:var(--purple)}
+.orders-csv-btn.primary:hover{opacity:.92}
 /* контейнер: вертикальный скролл (для sticky-шапки на длинных списках) + горизонтальный на мобайле */
 .orders-scroll{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:10px;-webkit-overflow-scrolling:touch}
-.orders-tbl{width:100%;min-width:860px;table-layout:fixed;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
-.orders-tbl col.c-prod{width:30%}
-.orders-tbl col.c-num{width:10%}
-.orders-tbl col.c-margin{width:12%}
+.orders-tbl{width:100%;min-width:940px;table-layout:fixed;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.orders-tbl col.c-prod{width:26%}
+.orders-tbl col.c-num{width:9%}
+.orders-tbl col.c-margin{width:10%}
+.orders-tbl col.c-mpct{width:8%}
 .orders-tbl col.c-exp{width:36px}
 .orders-tbl thead th{position:sticky;top:0;z-index:2;text-align:right;padding:9px 12px;background:#f1f5f9;color:#475569;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e2e8f0;white-space:nowrap}
 .orders-tbl thead th.l{text-align:left}
@@ -2524,7 +2530,21 @@ body{padding-top:var(--beta-h)}
             <option value="revenue">Выручка: больше сверху</option>
             <option value="date">Сначала новые</option>
           </select>
+          <select id="ordersFltProfit" class="orders-sort" onchange="onOrdersFlt('profit',this.value)">
+            <option value="all">Все по марже</option>
+            <option value="profit">Только прибыльные</option>
+            <option value="loss">Только убыточные</option>
+          </select>
+          <select id="ordersFltCat" class="orders-sort" onchange="onOrdersFlt('cat',this.value)"><option value="">Все категории</option></select>
+          <select id="ordersFltSales" class="orders-sort" onchange="onOrdersFlt('sales',this.value)">
+            <option value="all">С продажами и без</option>
+            <option value="with">Только с продажами</option>
+            <option value="without">Только без продаж</option>
+          </select>
+          <button type="button" class="orders-csv-btn" onclick="resetOrdersFilters()">Сбросить</button>
+          <button type="button" class="orders-csv-btn primary" onclick="exportOrdersCSV()">⬇ Скачать CSV</button>
         </div>
+        <div id="ordersCount" class="orders-recon"></div>
         <div id="ordersList"></div>
         <div id="ordersMore" style="text-align:center;margin-top:12px"></div>
       </div>
@@ -6611,6 +6631,9 @@ var _ordersView = [];      // отфильтрованный+отсортиро�
 var _ordersShown = 0;      // сколько строк уже отрендерено
 var _ordersSearchQ = '';
 var _ordersSortBy = 'margin';
+var _ordersFltProfit = 'all';   // all | profit | loss
+var _ordersFltCat = '';         // '' = все категории
+var _ordersFltSales = 'all';    // all | with | without
 
 // Группировка одним проходом O(n): rawData → товары (Map), внутри — позиции по srid (Map).
 function buildOrdersData(){
@@ -6716,34 +6739,62 @@ function renderOrders(){
     if(!ok) console.warn('[orders] сверка ppvz: товары '+built.sumPpvz+' + orphan '+built.orphanPpvz+' ≠ дашборд '+totalPpvz);
   }catch(e){ console.warn('[orders] сверка не выполнена', e); }
 
+  // 🔥 v0.7.12.43: наполняем фильтр категорий уникальными subject_name (сохраняем текущий выбор, если ещё есть)
+  var catSel=document.getElementById('ordersFltCat');
+  if(catSel){
+    var cats={}; built.list.forEach(function(p){ if(p.subject) cats[p.subject]=1; });
+    var sorted=Object.keys(cats).sort(function(a,b){return a.localeCompare(b);});
+    catSel.innerHTML='<option value="">Все категории</option>'+sorted.map(function(c){return '<option value="'+escHtml(c)+'">'+escHtml(c)+'</option>';}).join('');
+    if(_ordersFltCat && sorted.indexOf(_ordersFltCat)>=0){ catSel.value=_ordersFltCat; } else { _ordersFltCat=''; catSel.value=''; }
+  }
+
   _ordersShown=0;
   renderOrdersList();
 }
 
-// Применяем поиск+сортировку к построенному списку и рендерим страницу (пагинация).
+// Применяем поиск+фильтры+сортировку к построенному списку и рендерим первую страницу (пагинация).
 function renderOrdersList(){
   var all = window._ordersBuilt || [];
   var q = (_ordersSearchQ||'').trim().toLowerCase();
-  var view = q ? all.filter(function(p){
-    return (p.name||'').toLowerCase().indexOf(q)>=0 || String(p.nm||'').indexOf(q)>=0 || (p.subject||'').toLowerCase().indexOf(q)>=0;
-  }) : all.slice();
+  // 🔥 v0.7.12.43: поиск + 3 фильтра комбинируются (И) одним проходом
+  var view = all.filter(function(p){
+    if(q && !((p.name||'').toLowerCase().indexOf(q)>=0 || String(p.nm||'').indexOf(q)>=0 || (p.subject||'').toLowerCase().indexOf(q)>=0)) return false;
+    if(_ordersFltProfit==='profit' && !(p.margin>0)) return false;
+    if(_ordersFltProfit==='loss'   && !(p.margin<0)) return false;
+    if(_ordersFltCat && (p.subject||'')!==_ordersFltCat) return false;
+    if(_ordersFltSales==='with'    && !(p.soldUnits>0)) return false;
+    if(_ordersFltSales==='without' && !(p.soldUnits===0)) return false;
+    return true;
+  });
   if(_ordersSortBy==='revenue') view.sort(function(a,b){return b.revenue-a.revenue;});
   else if(_ordersSortBy==='date') view.sort(function(a,b){return a.lastDate<b.lastDate?1:(a.lastDate>b.lastDate?-1:0);});
   else view.sort(function(a,b){return a.margin-b.margin;}); // убыточные сверху
   _ordersView = view;
 
+  // счётчик: сверка остаётся по ВСЕМ (целостность данных), здесь — сколько в текущем фильтре
+  var cntEl=document.getElementById('ordersCount');
+  if(cntEl) cntEl.textContent='Показано товаров: '+view.length+' из '+all.length+((view.length!==all.length)?' · фильтр активен':'');
+
   var listEl=document.getElementById('ordersList');
   if(!listEl) return;
-  if(view.length===0){ listEl.innerHTML='<div class="card" style="text-align:center;padding:24px;color:var(--muted)">Ничего не найдено по запросу.</div>'; document.getElementById('ordersMore').innerHTML=''; return; }
+  if(view.length===0){ listEl.innerHTML='<div class="card" style="text-align:center;padding:24px;color:var(--muted)">Ничего не найдено по фильтрам. <a onclick="resetOrdersFilters()" style="color:var(--purple);cursor:pointer">Сбросить</a></div>'; document.getElementById('ordersMore').innerHTML=''; return; }
 
   var head='<div class="orders-scroll"><table class="orders-tbl">'+
-    '<colgroup><col class="c-prod"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-margin"><col class="c-exp"></colgroup>'+
+    '<colgroup><col class="c-prod"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-margin"><col class="c-mpct"><col class="c-exp"></colgroup>'+
     '<thead><tr>'+
-    '<th class="l">Товар</th><th>Выручка</th><th>Комиссия</th><th>Эквайринг</th><th>Логистика</th><th>Выплата&nbsp;WB</th><th>Себест.</th><th>Маржа</th><th></th>'+
+    '<th class="l">Товар</th><th>Выручка</th><th>Комиссия</th><th>Эквайринг</th><th>Логистика</th><th>Выплата&nbsp;WB</th><th>Себест.</th><th>Маржа&nbsp;₽</th><th>Маржа&nbsp;%</th><th></th>'+
     '</tr></thead><tbody id="ordersTbody"></tbody></table></div>';
   listEl.innerHTML=head;
-  _ordersShown=0;
+  _ordersShown=0;          // ← смена фильтра/сортировки/поиска перерисовывает с начала
   _ordersAppendRows();
+}
+
+// Производная отображения: маржа % = маржа / выручка × 100 (НЕ участвует в расчётах/сверке).
+function _ordPctHtml(p){
+  if(!(p.revenue>0)) return '<span class="orders-units">—</span>';   // нет выручки → без деления на ноль
+  var pct=p.margin/p.revenue*100;
+  return '<span class="orders-mrg '+(pct>=0?'pos':'neg')+'">'+pct.toFixed(1).replace('.',',')+'%</span>'+
+         (!p.hasCost && !p.onlyReturns ? '<div><span class="orders-nocost orders-nocost-2">без себест.</span></div>' : '');
 }
 
 function _ordersAppendRows(){
@@ -6771,8 +6822,9 @@ function _ordersAppendRows(){
       '<td>'+_ordMoney(p.ppvz)+'</td>'+
       '<td'+(hasCostNum?' class="o-exp"':'')+'>'+costCell+'</td>'+
       '<td>'+marginCell+'</td>'+
+      '<td>'+_ordPctHtml(p)+'</td>'+
       '<td><span class="detail-expand orders-arrow" id="ord-exp-'+i+'">▶</span></td></tr>'+
-      '<tr id="ord-pos-'+i+'" class="orders-posrow" style="display:none"><td colspan="9" class="orders-pos-cell"></td></tr>';
+      '<tr id="ord-pos-'+i+'" class="orders-posrow" style="display:none"><td colspan="10" class="orders-pos-cell"></td></tr>';
   }
   tb.insertAdjacentHTML('beforeend', html);
   _ordersShown=end;
@@ -6813,6 +6865,49 @@ function toggleOrderRow(i){
 
 function onOrdersSearch(v){ _ordersSearchQ=v; renderOrdersList(); }
 function onOrdersSort(v){ _ordersSortBy=v; renderOrdersList(); }
+// 🔥 v0.7.12.43: фильтры (комбинируются И). Любая смена сбрасывает пагинацию (renderOrdersList → _ordersShown=0).
+function onOrdersFlt(kind,v){
+  if(kind==='profit') _ordersFltProfit=v;
+  else if(kind==='cat') _ordersFltCat=v;
+  else if(kind==='sales') _ordersFltSales=v;
+  renderOrdersList();
+}
+function resetOrdersFilters(){
+  _ordersSearchQ=''; _ordersFltProfit='all'; _ordersFltCat=''; _ordersFltSales='all';
+  var s=document.getElementById('ordersSearch'); if(s) s.value='';
+  var a=document.getElementById('ordersFltProfit'); if(a) a.value='all';
+  var c=document.getElementById('ordersFltCat'); if(c) c.value='';
+  var l=document.getElementById('ordersFltSales'); if(l) l.value='all';
+  renderOrdersList();
+}
+// CSV-экспорт текущего ОТФИЛЬТРОВАННОГО списка (_ordersView): товары + их продажи. UTF-8 с BOM, ;-разделитель.
+function _csvField(v){ v=(v==null?'':String(v)); return /[";\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function _csvNum(x){ return (x==null||x==='') ? '' : String(Math.round(Number(x)||0)); }  // целые ₽ без разделителей разрядов
+function _csvPct(rev,m){ return (rev>0) ? (m/rev*100).toFixed(1).replace('.',',') : ''; }   // десятичная запятая для Excel РФ
+function exportOrdersCSV(){
+  var view=_ordersView||[];
+  if(!view.length){ alert('Нет данных для экспорта (пустой фильтр).'); return; }
+  var H=['Тип','Артикул','Название','Категория','Дата','Выручка','Комиссия','Эквайринг','Логистика','Выплата WB','Себестоимость','Маржа ₽','Маржа %','Кол-во шт'];
+  var lines=[H.join(';')];
+  view.forEach(function(p){
+    lines.push(['Товар', _csvField(p.nm||''), _csvField(p.name||''), _csvField(p.subject||''), '',
+      _csvNum(p.revenue), _csvNum(-Math.abs(p.commission)), _csvNum(-Math.abs(p.acquiring)), _csvNum(-Math.abs(p.logistics)),
+      _csvNum(p.ppvz), ((p.hasCost&&!p.onlyReturns)?_csvNum(-p.cost):''), _csvNum(p.margin), _csvPct(p.revenue,p.margin), _csvNum(p.netUnits)].join(';'));
+    var pos=Array.from(p.positions.values()).sort(function(a,b){return (a.date<b.date)?1:((a.date>b.date)?-1:0);});
+    pos.forEach(function(ps){
+      var log=ps.logBuyout+ps.logReturn, m=ps.ppvz-log;
+      lines.push(['  продажа', _csvField(p.nm||''), _csvField(p.name||''), _csvField(p.subject||''), _csvField((ps.date||'').slice(0,10)),
+        _csvNum(ps.revenue), _csvNum(-Math.abs(ps.commission)), _csvNum(-Math.abs(ps.acquiring)), _csvNum(-Math.abs(log)),
+        _csvNum(ps.ppvz), '', _csvNum(m), _csvPct(ps.revenue,m), _csvNum(ps.units)].join(';'));
+    });
+  });
+  var d=new Date();
+  var fn='pribyl-po-tovaram-'+d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+'.csv';
+  var blob=new Blob(['\ufeff'+lines.join('\r\n')], {type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=fn; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+}
 
 // 🔥 v0.7.12.31: склонение «операция/операции/операций» для подписи кол-ва операций.
 function plurOps(n){
