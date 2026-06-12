@@ -4994,7 +4994,7 @@ function savePeriod(){
 // 🔥 v0.7.12.36: «слим» сырого отчёта для кэша — ТОЛЬКО поля, которые реально читают
 // computeFinancials + toggleDetailOp + aggregateRowsByDay. Полный raw (~50 полей) для 90 дней ~9МБ
 // не влезает в localStorage; слим (26 полей) ≈ в 2-3 раза меньше и помещается. Расчёт идентичен.
-var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
+var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
 function _slimRawForCache(raw){
   if(!Array.isArray(raw)||!raw.length) return null;
   var out=new Array(raw.length);
@@ -5133,6 +5133,7 @@ async function tryRestoreDataFromCache(){
     var t=cache.totals;
     if(t){
       var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
+      var acqHtml=(t.acquiring>0)?'<div class="m"><div class="ml">Эквайринг</div><div class="mv red">−'+fmt(t.acquiring)+' ₽</div></div>':''; // 🔥 v0.7.12.39
       var adjHtml='';
       if(Math.abs(t.wbAdjust||0)>=50){
         var adjPos=t.wbAdjust>0;
@@ -5154,6 +5155,7 @@ async function tryRestoreDataFromCache(){
           '<div class="m" data-drill="ads" onclick="onCalcDrilldown(\'ads\')" title="Кликните чтобы показать только товары с рекламой"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
           '<div class="m" data-drill="penalty" onclick="onCalcDrilldown(\'penalty\')" title="Кликните чтобы показать только товары со штрафами"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
           wbFinHtml+
+          acqHtml+
           '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
           adjHtml+
           '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="Кликните чтобы показать только убыточные товары"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
@@ -5923,7 +5925,8 @@ function computeFinancials(rawData, rows){
     revenue:0, commission:0, ppvz:0, delivery:0, storage:0,
     deliveryBuyout:0, deliveryReturn:0,   // 🔥 v0.7.12.30: логистика выкуп/невыкуп (сумма ≡ delivery)
     ads:0, penalty:0, wbFinance:0, cost:0,
-    wbAdjust:0,   // корректировка WB = ppvz - (revenue - commission). +доплата / −удержание
+    acquiring:0,  // 🔥 v0.7.12.39: эквайринг (acquiring_fee) — реклассификация из wbAdjust, прибыль НЕ меняет
+    wbAdjust:0,   // корректировка WB = ppvz - (revenue - commission) + acquiring. +доплата / −удержание
     profit:0,
     totalExpenses:0,
     salesCount:0, returnsCount:0
@@ -5932,7 +5935,7 @@ function computeFinancials(rawData, rows){
   var byOper={};
   function getOper(name){
     if(!byOper[name]){
-      byOper[name]={count:0, delivery:0, deliveryBuyout:0, deliveryReturn:0, countBuyout:0, countReturn:0, storage:0, penalty:0, ads:0, wbFinance:0, deduction:0, acceptance:0, rebill:0, total:0};
+      byOper[name]={count:0, delivery:0, deliveryBuyout:0, deliveryReturn:0, countBuyout:0, countReturn:0, storage:0, penalty:0, ads:0, wbFinance:0, deduction:0, acceptance:0, acquiring:0, rebill:0, total:0};
     }
     return byOper[name];
   }
@@ -5974,6 +5977,12 @@ function computeFinancials(rawData, rows){
     t.penalty+=penLine;
     o.penalty+=Number(r.penalty||0);
     o.acceptance+=Number(r.acceptance||0);
+    // 🔥 v0.7.12.39: эквайринг (банковский сбор за приём оплаты). WB удерживает его ДО выплаты,
+    // поэтому он УЖЕ внутри ppvz_for_pay. Здесь только СУММИРУЕМ для отдельной строки — в прибыль
+    // повторно НЕ вычитаем (см. реклассификацию ниже).
+    var acqLine=Number(r.acquiring_fee||0);
+    t.acquiring+=acqLine;
+    o.acquiring+=acqLine;
     // Удержания (deduction) — классифицируем по bonus/oper
     var ded=Math.abs(Number(r.deduction||0));
     if(ded>0){
@@ -6004,7 +6013,7 @@ function computeFinancials(rawData, rows){
       t.commission-=pr*pc/100;
     }
     // total строки операции (без выплаты)
-    o.total=o.delivery+o.storage+o.penalty+o.acceptance+o.deduction+o.ads+o.wbFinance;
+    o.total=o.delivery+o.storage+o.penalty+o.acceptance+o.deduction+o.ads+o.wbFinance+o.acquiring;
   }
 
   // 2) Себестоимость — по товарам (rows)
@@ -6018,19 +6027,33 @@ function computeFinancials(rawData, rows){
   }
 
   // 3) Корректировки WB — расхождение между «выплата WB» и тем что должно быть (выручка − комиссия)
-  //    Положительные = WB доплатил (премии/компенсации СПП), отрицательные = удержал больше
-  //    Это делает арифметику прозрачной: складывая статьи, селлер получит точно ту же прибыль.
-  t.wbAdjust = t.ppvz - (t.revenue - t.commission);
+  //    Положительные = WB доплатил (премии/компенсации СПП), отрицательные = удержал больше.
+  var wbAdjustRaw = t.ppvz - (t.revenue - t.commission);
 
-  // 4) Все расходы (для отображения «Все расходы» в Детализации и сверки):
-  //    Сюда включаем ВСЁ что уменьшает прибыль. Если корректировка WB отрицательная — она тоже расход.
-  t.totalExpenses = t.commission + t.delivery + t.storage + t.ads + t.penalty + t.wbFinance + t.cost
-                  - (t.wbAdjust < 0 ? t.wbAdjust : 0); // вычитаем отрицательную корректировку (она увеличивает расходы)
+  // 🔥 v0.7.12.39: РЕКЛАССИФИКАЦИЯ ЭКВАЙРИНГА. WB удерживает acquiring_fee ДО выплаты, значит он
+  //   уже внутри ppvz_for_pay → уже учтён в прибыли, спрятан в «Удержано WB» (wbAdjustRaw).
+  //   Выносим его в ОТДЕЛЬНУЮ строку «Эквайринг», НЕ меняя прибыль: вычитаем acquiring явно и на ту же
+  //   сумму увеличиваем wbAdjust (эквайринг покидает мешок удержаний). Алгебра:
+  //     profit = … − acquiring + (wbAdjustRaw + acquiring) = … + wbAdjustRaw  ← ТОЖДЕСТВЕННО старой прибыли.
+  //   Эквайринг становится видимым, итог не двигается. (Если бы acquiring НЕ был в ppvz — сверка ниже поймает.)
+  t.wbAdjust = wbAdjustRaw + t.acquiring;
 
-  // 5) Чистая прибыль — ЧЕСТНАЯ P&L-формула, проверяется на калькуляторе:
-  //    Прибыль = Выручка − Комиссия − Логистика − Хранение − Реклама − Штрафы − ВБФ − Себестоимость + Корректировка
-  //    Если wbAdjust > 0 — это поступление (увеличивает прибыль). Если < 0 — это удержание.
-  t.profit = t.revenue - t.commission - t.delivery - t.storage - t.ads - t.penalty - t.wbFinance - t.cost + t.wbAdjust;
+  // 4) Все расходы: ВСЁ что уменьшает прибыль (отрицательная корректировка — тоже расход).
+  //    + эквайринг как явная статья; он же вышел из отрицательного wbAdjust ⇒ сумма не меняется.
+  t.totalExpenses = t.commission + t.delivery + t.storage + t.ads + t.penalty + t.wbFinance + t.cost + t.acquiring
+                  - (t.wbAdjust < 0 ? t.wbAdjust : 0);
+
+  // 5) Чистая прибыль — ЧЕСТНАЯ P&L-формула. Эквайринг вычитается явно и компенсируется в wbAdjust.
+  t.profit = t.revenue - t.commission - t.delivery - t.storage - t.ads - t.penalty - t.wbFinance - t.cost - t.acquiring + t.wbAdjust;
+
+  // 🔥 v0.7.12.39: ЗАШИТАЯ СВЕРКА. Реклассификация ОБЯЗАНА оставить прибыль и общие расходы прежними.
+  //   Сравниваем с «дореклассификационными» значениями. Прибыль совпадает тождественно (алгебра выше).
+  //   Расходы совпадают, пока эквайринг реально сидел в удержаниях (wbAdjust остался ≤0). Если эквайринг
+  //   НЕ был в ppvz (другая схема WB) — здесь разойдётся, поднимаем флаг (UI покажет предупреждение).
+  var _profitOld = t.revenue - t.commission - t.delivery - t.storage - t.ads - t.penalty - t.wbFinance - t.cost + wbAdjustRaw;
+  var _expOld    = t.commission + t.delivery + t.storage + t.ads + t.penalty + t.wbFinance + t.cost - (wbAdjustRaw < 0 ? wbAdjustRaw : 0);
+  t._acqReclassOk = (Math.abs(t.profit - _profitOld) <= 1) && (Math.abs(t.totalExpenses - _expOld) <= 1);
+  if(!t._acqReclassOk) console.warn('[acquiring] реклассификация сдвинула итог: profitΔ='+Math.round(t.profit-_profitOld)+' expΔ='+Math.round(t.totalExpenses-_expOld)+' (эквайринг мог быть не в ppvz_for_pay)');
 
   return {t:t, byOper:byOper};
 }
@@ -6150,6 +6173,8 @@ async function process(raw){
   var t=fin.t;
   window._lastTotals=t; // 🔥 v0.6.3: нужно для кеша
   var wbFinHtml=t.wbFinance>0?'<div class="m"><div class="ml">ВБ Финанс (кредит)</div><div class="mv red">−'+fmt(t.wbFinance)+' ₽</div></div>':'';
+  // 🔥 v0.7.12.39: эквайринг — отдельная плитка (раньше был спрятан в «Удержано WB»). Прибыль не меняется.
+  var acqHtml=t.acquiring>0?'<div class="m"><div class="ml">Эквайринг</div><div class="mv red">−'+fmt(t.acquiring)+' ₽</div></div>':'';
   // Корректировка WB — показываем только если значимая (>=50 ₽). Кликабельная — открывает объяснение.
   var adjHtml='';
   if(Math.abs(t.wbAdjust)>=50){
@@ -6172,6 +6197,7 @@ async function process(raw){
     '<div class="m" data-drill="ads" onclick="onCalcDrilldown(\'ads\')" title="Кликните чтобы показать только товары с рекламой"><div class="ml">Реклама WB</div><div class="mv red">−'+fmt(t.ads)+' ₽</div></div>'+
     '<div class="m" data-drill="penalty" onclick="onCalcDrilldown(\'penalty\')" title="Кликните чтобы показать только товары со штрафами"><div class="ml">Штрафы</div><div class="mv red">−'+fmt(t.penalty)+' ₽</div></div>'+
     wbFinHtml+
+    acqHtml+
     '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
     adjHtml+
     // Итог
@@ -6307,6 +6333,7 @@ function renderDetail(){
     'Штрафы и удержания':      {icon:'⚠️', total:t.penalty,   ops:[]},
     'ВБ Финанс (кредит)':      {icon:'🏦', total:t.wbFinance, ops:[]},
     'Комиссия WB':             {icon:'💼', total:t.commission,ops:[]},
+    'Эквайринг':               {icon:'💳', total:t.acquiring, ops:[]},
     'Себестоимость товаров':   {icon:'📦', total:t.cost,      ops:[]}
   };
   // 🔥 v0.7.12.35: «Штрафы и удержания» разбиваем на 3 ПОЛКИ по полю-источнику —
@@ -6339,13 +6366,17 @@ function renderDetail(){
   if(t.commission>0){
     groups['Комиссия WB'].ops.push({name:'Комиссия маркетплейса', count:t.salesCount+t.returnsCount, amount:t.commission, source:'commission'});
   }
+  // 🔥 v0.7.12.39: эквайринг отдельной строкой (раньше был спрятан в «Удержано WB»). Прибыль не меняется.
+  if(t.acquiring>0){
+    groups['Эквайринг'].ops.push({name:'Эквайринг', hint:'банковская комиссия за приём оплаты (WB удерживает её при выплате)', count:t.salesCount, amount:t.acquiring, source:'acquiring'});
+  }
   if(t.cost>0){
     groups['Себестоимость товаров'].ops.push({name:'Закупочная стоимость проданных товаров', count:t.salesCount, amount:t.cost, source:'cost'});
   }
 
   // Сводка сверху — арифметически точная.
   // Прибыль = Выручка − Все расходы + Доплаты WB (если есть)
-  var totalExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost;
+  var totalExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost+t.acquiring;
   var adjBlock='';
   if(Math.abs(t.wbAdjust)>=50){
     var pos=t.wbAdjust>0;
@@ -6358,7 +6389,7 @@ function renderDetail(){
     periodDays = Math.round((new Date(_currentPeriod.dt) - new Date(_currentPeriod.df))/(24*60*60*1000)) + 1;
   }
   var prevT = periodDays ? computePrevPeriodTotals(periodDays) : null;
-  var prevTotalExpenses = prevT ? (prevT.commission+prevT.delivery+prevT.storage+prevT.ads+prevT.penalty+prevT.wbFinance+prevT.cost) : 0;
+  var prevTotalExpenses = prevT ? (prevT.commission+prevT.delivery+prevT.storage+prevT.ads+prevT.penalty+prevT.wbFinance+prevT.cost+(prevT.acquiring||0)) : 0;
   document.getElementById('detailMetrics').innerHTML=
     '<div class="m"><div class="ml">Выручка'+(prevT?pctChangeHtml(t.revenue, prevT.revenue, false):'')+'</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
     '<div class="m"><div class="ml">Все расходы'+(prevT?pctChangeHtml(totalExpenses, prevTotalExpenses, true):'')+'</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
@@ -6379,6 +6410,7 @@ function renderDetail(){
   formulaHtml+='<div class="detail-formula-title">Как считается прибыль</div>';
   formulaHtml+='<div class="detail-formula-row"><span>Выручка</span><span class="green">+'+fmt(t.revenue)+' ₽</span></div>';
   formulaHtml+='<div class="detail-formula-row"><span>− Комиссия WB</span><span class="red">−'+fmt(t.commission)+' ₽</span></div>';
+  if(t.acquiring>0)formulaHtml+='<div class="detail-formula-row"><span>− Эквайринг</span><span class="red">−'+fmt(t.acquiring)+' ₽</span></div>';
   if(t.delivery>0)formulaHtml+='<div class="detail-formula-row"><span>− Логистика</span><span class="red">−'+fmt(t.delivery)+' ₽</span></div>';
   if(t.storage>0)formulaHtml+='<div class="detail-formula-row"><span>− Хранение</span><span class="red">−'+fmt(t.storage)+' ₽</span></div>';
   if(t.ads>0)formulaHtml+='<div class="detail-formula-row"><span>− Реклама</span><span class="red">−'+fmt(t.ads)+' ₽</span></div>';
@@ -6416,6 +6448,7 @@ function renderDetail(){
       else if(groupName === 'Штрафы и удержания') prevAmt = prevT.penalty;
       else if(groupName === 'ВБ Финанс (кредит)') prevAmt = prevT.wbFinance;
       else if(groupName === 'Комиссия WB') prevAmt = prevT.commission;
+      else if(groupName === 'Эквайринг') prevAmt = prevT.acquiring||0;
       else if(groupName === 'Себестоимость товаров') prevAmt = prevT.cost;
       grpPctHtml = pctChangeHtml(grp.total, prevAmt, true);
     }
@@ -6527,7 +6560,7 @@ function toggleDetailOp(rowKey, source, opName){
       var r = window.rawData[i];
       // 🔥 v0.7.12.35: полки штрафов фильтруем по ПОЛЮ-источнику, а не по имени операции
       // (одна полка собирает все операции своего типа), остальные — по имени операции как раньше.
-      var fieldShelf = (source==='penalty' || source==='acceptance' || source==='deduction');
+      var fieldShelf = (source==='penalty' || source==='acceptance' || source==='deduction' || source==='acquiring');
       var operMatch = (r.supplier_oper_name === opName) || (r.bonus_type_name === opName);
       if(!fieldShelf && !operMatch) continue;
 
@@ -6554,6 +6587,8 @@ function toggleDetailOp(rowKey, source, opName){
         // 🔥 v0.7.12.35: полка «Прочие удержания» — deduction без рекламы и ВБ Финанс (как в computeFinancials)
         var _d = Math.abs(Number(r.deduction||0));
         amount = (_d>0 && !isAdv(r.bonus_type_name, r.supplier_oper_name) && !isWbFin(r.bonus_type_name, r.supplier_oper_name)) ? _d : 0;
+      } else if(source==='acquiring'){
+        amount = Number(r.acquiring_fee||0);            // 🔥 v0.7.12.39: строка «Эквайринг» — только поле acquiring_fee
       } else if(source==='wbFinance'){
         amount = Math.abs(Number(r.deduction||0));
       }
@@ -7830,6 +7865,7 @@ function recalcTotals(){
   setCard('Себестоимость','−'+fmt(t.cost)+' ₽','mv red');
   setCard('Чистая прибыль',(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽','mv '+(t.profit>=0?'green':'red'));
   if(t.wbFinance>0)setCard('ВБ Финанс (кредит)','−'+fmt(t.wbFinance)+' ₽','mv red');
+  if(t.acquiring>0)setCard('Эквайринг','−'+fmt(t.acquiring)+' ₽','mv red'); // 🔥 v0.7.12.39
   // Корректировка может быть и плюсом и минусом — подбираем нужный лейбл
   if(Math.abs(t.wbAdjust)>=50){
     var adjPos=t.wbAdjust>0;
