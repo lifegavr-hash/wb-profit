@@ -1939,6 +1939,34 @@ html[data-theme="dark"] .ext-banner strong{color:#a78bfa}
 .detail-ops-table th{text-align:left;padding:8px 10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e2e8f0}
 .detail-ops-table td{padding:7px 10px;border-bottom:1px solid #f1f5f9}
 .detail-ops-table tr:last-child td{border-bottom:0}
+/* 🔥 v0.7.12.40: раздел «Прибыль по товарам» */
+.orders-note{font-size:12px;color:var(--muted);background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 8px 8px 0;padding:9px 12px;margin:0 0 14px;line-height:1.5}
+html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
+.orders-recon{font-size:11px;color:var(--muted);margin:0 0 12px}
+.orders-recon.bad{color:#dc2626}
+.orders-controls{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.orders-search{flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;background:var(--surface);color:var(--text)}
+.orders-sort{padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer}
+.orders-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.orders-tbl th{text-align:right;padding:8px 10px;background:#f1f5f9;color:#475569;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+.orders-tbl th.l,.orders-tbl td.l{text-align:left}
+html[data-theme="dark"] .orders-tbl th{background:#1a1a2e;color:#94a3b8;border-color:#2a2a44}
+.orders-prow{cursor:pointer;border-bottom:1px solid var(--border)}
+.orders-prow:hover{background:rgba(124,58,237,.04)}
+.orders-tbl td{padding:9px 10px;text-align:right;white-space:nowrap;vertical-align:top}
+.orders-prod{text-align:left;overflow-wrap:anywhere;word-break:break-word;min-width:140px;max-width:340px}
+.orders-prod .cat{display:block;color:var(--muted);font-size:11px;font-weight:400}
+.orders-margin-pos{color:var(--green);font-weight:700}
+.orders-margin-neg{color:var(--red);font-weight:700}
+.orders-nocost{display:inline-block;font-size:10px;color:#9a5b00;background:#fff7ed;border:1px solid #fdba74;border-radius:5px;padding:0 5px;font-weight:600;white-space:nowrap}
+.orders-units{color:var(--muted);font-size:11px;font-weight:400}
+.orders-posrow td{background:#fafafa;font-size:12px;color:#475569}
+html[data-theme="dark"] .orders-posrow td{background:#10182e;color:#94a3b8}
+.orders-more-btn{background:none;border:1px solid var(--border);border-radius:9px;padding:9px 22px;font-size:13px;color:var(--purple);cursor:pointer;font-weight:600}
+.orders-more-btn:hover{background:rgba(124,58,237,.06)}
+/* мобайл: широкую таблицу — в горизонтальный скролл, чтобы колонки не схлопывались */
+.orders-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:640px){.orders-tbl{font-size:12px}.orders-tbl td,.orders-tbl th{padding:7px 8px}}
 .detail-ops-date{color:#64748b;font-size:11px;white-space:nowrap}
 .detail-ops-nm{color:#94a3b8;font-size:10px;font-weight:400}
 .detail-ops-count{color:#94a3b8;font-size:10px;background:#f1f5f9;padding:1px 6px;border-radius:4px;margin-left:4px}
@@ -2069,6 +2097,7 @@ body{padding-top:var(--beta-h)}
     <button class="nav-item active" id="nav-home" onclick="showSection('home',this)">🏠 Главная</button>
     <button class="nav-item" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
     <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
+    <button class="nav-item" id="nav-orders" onclick="showSection('orders',this)">🧾 Прибыль по товарам <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
     <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
     <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)">💰 Подбор товара</button>
     <div class="nav-sec">Аккаунт</div>
@@ -2456,6 +2485,29 @@ body{padding-top:var(--beta-h)}
         </div>
         <div class="metrics" id="detailMetrics"></div>
         <div id="detailGrid" class="detail-grid"></div>
+      </div>
+    </div>
+
+    <!-- 🔥 v0.7.12.40: Прибыль по товарам (честная маржа по позициям, без размазывания общих расходов) -->
+    <div class="section" id="sectionOrders">
+      <div id="ordersEmpty" class="card" style="text-align:center;padding:40px 20px">
+        <div style="font-size:32px;margin-bottom:10px">🧾</div>
+        <div style="font-size:14px;margin-bottom:6px">Прибыль по товарам пуста</div>
+        <div style="font-size:12px;opacity:.7;max-width:440px;margin:0 auto">Выберите период сверху и нажмите <strong>«Загрузить»</strong> — здесь появится чистая маржа по каждому товару (с раскрытием до отдельных продаж).</div>
+      </div>
+      <div id="ordersContent" style="display:none">
+        <div class="detail-head">Прибыль по товарам</div>
+        <div class="orders-note" id="ordersNote"></div>
+        <div class="orders-controls">
+          <input type="text" id="ordersSearch" class="orders-search" placeholder="🔍 Поиск по артикулу или названию" oninput="onOrdersSearch(this.value)">
+          <select id="ordersSort" class="orders-sort" onchange="onOrdersSort(this.value)">
+            <option value="margin">Маржа: убыточные сверху</option>
+            <option value="revenue">Выручка: больше сверху</option>
+            <option value="date">Сначала новые</option>
+          </select>
+        </div>
+        <div id="ordersList"></div>
+        <div id="ordersMore" style="text-align:center;margin-top:12px"></div>
       </div>
     </div>
 
@@ -3234,7 +3286,7 @@ async function init(){
   if(savedSection && savedSection!=='home'){
     var navBtn=document.getElementById('nav-'+savedSection);
     // Для PRO-only — только если PRO. Иначе остаёмся на Главной.
-    var proOnly=(savedSection==='detail'||savedSection==='analytics');
+    var proOnly=(savedSection==='detail'||savedSection==='analytics'||savedSection==='orders');
     if(navBtn && navBtn.style.display!=='none' && (!proOnly||hasPRO())){
       showSection(savedSection, navBtn);
     }
@@ -3901,13 +3953,13 @@ function showSection(name,el){
     return;
   }
   // PRO-only разделы
-  if((name==='detail'||name==='analytics')&&!hasPRO()){
-    var featureName=name==='detail'?'Детализация расходов':'Аналитика';
+  if((name==='detail'||name==='analytics'||name==='orders')&&!hasPRO()){
+    var featureName=name==='detail'?'Детализация расходов':(name==='orders'?'Прибыль по товарам':'Аналитика');
     requirePRO(featureName);
     return;
   }
-  var sections=['home','calc','detail','analytics','unit','help','settings','promo','admin'];
-  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',analytics:'Аналитика',unit:'Подбор товара',help:'Помощь',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
+  var sections=['home','calc','detail','orders','analytics','unit','help','settings','promo','admin'];
+  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',orders:'Прибыль по товарам',analytics:'Аналитика',unit:'Подбор товара',help:'Помощь',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
     var sec=document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1));
     if(sec) sec.classList.toggle('active',s===name);
@@ -3923,10 +3975,11 @@ function showSection(name,el){
   // Глобальная панель загрузки — видна на разделах с WB-данными
   var loadBar=document.getElementById('globalLoadBar');
   if(loadBar){
-    var withData=['home','calc','detail','analytics'];
+    var withData=['home','calc','detail','orders','analytics'];
     loadBar.style.display=withData.indexOf(name)>=0?'flex':'none';
   }
   if(name==='detail') renderDetail();
+  if(name==='orders') renderOrders();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
   if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); /* v0.7.0/v0.7.5/v0.7.7 */ }
@@ -4994,7 +5047,7 @@ function savePeriod(){
 // 🔥 v0.7.12.36: «слим» сырого отчёта для кэша — ТОЛЬКО поля, которые реально читают
 // computeFinancials + toggleDetailOp + aggregateRowsByDay. Полный raw (~50 полей) для 90 дней ~9МБ
 // не влезает в localStorage; слим (26 полей) ≈ в 2-3 раза меньше и помещается. Расчёт идентичен.
-var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
+var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','subject_name','quantity','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
 function _slimRawForCache(raw){
   if(!Array.isArray(raw)||!raw.length) return null;
   var out=new Array(raw.length);
@@ -5187,6 +5240,7 @@ async function tryRestoreDataFromCache(){
       // (при переключении периода пользователь может быть не на Калькуляторе).
       var _hm=document.getElementById('sectionHome'); if(_hm&&_hm.classList.contains('active')&&typeof loadHomeData==='function')loadHomeData();
       var _det=document.getElementById('sectionDetail'); if(_det&&_det.classList.contains('active')&&typeof renderDetail==='function')renderDetail();
+      var _ord=document.getElementById('sectionOrders'); if(_ord&&_ord.classList.contains('active')&&typeof renderOrders==='function')renderOrders();
       var _an=document.getElementById('sectionAnalytics'); if(_an&&_an.classList.contains('active')&&typeof loadAnalytics==='function')loadAnalytics();
     }
     return true;
@@ -6249,6 +6303,8 @@ async function process(raw){
       if(homeActive&&typeof loadHomeData==='function')loadHomeData();
       var detailActive=document.getElementById('sectionDetail')&&document.getElementById('sectionDetail').classList.contains('active');
       if(detailActive&&typeof renderDetail==='function')renderDetail();
+      var ordersActive=document.getElementById('sectionOrders')&&document.getElementById('sectionOrders').classList.contains('active');
+      if(ordersActive&&typeof renderOrders==='function')renderOrders();
       var anActive=document.getElementById('sectionAnalytics')&&document.getElementById('sectionAnalytics').classList.contains('active');
       if(anActive&&typeof loadAnalytics==='function')loadAnalytics();
     }
@@ -6523,6 +6579,214 @@ function renderDetail(){
   
   document.getElementById('detailGrid').innerHTML = html;
 }
+
+// ═════════════════════════════════════════════════════════════════════════
+// 🔥 v0.7.12.40: РАЗДЕЛ «ПРИБЫЛЬ ПО ТОВАРАМ»
+// Честная маржа по каждому товару (nm_id) с раскрытием до позиций заказа (srid).
+// ТОЛЬКО клиент, из window.rawData. computeFinancials/кэш НЕ трогаем — читаем те же данные.
+// Маржа = Σ ppvz_for_pay − логистика(выкуп+возврат) − себестоимость. Хранение/реклама/штрафы
+// НЕ читаются вообще ⇒ исключены by design. Себестоимость — из getCosts() (тот же источник, что Калькулятор).
+// ═════════════════════════════════════════════════════════════════════════
+var _ORDERS_PAGE = 100;
+var _ordersView = [];      // отфильтрованный+отсортированный список (для пагинации/раскрытия)
+var _ordersShown = 0;      // сколько строк уже отрендерено
+var _ordersSearchQ = '';
+var _ordersSortBy = 'margin';
+
+// Группировка одним проходом O(n): rawData → товары (Map), внутри — позиции по srid (Map).
+function buildOrdersData(){
+  var raw = window.rawData || [];
+  var costs = (typeof getCosts==='function') ? getCosts() : {};
+  var byProd = new Map();
+  var orphanPpvz = 0;        // выплата по строкам без артикула — для сверки с дашбордом
+  for(var i=0;i<raw.length;i++){
+    var r = raw[i];
+    var ppvz = Number(r.ppvz_for_pay||0);
+    var key = (r.nm_id!=null && r.nm_id!=='') ? String(r.nm_id) : (r.sa_name? String(r.sa_name) : '');
+    if(!key){ orphanPpvz += ppvz; continue; }
+    var p = byProd.get(key);
+    if(!p){ p={key:key, nm:(r.nm_id!=null?r.nm_id:null), name:r.sa_name||'', subject:r.subject_name||'',
+              revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0,
+              soldUnits:0, retUnits:0, lastDate:'', positions:new Map()};
+            byProd.set(key,p); }
+    if(!p.name && r.sa_name) p.name=r.sa_name;
+    if(!p.subject && r.subject_name) p.subject=r.subject_name;
+    if(p.nm==null && r.nm_id!=null) p.nm=r.nm_id;
+    var doc=(r.doc_type_name||'').toLowerCase();
+    var sign = (doc==='возврат') ? -1 : 1;
+    var price = Number(r.retail_amount||r.retail_price_withdisc_rub||0);
+    var pct = Number(r.commission_percent||0);
+    // логистика выкуп/возврат — та же логика, что в computeFinancials
+    var delRub=Number(r.delivery_rub||0), rebill=Number(r.rebill_logistic_cost||0);
+    var delAmt=Number(r.delivery_amount||0), retAmt=Number(r.return_amount||0);
+    var bo=0, ro=rebill;
+    if(retAmt>0 && delAmt<=0){ ro+=delRub; } else { bo+=delRub; }
+    var dt = r.sale_dt||r.rr_dt||r.order_dt||r.create_dt||r.date||'';
+    // товарные итоги
+    if(doc==='продажа'||doc==='возврат'){
+      p.revenue += sign*price;
+      p.commission += sign*(price*pct/100);
+      var q = Number(r.quantity||0)||1;
+      if(doc==='продажа') p.soldUnits += q; else p.retUnits += q;
+    }
+    p.acquiring += Number(r.acquiring_fee||0);
+    p.ppvz += ppvz;
+    p.logBuyout += bo; p.logReturn += ro;
+    if(dt && dt>p.lastDate) p.lastDate=dt;
+    // позиция (srid)
+    var sid = r.srid || r.gi_id || null;
+    if(sid){
+      sid = String(sid);
+      var ps = p.positions.get(sid);
+      if(!ps){ ps={srid:sid, revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, units:0, date:''}; p.positions.set(sid,ps); }
+      if(doc==='продажа'||doc==='возврат'){ ps.revenue+=sign*price; ps.commission+=sign*(price*pct/100); ps.units+=sign*(Number(r.quantity||0)||1); }
+      ps.acquiring += Number(r.acquiring_fee||0);
+      ps.ppvz += ppvz; ps.logBuyout += bo; ps.logReturn += ro;
+      if(dt && dt>ps.date) ps.date=dt;
+    }
+  }
+  // финализация: себестоимость и честная маржа
+  var list=[], sumPpvz=0;
+  byProd.forEach(function(p){
+    var netUnits = Math.max(p.soldUnits - p.retUnits, 0);
+    var costPer = parseFloat(costs[p.key]);
+    p.hasCost = !isNaN(costPer) && costPer>0;
+    p.netUnits = netUnits;
+    p.logistics = p.logBuyout + p.logReturn;
+    p.cost = p.hasCost ? costPer*netUnits : 0;
+    p.margin = p.ppvz - p.logistics - p.cost;   // если !hasCost — это маржа БЕЗ себестоимости (помечаем)
+    p.onlyReturns = (p.soldUnits===0);
+    sumPpvz += p.ppvz;
+    list.push(p);
+  });
+  return {list:list, orphanPpvz:orphanPpvz, sumPpvz:sumPpvz};
+}
+
+function _ordMoney(x){ var n=Math.round(Number(x)||0); return (n<0?'−':'')+fmt(Math.abs(n))+' ₽'; }
+
+function renderOrders(){
+  var emptyEl=document.getElementById('ordersEmpty'), contentEl=document.getElementById('ordersContent');
+  if(!window.rawData || !window.rawData.length){
+    if(emptyEl) emptyEl.style.display='block';
+    if(contentEl) contentEl.style.display='none';
+    return;
+  }
+  if(emptyEl) emptyEl.style.display='none';
+  if(contentEl) contentEl.style.display='block';
+
+  var built = buildOrdersData();
+  window._ordersBuilt = built.list;
+
+  // Пояснение (честность)
+  var noteEl=document.getElementById('ordersNote');
+  if(noteEl) noteEl.innerHTML='💡 <b>Чистая маржа по товару</b> = выплата WB − логистика − себестоимость. '+
+    'Выплата WB уже за вычетом комиссии и эквайринга. <b>Хранение, реклама и штрафы НЕ включены</b> — '+
+    'это общие расходы на весь объём (см. «Детализация расходов»). Раскройте строку ▶, чтобы увидеть отдельные продажи.';
+
+  // Сверка с дашбордом: Σ выплат по товарам + без-артикульные = общий ppvz из computeFinancials
+  var prevWrap=document.getElementById('_ordReconWrap'); if(prevWrap) prevWrap.remove();
+  try{
+    var fin=computeFinancials(window.rawData, window.rows||[]);
+    var totalPpvz=fin.t.ppvz;
+    var reconDiff=Math.round((built.sumPpvz+built.orphanPpvz)-totalPpvz);
+    var ok=Math.abs(reconDiff)<=1;
+    var reconHtml='<div id="_ordReconWrap" class="orders-recon'+(ok?'':' bad')+'">Сверка: выплата WB по товарам '+_ordMoney(built.sumPpvz)+
+      (built.orphanPpvz?(' + без артикула '+_ordMoney(built.orphanPpvz)):'')+
+      ' = '+_ordMoney(built.sumPpvz+built.orphanPpvz)+(ok?' ✓ совпадает с дашбордом':(' ⚠️ расхождение '+_ordMoney(reconDiff)))+'</div>';
+    if(noteEl) noteEl.insertAdjacentHTML('afterend', reconHtml);
+    if(!ok) console.warn('[orders] сверка ppvz: товары '+built.sumPpvz+' + orphan '+built.orphanPpvz+' ≠ дашборд '+totalPpvz);
+  }catch(e){ console.warn('[orders] сверка не выполнена', e); }
+
+  _ordersShown=0;
+  renderOrdersList();
+}
+
+// Применяем поиск+сортировку к построенному списку и рендерим страницу (пагинация).
+function renderOrdersList(){
+  var all = window._ordersBuilt || [];
+  var q = (_ordersSearchQ||'').trim().toLowerCase();
+  var view = q ? all.filter(function(p){
+    return (p.name||'').toLowerCase().indexOf(q)>=0 || String(p.nm||'').indexOf(q)>=0 || (p.subject||'').toLowerCase().indexOf(q)>=0;
+  }) : all.slice();
+  if(_ordersSortBy==='revenue') view.sort(function(a,b){return b.revenue-a.revenue;});
+  else if(_ordersSortBy==='date') view.sort(function(a,b){return a.lastDate<b.lastDate?1:(a.lastDate>b.lastDate?-1:0);});
+  else view.sort(function(a,b){return a.margin-b.margin;}); // убыточные сверху
+  _ordersView = view;
+
+  var listEl=document.getElementById('ordersList');
+  if(!listEl) return;
+  if(view.length===0){ listEl.innerHTML='<div class="card" style="text-align:center;padding:24px;color:var(--muted)">Ничего не найдено по запросу.</div>'; document.getElementById('ordersMore').innerHTML=''; return; }
+
+  var head='<div class="orders-scroll"><table class="orders-tbl"><thead><tr>'+
+    '<th class="l">Товар</th><th>Выручка</th><th>Комиссия</th><th>Эквайринг</th><th>Логистика</th><th>Выплата WB</th><th>Себест.</th><th>Маржа</th><th></th>'+
+    '</tr></thead><tbody id="ordersTbody"></tbody></table></div>';
+  listEl.innerHTML=head;
+  _ordersShown=0;
+  _ordersAppendRows();
+}
+
+function _ordersAppendRows(){
+  var tb=document.getElementById('ordersTbody'); if(!tb) return;
+  var view=_ordersView, end=Math.min(_ordersShown+_ORDERS_PAGE, view.length), html='';
+  for(var i=_ordersShown;i<end;i++){
+    var p=view[i];
+    var marginCls=p.margin>=0?'orders-margin-pos':'orders-margin-neg';
+    var costCell = p.onlyReturns ? '<span class="orders-nocost">возврат без продажи</span>'
+                  : (p.hasCost ? _ordMoney(p.cost) : '<span class="orders-nocost">не указана</span>');
+    var marginCell = '<span class="'+marginCls+'">'+_ordMoney(p.margin)+'</span>'+
+                     (!p.hasCost && !p.onlyReturns ? '<br><span class="orders-nocost">без себест.</span>' : '');
+    var prod = '<td class="orders-prod">'+itemHtml(p.name||('Арт. '+(p.nm||'?')), p.nm)+
+               (p.subject?'<span class="cat">'+escHtml(p.subject)+'</span>':'')+
+               '<span class="orders-units">'+fmt(p.netUnits)+' шт'+(p.retUnits>0?(' · возвратов '+fmt(p.retUnits)):'')+'</span></td>';
+    html+='<tr class="orders-prow" onclick="toggleOrderRow('+i+')">'+prod+
+      '<td>'+_ordMoney(p.revenue)+'</td>'+
+      '<td>'+_ordMoney(-Math.abs(p.commission))+'</td>'+
+      '<td>'+_ordMoney(-Math.abs(p.acquiring))+'</td>'+
+      '<td>'+_ordMoney(-Math.abs(p.logistics))+'</td>'+
+      '<td>'+_ordMoney(p.ppvz)+'</td>'+
+      '<td>'+costCell+'</td>'+
+      '<td>'+marginCell+'</td>'+
+      '<td><span class="detail-expand" id="ord-exp-'+i+'">▶</span></td></tr>'+
+      '<tr id="ord-pos-'+i+'" style="display:none"><td colspan="9" style="padding:0"></td></tr>';
+  }
+  tb.insertAdjacentHTML('beforeend', html);
+  _ordersShown=end;
+  var moreEl=document.getElementById('ordersMore');
+  if(moreEl){
+    if(_ordersShown<view.length){
+      moreEl.innerHTML='<button class="orders-more-btn" onclick="_ordersAppendRows()">Показать ещё '+Math.min(_ORDERS_PAGE,view.length-_ordersShown)+' (из '+view.length+')</button>';
+    } else { moreEl.innerHTML='<div style="font-size:11px;color:var(--muted)">Показаны все '+view.length+' товаров</div>'; }
+  }
+}
+
+// Ленивое раскрытие позиций (srid) товара
+function toggleOrderRow(i){
+  var posTr=document.getElementById('ord-pos-'+i), exp=document.getElementById('ord-exp-'+i);
+  if(!posTr) return;
+  if(posTr.style.display!=='none'){ posTr.style.display='none'; if(exp)exp.textContent='▶'; return; }
+  if(posTr.dataset.rendered!=='1'){
+    var p=_ordersView[i];
+    var rows=Array.from(p.positions.values()).sort(function(a,b){return (a.ppvz-a.logBuyout-a.logReturn)-(b.ppvz-b.logBuyout-b.logReturn);});
+    var h='<div class="detail-ops-wrap"><table class="detail-ops-table"><thead><tr>'+
+      '<th>Дата</th><th style="text-align:right">Выручка</th><th style="text-align:right">Логистика</th><th style="text-align:right">Выплата WB</th><th style="text-align:right">Маржа*</th></tr></thead><tbody>';
+    rows.forEach(function(ps){
+      var log=ps.logBuyout+ps.logReturn;
+      var m=ps.ppvz-log; // маржа позиции БЕЗ себестоимости (на уровне позиции себест. не делим — показываем gross)
+      var d=ps.date?ps.date.slice(0,10).split('-').reverse().slice(0,2).join('.'):'—';
+      h+='<tr><td>'+d+'</td><td style="text-align:right">'+_ordMoney(ps.revenue)+'</td>'+
+         '<td style="text-align:right">'+_ordMoney(-Math.abs(log))+'</td>'+
+         '<td style="text-align:right">'+_ordMoney(ps.ppvz)+'</td>'+
+         '<td style="text-align:right" class="'+(m>=0?'orders-margin-pos':'orders-margin-neg')+'">'+_ordMoney(m)+'</td></tr>';
+    });
+    h+='</tbody></table><div style="font-size:10px;color:var(--muted);padding:6px 4px 0">* маржа позиции — без себестоимости (себестоимость задаётся на товар, не на отдельную продажу)</div></div>';
+    posTr.firstElementChild.innerHTML=h;
+    posTr.dataset.rendered='1';
+  }
+  posTr.style.display=''; if(exp)exp.textContent='▼';
+}
+
+function onOrdersSearch(v){ _ordersSearchQ=v; renderOrdersList(); }
+function onOrdersSort(v){ _ordersSortBy=v; renderOrdersList(); }
 
 // 🔥 v0.7.12.31: склонение «операция/операции/операций» для подписи кол-ва операций.
 function plurOps(n){
