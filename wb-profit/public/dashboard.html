@@ -2213,6 +2213,9 @@ body{padding-top:var(--beta-h)}
     </div>
     <div id="errBoxHome" class="err"></div>
 
+    <!-- 🔥 v0.7.12.37: глобальная плашка свежести кэша — над всеми секциями, видна на любом экране -->
+    <div id="cacheFreshBanner" class="cache-fresh-banner" style="display:none"></div>
+
     <!-- Дашборд -->
     <div class="section active" id="sectionHome">
       <!-- 🆕 v0.4.6: контент рендерится через renderHomeIdle() ниже -->
@@ -5007,12 +5010,13 @@ function showCacheFreshnessBanner(ts, stale){
     var w=new Date(ts), p2=function(n){return (n<10?'0':'')+n;};
     var ageH=(Date.now()-ts)/3600000;
     var ageTxt=ageH<1?Math.max(1,Math.round(ageH*60))+' мин назад':ageH<24?Math.round(ageH)+' ч назад':Math.round(ageH/24)+' дн назад';
+    // 🔥 v0.7.12.37: элемент статический в разметке (над всеми секциями). Fallback — в начало .content.
     var el=document.getElementById('cacheFreshBanner');
     if(!el){
       el=document.createElement('div');
       el.id='cacheFreshBanner'; el.className='cache-fresh-banner';
-      var res=document.getElementById('results');
-      if(res&&res.parentNode) res.parentNode.insertBefore(el,res);
+      var content=document.querySelector('.content');
+      if(content) content.insertBefore(el, content.firstChild);
       else return;
     }
     el.classList.toggle('stale',!!stale);
