@@ -967,18 +967,19 @@ tr.loss td{background:#fff5f5}
 .no-data{text-align:center;padding:2rem;color:var(--hint);font-size:14px}
 .detail-bar{height:3px;background:#f0f0ee;margin:0 1rem 8px;border-radius:99px}
 .detail-bar-fill{height:100%;background:var(--red);border-radius:99px}
-/* 🔥 v0.7.12.31: переиспользуемая подстрока расхода — ОБРАЗЕЦ для всех категорий.
-   Текстовая иерархия (без баров): слева название + серый пояснитель, справа сумма + кол-во/доля. */
-.expense-subrow-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:9px 1rem 9px 1.75rem;border-bottom:.5px solid var(--border)}
+/* 🔥 v0.7.12.34: переиспользуемая подстрока расхода — ОБРАЗЕЦ для всех категорий.
+   Вертикальная раскладка (читается сверху вниз): сумма крупно + стрелка ▶, ниже название
+   на ВСЮ ширину карточки, затем пояснитель и «N операций · X% категории».
+   Раньше был flex-row [название | сумма] — длинное имя зажималось в узкую левую колонку
+   и резалось вертикально по 1 слову («Лог ис…»). Теперь название не зажато ничем. */
+.expense-subrow-head{display:flex;flex-direction:column;gap:3px;padding:10px 1rem 10px 1.75rem;border-bottom:.5px solid var(--border)}
 .expense-subrow:last-child .expense-subrow-head{border-bottom:none}
-.expense-subrow-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
-.expense-subrow-name-row{display:flex;align-items:flex-start;gap:6px;min-width:0}
-/* 🔥 v0.7.12.33: длинные технические имена WB — максимум 2 строки с многоточием, полное по title.
-   Иначе подпись переносилась по словам вертикально и растягивала карточку, ломая ряд виджетов. */
-.expense-subrow-name{font-size:13px;color:var(--text);font-weight:500;flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+/* строка 1: сумма слева крупно/жирно, стрелка раскрытия справа */
+.expense-subrow-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.expense-subrow-amount{font-size:15px;font-weight:700;color:var(--red);white-space:nowrap}
+/* строка 2: название на всю ширину, максимум 2 строки + многоточие, полное по title */
+.expense-subrow-name{font-size:13px;color:var(--text);font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 .expense-subrow-hint{font-size:11px;color:var(--hint);line-height:1.35}
-.expense-subrow-figs{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap;flex-shrink:0}
-.expense-subrow-amount{font-size:13px;font-weight:600;color:var(--red)}
 .expense-subrow-meta{font-size:11px;color:var(--hint)}
 .expand-btn{font-size:11px;color:var(--purple);cursor:pointer;padding:4px 1rem 8px;display:block;background:none;border:none;text-align:left}
 .expand-btn:hover{text-decoration:underline}
@@ -6301,14 +6302,10 @@ function renderDetail(){
       var metaTxt = fmt(op.count)+' '+plurOps(op.count) + (grp.ops.length>1 ? ' · '+sharePct+'% категории' : '');
       html+='<div class="detail-op-block expense-subrow" data-key="'+rowKey+'">';
       html+='<div class="detail-clickable expense-subrow-head" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.matchName||op.name)+'\')">';
-      html+=  '<div class="expense-subrow-info">';
-      html+=    '<div class="expense-subrow-name-row"><span class="expense-subrow-name" title="'+escHtml(op.name)+'">'+escHtml(op.name)+'</span><span class="detail-expand" id="exp-'+rowKey+'">▶</span></div>';
+      html+=  '<div class="expense-subrow-top"><span class="expense-subrow-amount">−'+fmt(op.amount)+' ₽</span><span class="detail-expand" id="exp-'+rowKey+'">▶</span></div>';
+      html+=  '<span class="expense-subrow-name" title="'+escHtml(op.name)+'">'+escHtml(op.name)+'</span>';
       if(op.hint) html+= '<span class="expense-subrow-hint">'+escHtml(op.hint)+'</span>';
-      html+=  '</div>';
-      html+=  '<div class="expense-subrow-figs">';
-      html+=    '<span class="expense-subrow-amount">−'+fmt(op.amount)+' ₽</span>';
-      html+=    '<span class="expense-subrow-meta">'+metaTxt+'</span>';
-      html+=  '</div>';
+      html+=  '<span class="expense-subrow-meta">'+metaTxt+'</span>';
       html+='</div>';
       html+='<div class="detail-expansion" id="body-'+rowKey+'" style="display:none"></div>';
       html+='</div>';
