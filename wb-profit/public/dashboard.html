@@ -6189,9 +6189,13 @@ function renderDetail(){
   // Раскидываем операции по группам — по доминирующей сумме
   Object.keys(byOper).forEach(function(name){
     var o=byOper[name];
-    // 🔥 v0.7.12.30: две подстроки — выкуп и возврат/невыкуп (их сумма ≡ o.delivery)
-    if(o.deliveryBuyout>0) groups['Логистика и доставка'].ops.push({name:'Логистика — доставка проданного', hint:'доставка товаров, которые купили', matchName:name, count:o.countBuyout, amount:o.deliveryBuyout, source:'delivery_buyout'});
-    if(o.deliveryReturn>0) groups['Логистика и доставка'].ops.push({name:'Логистика — возврат (невыкуп)', hint:'обратная логистика по невыкупленным заказам', matchName:name, count:o.countReturn, amount:o.deliveryReturn, source:'delivery_return'});
+    // 🔥 v0.7.12.30: две подстроки — выкуп и возврат (их сумма ≡ o.delivery).
+    // 🔥 v0.7.12.32: подпись из РЕАЛЬНОГО имени операции WB (name=supplier_oper_name) + роль.
+    // Раньше хардкод «Логистика —» давал одинаковую подпись двум РАЗНЫМ операциям возврата —
+    // теперь каждая операция WB показывается под своим настоящим именем (как в ЛК WB),
+    // одинаковые подписи уходят сами. operName/role сохраняем для будущего точечного алиаса.
+    if(o.deliveryBuyout>0) groups['Логистика и доставка'].ops.push({name:name+' — доставка проданного', operName:name, role:'buyout', hint:'доставка товаров, которые купили', matchName:name, count:o.countBuyout, amount:o.deliveryBuyout, source:'delivery_buyout'});
+    if(o.deliveryReturn>0) groups['Логистика и доставка'].ops.push({name:name+' — возврат', operName:name, role:'return', hint:'обратная логистика по невыкупленным/возвращённым заказам', matchName:name, count:o.countReturn, amount:o.deliveryReturn, source:'delivery_return'});
     if(o.storage>0)  groups['Хранение'].ops.push({name:name, count:o.count, amount:o.storage, source:'storage'});
     if(o.ads>0)      groups['Реклама и продвижение'].ops.push({name:name, count:o.count, amount:o.ads, source:'ads'});
     var penAmount=o.penalty+o.acceptance+o.deduction;
