@@ -1959,18 +1959,20 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 html[data-theme="dark"] .orders-tbl thead th{background:#1a1a2e;color:#94a3b8;border-color:#2a2a44}
 .orders-tbl td{padding:8px 12px;text-align:right;white-space:nowrap;vertical-align:middle;border-bottom:1px solid var(--border)}
 .orders-tbl td.o-exp{color:var(--red)}
+/* 🔥 v0.7.12.42: сетка — вертикальные разделители колонок (внешняя рамка — у .orders-scroll) */
+.orders-tbl td,.orders-tbl thead th{border-right:1px solid var(--border)}
+.orders-tbl td:last-child,.orders-tbl thead th:last-child{border-right:0}
 /* зебра + hover (hover перекрывает зебру) */
 .orders-prow{cursor:pointer}
 .orders-prow.zebra td{background:#fafafa}
 html[data-theme="dark"] .orders-prow.zebra td{background:rgba(255,255,255,.025)}
 .orders-prow:hover td{background:rgba(124,58,237,.07)}
 html[data-theme="dark"] .orders-prow:hover td{background:rgba(167,139,250,.10)}
-/* ячейка товара: имя в ОДНУ строку с ellipsis + бейдж артикула; подпись (категория · шт) — одной строкой */
+/* 🔥 v0.7.12.42: ячейка товара — артикул сверху, название снизу, всё по левому краю */
 .orders-prod{text-align:left;overflow:hidden}
-.op-name{display:flex;align-items:center;gap:6px;min-width:0}
-.op-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text)}
-.op-name .art-tag{flex-shrink:0}
-.op-sub{display:block;color:var(--muted);font-size:11px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.op-art{margin-bottom:3px;line-height:1}
+.op-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);line-height:1.25}
+.op-sub{display:block;color:var(--muted);font-size:11px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;line-height:1.2}
 /* маржа — цветной бейдж */
 .orders-mrg{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700}
 .orders-mrg.pos{color:var(--green);background:rgba(16,185,129,.12)}
@@ -6758,7 +6760,8 @@ function _ordersAppendRows(){
     var ttl = escHtml(p.name||('Арт. '+(p.nm||'?')));
     var nmBadge = p.nm ? '<span class="art-tag" title="Скопируйте артикул">'+p.nm+'</span>' : '';
     var sub = (p.subject?escHtml(p.subject)+' · ':'')+fmt(p.netUnits)+' шт'+(p.retUnits>0?(' · возвр. '+fmt(p.retUnits)):'');
-    var prod = '<td class="orders-prod"><div class="op-name"><span class="op-title" title="'+ttl+'">'+ttl+'</span>'+nmBadge+'</div>'+
+    var prod = '<td class="orders-prod"><div class="op-art">'+(nmBadge||'<span class="op-sub">— нет арт.</span>')+'</div>'+
+               '<div class="op-title" title="'+ttl+'">'+ttl+'</div>'+
                '<div class="op-sub" title="'+sub+'">'+sub+'</div></td>';
     html+='<tr class="orders-prow'+(i%2?' zebra':'')+'" onclick="toggleOrderRow('+i+')">'+prod+
       '<td>'+_ordMoney(p.revenue)+'</td>'+
@@ -6788,7 +6791,8 @@ function toggleOrderRow(i){
   if(posTr.style.display!=='none'){ posTr.style.display='none'; if(exp)exp.textContent='▶'; return; }
   if(posTr.dataset.rendered!=='1'){
     var p=_ordersView[i];
-    var rows=Array.from(p.positions.values()).sort(function(a,b){return (a.ppvz-a.logBuyout-a.logReturn)-(b.ppvz-b.logBuyout-b.logReturn);});
+    // 🔥 v0.7.12.42: позиции внутри товара — по дате, новые сверху (привычно для отчётов)
+    var rows=Array.from(p.positions.values()).sort(function(a,b){return (a.date<b.date)?1:((a.date>b.date)?-1:0);});
     var h='<div class="detail-ops-wrap" style="font-variant-numeric:tabular-nums"><table class="detail-ops-table"><thead><tr>'+
       '<th>Дата</th><th style="text-align:right">Выручка</th><th style="text-align:right">Логистика</th><th style="text-align:right">Выплата&nbsp;WB</th><th style="text-align:right">Маржа*</th></tr></thead><tbody>';
     rows.forEach(function(ps){
