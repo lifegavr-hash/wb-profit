@@ -172,13 +172,15 @@ async function initSupabase() {
       document.getElementById('formSuccess').style.display = 'block';
     } else {
       // Обычный редирект: уже логинизирован или пришёл через recovery (password reset)
-      window.location.href = '/dashboard.html';
+      window.location.href = redirectTarget();
     }
   }
   // Если ?signup=1 — сразу открываем вкладку регистрации
   if(new URLSearchParams(location.search).get('signup') === '1'){
     showTab('reg');
   }
+  // 🔥 префилл email с прошлого входа (только email; пароль никогда не храним)
+  try{ var le=localStorage.getItem('last_login_email'); var el=document.getElementById('loginEmail'); if(le&&el&&!el.value) el.value=le; }catch(e){}
 }
 
 // 🔥 v0.7.10.1: Глобальный лог JS-ошибок (копия из dashboard.html v0.7.7.33).
@@ -264,6 +266,21 @@ async function sendReset(){
   }
 }
 
+// 🔥 Фаза D: безопасный redirect после входа (поддержка ?next= для онбординга инвайта)
+function safeNext(raw){
+  if(!raw) return null;
+  var s; try{ s=decodeURIComponent(raw); }catch(e){ return null; }   // битый encoding → отказ
+  if(s[0]!=='/') return null;                        // только относительный путь (двойной encode отлетает тут)
+  if(s[1]==='/'||s[1]==='\\') return null;           // //evil.com и /\evil.com
+  if(/[\x00-\x1f\x7f]/.test(s)) return null;         // управляющие символы (вкл. CRLF)
+  if(s.toLowerCase().indexOf('/api/')===0) return null; // не на api
+  return s;
+}
+function redirectTarget(){
+  var m = location.search.match(/[?&]next=([^&]*)/);   // сырой next → decode внутри safeNext
+  return safeNext(m?m[1]:null) || '/dashboard.html';
+}
+
 async function login() {
   var email = document.getElementById('loginEmail').value.trim();
   var pass = document.getElementById('loginPass').value;
@@ -278,7 +295,8 @@ async function login() {
     errBox.style.display='block';
     btn.disabled=false; btn.textContent='Войти';
   } else {
-    window.location.href = '/dashboard.html';
+    try{ localStorage.setItem('last_login_email', email); }catch(e){}
+    window.location.href = redirectTarget();
   }
 }
 
@@ -317,13 +335,14 @@ async function register() {
     sendYmGoalOnce('registration');
     okBox.style.display='block';
     btn.disabled=false; btn.textContent='Создать аккаунт';
-    if (data.session) window.location.href = '/dashboard.html';
+    try{ localStorage.setItem('last_login_email', email); }catch(e){}
+    if (data.session) window.location.href = redirectTarget();
   }
 }
 
 // 🔥 v0.7.12.22: переход в кабинет со страницы успеха регистрации
 function goToDashboard() {
-  window.location.href = '/dashboard.html';
+  window.location.href = redirectTarget();
 }
 
 document.getElementById('loginPass').addEventListener('keydown', function(e){if(e.key==='Enter') login();});
