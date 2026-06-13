@@ -17,6 +17,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
 import { audit } from '../lib/audit-log.js';
+import { sendTransactional } from '../lib/email.js';
 
 export const config = { maxDuration: 30 };
 
@@ -414,6 +415,32 @@ async function handleNotifications(req, res, jwt) {
 }
 
 // ====== Фаза D: командный доступ ======
+// HTML-экранирование для интерполяции в шаблон письма (regex email не режет <>"', не полагаемся на него).
+function _escHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Шаблон письма-инвайта (html + plaintext). Стиль как daily-digest (--purple #5433c6).
+function renderInviteEmail({ inviterEmail, inviteeEmail, link }) {
+  const inv = _escHtml(inviterEmail), gst = _escHtml(inviteeEmail);
+  const html = `<div style="max-width:520px;margin:0 auto;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1a1a2e">
+  <h2 style="margin:0 0 8px">👥 Приглашение в команду SW Profit</h2>
+  <p style="font-size:14px;line-height:1.5"><b>${inv}</b> приглашает вас в свою команду в SW Profit.</p>
+  <p style="font-size:13px;color:#6b7280;line-height:1.5">Доступ — просмотр кабинета владельца: <b>Главная и Аналитика</b> (только чтение). Изменять данные, видеть токены и настройки нельзя.</p>
+  <p style="margin:20px 0"><a href="${link}" style="display:inline-block;background:#5433c6;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Принять приглашение →</a></p>
+  <div style="background:#fef9c3;border:1px solid #fde68a;color:#854d0e;padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.5">⚠️ <b>Важно:</b> зарегистрируйтесь или войдите на <b>этот же email — ${gst}</b>. Иначе приглашение не примется.</div>
+  <p style="font-size:12px;color:#9ca3af;margin-top:16px">Ссылка действует 7 дней. Если кнопка не работает, скопируйте:<br>${link}</p>
+</div>`;
+  const text = [
+    `${inviterEmail} приглашает вас в команду SW Profit.`, ``,
+    `Доступ: просмотр Главной и Аналитики кабинета владельца (только чтение).`, ``,
+    `Принять приглашение: ${link}`, ``,
+    `ВАЖНО: зарегистрируйтесь или войдите на ЭТОТ ЖЕ email — ${inviteeEmail}, иначе приглашение не примется.`,
+    `Ссылка действует 7 дней.`,
+  ].join('\n');
+  return { html, text };
+}
+
 // Карта id→email одним запросом к profiles (источник email как в админ-вьюхах).
 async function emailsByIds(supa, ids) {
   const uniq = [...new Set(ids)].filter(Boolean);
@@ -499,7 +526,16 @@ async function handleTeam(req, res, jwt) {
       return res.status(500).json({ error: 'DB_ERROR', message: error.message });
     }
     const link = `https://swprofit.ru/login.html?next=${encodeURIComponent('/dashboard.html?invite=' + data.token)}`;
-    return res.status(200).json({ ok: true, invite: { id: data.id, email: data.email, expires_at: data.expires_at, link } });
+    // best-effort письмо-инвайт: упало → инвайт всё равно создан, owner копирует link (не валим 500)
+    let emailSent = false;
+    try {
+      const { html, text } = renderInviteEmail({ inviterEmail: plan.user.email, inviteeEmail: data.email, link });
+      await sendTransactional(data.email, `${plan.user.email} приглашает вас в команду SW Profit`, html, text);
+      emailSent = true;
+    } catch (e) {
+      console.error('[team] invite email failed:', e?.message);
+    }
+    return res.status(200).json({ ok: true, email_sent: emailSent, invite: { id: data.id, email: data.email, expires_at: data.expires_at, link } });
   }
 
   // ─── DELETE: участник или инвайт ───

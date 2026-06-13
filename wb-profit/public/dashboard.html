@@ -4713,8 +4713,14 @@ async function inviteMember(){
     if(!r.ok){ msg.style.display='block';msg.style.color='var(--red)';
       msg.textContent=({INVITE_EXISTS:'Уже приглашён',TEAM_LIMIT_REACHED:'Достигнут лимит участников',INVALID_EMAIL:'Неверный email',CANNOT_INVITE_SELF:'Нельзя пригласить себя',TEAM_REQUIRES_BUSINESS:'Доступно на тарифе Бизнес'})[d.error]||'Ошибка'; return; }
     document.getElementById('teamInviteEmail').value='';
-    msg.style.display='block';msg.style.color='var(--green)';
-    msg.innerHTML='Ссылка-приглашение (скопируйте и отправьте участнику): <input readonly value="'+escHtml(d.invite.link)+'" style="width:100%;margin-top:6px" onclick="this.select()">';
+    msg.style.display='block';
+    if(d.email_sent){
+      msg.style.color='var(--green)';
+      msg.innerHTML='✅ Приглашение отправлено на '+escHtml(d.invite.email);
+    } else {
+      msg.style.color='var(--red)';
+      msg.innerHTML='⚠️ Письмо не ушло — скопируйте ссылку и отправьте вручную:<br><input readonly value="'+escHtml(d.invite.link)+'" style="width:100%;margin-top:6px" onclick="this.select()">';
+    }
     loadTeam();
   }catch(e){ msg.style.display='block';msg.style.color='var(--red)';msg.textContent='Ошибка сети'; }
 }
