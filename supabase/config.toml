@@ -1,0 +1,8 @@
+project_id = "bqbccehwbgqzfczfubvf"
+
+# Edge Functions — флаги авторизации (Фаза C, email-уведомления)
+[functions.daily-digest]
+verify_jwt = false   # закрыта самостоятельной проверкой CRON_SECRET в коде (крон шлёт не-JWT секрет)
+
+[functions.unsubscribe]
+verify_jwt = false   # публичная ссылка-отписка из письма, без авторизации
