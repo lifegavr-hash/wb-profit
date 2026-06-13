@@ -4564,7 +4564,7 @@ function saveTokenManual(){
 }
 
 // =====================================================================
-// 🔥 v0.7.7.30: Управление кабинетами WB (Бизнес-тариф — до 2 кабинетов)
+// 🔥 v0.7.7.30: Управление кабинетами WB (Бизнес-тариф — до 3 кабинетов)
 // =====================================================================
 
 window._wbAccounts = [];
@@ -4667,7 +4667,7 @@ function renderWbAccountsList(){
     addBtn.disabled = atLimit;
     addBtn.style.opacity = atLimit ? '.5' : '';
     addBtn.style.cursor = atLimit ? 'not-allowed' : '';
-    addBtn.title = atLimit ? 'Лимит кабинетов на текущем тарифе. Доступно на тарифе Бизнес — до 2 кабинетов.' : '';
+    addBtn.title = atLimit ? 'Лимит кабинетов на текущем тарифе. Доступно на тарифе Бизнес — до 3 кабинетов.' : '';
   }
   // Список
   if(accs.length === 0){
@@ -5216,6 +5216,7 @@ async function tryRestoreDataFromCache(){
     window._lastTotals = cache.totals;
     window._richAlerts = cache.richAlerts || [];
     window._freeLimitTriggered = cache.freeLimitTriggered || false;
+    window._skuCap = cache.skuCap || null;
     window._stocksMap = cache.stocksMap || {};
     window._rowsPeriodDays = cache.rowsPeriodDays || (_currentPeriod.days||30);
     // Подставляем даты в скрытые поля
@@ -5264,7 +5265,7 @@ async function tryRestoreDataFromCache(){
         if(mg&&mg.parentNode)mg.parentNode.insertBefore(freeWarn,mg.nextSibling);
       }
       if(cache.freeLimitTriggered){
-        freeWarn.innerHTML='⚠️ На тарифе Free показано только <strong>30 из '+cache.freeLimitTriggered+' товаров</strong> (самые продаваемые). <a href="#" onclick="showProUpgradeModal(\'Безлимит товаров в Калькуляторе\');return false">Перейти на PRO →</a>';
+        freeWarn.innerHTML='⚠️ На вашем тарифе показано только <strong>'+(cache.skuCap||window._skuCap||50)+' из '+cache.freeLimitTriggered+' товаров</strong> (самые продаваемые). <a href="#" onclick="showProUpgradeModal(\'Безлимит товаров в Калькуляторе\');return false">Перейти на PRO →</a>';
         freeWarn.style.display='block';
       } else if(freeWarn){
         freeWarn.style.display='none';
@@ -5615,6 +5616,7 @@ async function go(tokenArg){
           totals: window._lastTotals||null,
           richAlerts: window._richAlerts||[],
           freeLimitTriggered: window._freeLimitTriggered||false,
+          skuCap: window._skuCap||null,
           stocksMap: window._stocksMap||null,
           raw_count: rawData ? rawData.length : 0,
           rowsPeriodDays: window._rowsPeriodDays||null,
@@ -6239,12 +6241,20 @@ async function process(raw){
     });
     
   })();
-  // Free: лимит 30 товаров. Оставляем самые продаваемые.
+  // Лимит SKU из тарифа (таблица plans → max_sku). null/0 = безлимит (PRO/Бизнес/админ).
+  // Фолбэк до загрузки лимитов с бэка: не-PRO → 50 (Старт), PRO → безлимит.
   window._freeLimitTriggered=false;
-  if(!hasPRO()&&rows.length>30){
+  var _skuCap=null;
+  if(window._planLimits && window._planLimits.max_sku!=null){
+    _skuCap=Number(window._planLimits.max_sku)||null;
+  } else if(!hasPRO()){
+    _skuCap=50;
+  }
+  window._skuCap=_skuCap;
+  if(_skuCap && rows.length>_skuCap){
     rows.sort(function(a,b){return Number(b.sales||0)-Number(a.sales||0);});
     window._freeLimitTriggered=rows.length;
-    rows=rows.slice(0,30);
+    rows=rows.slice(0,_skuCap);
   }
 
   // ═════ ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ ═════
@@ -6306,7 +6316,7 @@ async function process(raw){
     if(mg&&mg.parentNode)mg.parentNode.insertBefore(freeWarn,mg.nextSibling);
   }
   if(window._freeLimitTriggered){
-    freeWarn.innerHTML='⚠️ На тарифе Free показано только <strong>30 из '+window._freeLimitTriggered+' товаров</strong> (самые продаваемые). <a href="#" onclick="showProUpgradeModal(\'Безлимит товаров в Калькуляторе\');return false">Перейти на PRO →</a>';
+    freeWarn.innerHTML='⚠️ На вашем тарифе показано только <strong>'+(window._skuCap||50)+' из '+window._freeLimitTriggered+' товаров</strong> (самые продаваемые). <a href="#" onclick="showProUpgradeModal(\'Безлимит товаров в Калькуляторе\');return false">Перейти на PRO →</a>';
     freeWarn.style.display='block';
   } else {
     freeWarn.style.display='none';
@@ -6885,6 +6895,15 @@ function _csvField(v){ v=(v==null?'':String(v)); return /[";\n\r]/.test(v) ? '"'
 function _csvNum(x){ return (x==null||x==='') ? '' : String(Math.round(Number(x)||0)); }  // целые ₽ без разделителей разрядов
 function _csvPct(rev,m){ return (rev>0) ? (m/rev*100).toFixed(1).replace('.',',') : ''; }   // десятичная запятая для Excel РФ
 function exportOrdersCSV(){
+  // gate — экспорт (Excel/CSV) только на Бизнес-тарифе (has_excel_export=true)
+  if(!hasFeature('excel_export')){
+    showInfoModal('⬇ Экспорт CSV — Бизнес-тариф',
+      '<p>Скачивание данных в Excel/CSV доступно только на тарифе <b>Бизнес</b>.</p>'+
+      '<p style="margin-top:10px;color:var(--hint);font-size:13px">Бизнес-тариф также включает 3 кабинета WB и приоритетную поддержку.</p>'+
+      '<p style="margin-top:14px"><button class="btn-primary" style="width:100%" onclick="closeInfoModal();showSection(\'settings\',null)">Перейти к тарифам →</button></p>'
+    );
+    return;
+  }
   var view=_ordersView||[];
   if(!view.length){ alert('Нет данных для экспорта (пустой фильтр).'); return; }
   var H=['Тип','Артикул','Название','Категория','Дата','Выручка','Комиссия','Эквайринг','Логистика','Выплата WB','Себестоимость','Маржа ₽','Маржа %','Кол-во шт'];
@@ -7524,7 +7543,7 @@ async function exportToExcel(ev){
   if(!hasFeature('excel_export')){
     showInfoModal('📥 Экспорт в Excel — Бизнес-тариф',
       '<p>Скачивание данных в Excel/CSV доступно только на тарифе <b>Бизнес</b>.</p>'+
-      '<p style="margin-top:10px;color:var(--hint);font-size:13px">Бизнес-тариф также включает 2 кабинета WB и приоритетную поддержку.</p>'+
+      '<p style="margin-top:10px;color:var(--hint);font-size:13px">Бизнес-тариф также включает 3 кабинета WB и приоритетную поддержку.</p>'+
       '<p style="margin-top:14px"><button class="btn-primary" style="width:100%" onclick="closeInfoModal();showSection(\'settings\',null)">Перейти к тарифам →</button></p>'
     );
     return;
