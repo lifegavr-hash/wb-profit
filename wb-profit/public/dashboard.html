@@ -3991,7 +3991,15 @@ function showSection(name,el){
     );
     return;
   }
-  // PRO-only разделы
+  // PRO-only разделы.
+  // 🔥 v0.7.12.45 (Фаза B) — VIEW-GATE BY DESIGN: для 'detail' и 'orders' это намеренно ТОЛЬКО
+  //   фронт-замок. Оба раздела рендерятся из window.rawData (ответ /api/wb), который
+  //   Старт уже легитимно получает для Калькулятора → отдельных серверных данных у них
+  //   нет, защищать на сервере нечего, премиальность = представление. Серверный enforce
+  //   невозможен без рефактора и не планируется.
+  //   Для 'analytics' рекламная разбивка дополнительно закрыта НА СЕРВЕРЕ в api/wb-adv.js
+  //   (requireFeature analytics, fail-closed); снапшот-виджеты — общий с Главной ресурс,
+  //   тоже view-gate.
   if((name==='detail'||name==='analytics'||name==='orders')&&!hasPRO()){
     var featureName=name==='detail'?'Детализация расходов':(name==='orders'?'Прибыль по товарам':'Аналитика');
     requirePRO(featureName);
