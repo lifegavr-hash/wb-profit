@@ -498,7 +498,7 @@ async function handleTeam(req, res, jwt) {
         return res.status(409).json({ error: 'INVITE_EXISTS', message: 'Приглашение на этот email уже отправлено' });
       return res.status(500).json({ error: 'DB_ERROR', message: error.message });
     }
-    const link = `https://swprofit.ru/dashboard.html?invite=${data.token}`;
+    const link = `https://swprofit.ru/login.html?next=${encodeURIComponent('/dashboard.html?invite=' + data.token)}`;
     return res.status(200).json({ ok: true, invite: { id: data.id, email: data.email, expires_at: data.expires_at, link } });
   }
 

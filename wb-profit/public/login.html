@@ -325,7 +325,12 @@ async function register() {
   // signup → автотриал PRO 14 дней через handle_new_user. Промокоды активируются
   // в дашборде (Настройки → промокод).
   btn.disabled=true; btn.textContent='Создаём аккаунт...';
-  var { data, error } = await sb.auth.signUp({ email, password: pass });
+  // 🔥 Фаза D: проносим ?next= (с invite) в письмо подтверждения, чтобы после клика
+  // приглашённый вернулся на login.html?next=… → success-экран → dashboard?invite → приём инвайта.
+  var _raw = (location.search.match(/[?&]next=([^&]*)/)||[])[1];
+  var _safe = safeNext(_raw);
+  var _emailRedirectTo = location.origin + '/login.html' + (_safe ? '?next='+encodeURIComponent(_safe) : '');
+  var { data, error } = await sb.auth.signUp({ email, password: pass, options: { emailRedirectTo: _emailRedirectTo } });
   if (error) {
     errBox.textContent = error.message;
     errBox.style.display='block';
