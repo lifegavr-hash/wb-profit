@@ -597,6 +597,12 @@ html[data-theme="dark"] .pwa-banner-close{color:#a78bfa}
 
 .content{padding:1.5rem;overflow-y:auto;flex:1}
 .topbar-title{font-size:16px;font-weight:500}
+/* 🔥 Фаза D: read-only просмотр чужого пространства */
+body.ws-foreign #nav-calc, body.ws-foreign #nav-detail, body.ws-foreign #nav-orders,
+body.ws-foreign #nav-unit, body.ws-foreign #nav-settings, body.ws-foreign #nav-promo { display:none !important; }
+body.ws-foreign .ws-hide-foreign { display:none !important; }
+.ws-banner{display:none;align-items:center;gap:10px;background:#fef9c3;border:1px solid #fde68a;color:#854d0e;padding:8px 14px;border-radius:8px;margin:0 0 12px;font-size:13px}
+.ws-selector{font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);max-width:230px}
 .plan-badge{font-size:11px;padding:3px 10px;border-radius:99px;background:#EEEDFE;color:#3C3489}
 .plan-badge.free{background:#f1efe8;color:#5f5e5a}
 .plan-badge.warning{background:#fef3c7;color:#92400e;animation:pulse 2s infinite}
@@ -2159,6 +2165,10 @@ body{padding-top:var(--beta-h)}
 <div class="main">
   <div class="topbar">
     <span class="topbar-title" id="topbarTitle">Главная</span>
+    <!-- 🔥 Фаза D: селектор пространства (своё + кабинеты, где я участник) -->
+    <select id="wsSelector" class="ws-selector" style="display:none" onchange="onWorkspaceChange(this.value)">
+      <option value="">Мой кабинет</option>
+    </select>
     <!-- 🔥 v0.7.6.1: кнопка быстрого поиска -->
     <button class="topbar-search-btn" onclick="openCmdK()" title="Быстрый поиск (нажмите /) — переход между разделами и действиями">
       <span class="topbar-search-icon">🔍</span>
@@ -2175,6 +2185,12 @@ body{padding-top:var(--beta-h)}
       <div class="wb-switcher-menu" id="wbSwitcherMenu" style="display:none"></div>
     </div>
     <span class="plan-badge free" id="planBadge">Free</span>
+  </div>
+
+  <!-- 🔥 Фаза D: баннер режима просмотра чужого пространства -->
+  <div id="wsBanner" class="ws-banner">
+    👁 Просмотр кабинета <strong id="wsBannerEmail"></strong> — только чтение (Главная и Аналитика).
+    <button type="button" onclick="onWorkspaceChange('')" style="margin-left:auto;background:none;border:1px solid #d97706;color:#854d0e;border-radius:6px;padding:3px 10px;cursor:pointer">Вернуться в свой кабинет</button>
   </div>
 
   <!-- 🔥 v0.7.7.35: Trial-баннер — на период беты доступ бесплатный, без призыва оплачивать -->
@@ -2366,6 +2382,19 @@ body{padding-top:var(--beta-h)}
         <div class="ct">💬 Обратная связь</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Нашли ошибку, есть идея или вопрос? Напишите нам — каждое сообщение читается лично.</p>
         <button class="btn-primary" onclick="openFeedbackModal()">Сообщить об ошибке / предложение</button>
+      </div>
+
+      <!-- 👥 Команда (Фаза D, Бизнес) -->
+      <div class="card" id="teamCard" style="margin-top:14px;display:none">
+        <div class="ct">👥 Команда <span id="teamSeats" style="font-size:12px;color:var(--muted);font-weight:400"></span></div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Участники видят вашу Главную и Аналитику (только чтение). Доступ к токену, настройкам и кабинетам не передаётся.</p>
+        <div id="teamMembers"></div>
+        <div id="teamInvites"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <input type="email" id="teamInviteEmail" placeholder="email@участника.ru" style="flex:1">
+          <button class="btn-primary" onclick="inviteMember()">Пригласить</button>
+        </div>
+        <div id="teamMsg" style="font-size:12px;margin-top:8px;display:none"></div>
       </div>
 
       <!-- 🔔 Уведомления (Фаза C, email-дайджест) -->
@@ -3307,6 +3336,9 @@ async function init(){
   fetchPlanLimits(session.access_token);
   // 🔥 v0.7.7.30: подтягиваем кабинеты WB (и мигрируем localStorage.wb_token если нужно)
   if(typeof loadWbAccounts === 'function') loadWbAccounts();
+  // 🔥 Фаза D: список пространств (если я чей-то участник) + приём инвайта по ?invite=
+  if(typeof loadWorkspaces === 'function') loadWorkspaces();
+  if(typeof maybeAcceptInvite === 'function') maybeAcceptInvite();
   // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
   // (_currentPeriod уже подтянулся из localStorage)
   syncPeriodPills();
@@ -4004,6 +4036,11 @@ function showSection(name,el){
     );
     return;
   }
+  // 🔥 Фаза D: в режиме просмотра чужого пространства доступны ТОЛЬКО Главная и Аналитика.
+  if(isViewingForeign() && name!=='home' && name!=='analytics'){
+    showToast('В режиме просмотра кабинета доступны только Главная и Аналитика','info');
+    name='home'; el=document.getElementById('nav-home');
+  }
   // PRO-only разделы.
   // 🔥 v0.7.12.45 (Фаза B) — VIEW-GATE BY DESIGN: для 'detail' и 'orders' это намеренно ТОЛЬКО
   //   фронт-замок. Оба раздела рендерятся из window.rawData (ответ /api/wb), который
@@ -4042,7 +4079,7 @@ function showSection(name,el){
   if(name==='orders') renderOrders();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
-  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); /* v0.7.0/v0.7.5/v0.7.7 */ }
+  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); loadTeam(); /* v0.7.0/v0.7.5/v0.7.7 + Фаза D */ }
   if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
@@ -4602,6 +4639,127 @@ function withWbAccount(url){
   var id = getActiveWbAccountId();
   if(!id) return url;
   return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'wb_account_id=' + encodeURIComponent(id);
+}
+
+// 🔥 Фаза D: активное пространство (null = своё; иначе owner_id владельца).
+window._workspace = null; window._workspaceEmail = null;
+function isViewingForeign(){ return !!window._workspace; }
+function wsParam(){ return window._workspace ? '&workspace='+encodeURIComponent(window._workspace) : ''; }
+
+// Переключение пространства (своё ↔ кабинет владельца, где я участник)
+async function onWorkspaceChange(ownerId, email){
+  ownerId = ownerId || '';
+  var enteringForeign = !!ownerId;
+  window._workspace = ownerId || null;
+  if(!enteringForeign){ window._workspaceEmail = null; }
+  else {
+    if(!email){ var o=document.querySelector('#wsSelector option[value="'+ownerId+'"]'); email=o?o.textContent:''; }
+    window._workspaceEmail = email;
+  }
+  document.body.classList.toggle('ws-foreign', isViewingForeign());
+  var b=document.getElementById('wsBanner');
+  if(b){ b.style.display=isViewingForeign()?'flex':'none';
+    var e=document.getElementById('wsBannerEmail'); if(e) e.textContent=window._workspaceEmail||''; }
+  var sel=document.getElementById('wsSelector'); if(sel) sel.value=window._workspace||'';
+  // сброс кэшей данных, чтобы не смешать своё/чужое
+  window._lastSnapshots=null; __snaps90Cache=null;
+  if(typeof invalidateAdsCampaigns==='function') invalidateAdsCampaigns();
+  if(enteringForeign){
+    // не показываем чужому МОИ rawData (Калькулятор/Детализация живут в DOM, хоть и скрыты)
+    window.rawData=[]; window.rows=[];
+  } else {
+    // вернулись в своё → восстановить свой rawData из кэша
+    if(typeof tryRestoreDataFromCache==='function') await tryRestoreDataFromCache();
+  }
+  showSection('home', document.getElementById('nav-home'));
+  loadHomeData();
+}
+
+// === Фаза D: управление командой (владелец-Бизнес) ===
+async function loadTeam(){
+  var card=document.getElementById('teamCard'); if(!card) return;
+  var isBiz=(currentProfile && currentProfile.is_admin) || (currentProfile && currentProfile.plan==='business');
+  card.style.display=isBiz?'block':'none';
+  if(!isBiz) return;
+  try{
+    var {data:{session}}=await sb.auth.getSession(); if(!session) return;
+    var r=await fetch('/api/profile?resource=team',{headers:{Authorization:'Bearer '+session.access_token}});
+    if(!r.ok){ if(r.status===403) card.style.display='none'; return; }
+    var d=await r.json();
+    document.getElementById('teamSeats').textContent='· '+d.seats.used+' из '+d.seats.member_seats;
+    document.getElementById('teamMembers').innerHTML=(d.members||[]).map(function(m){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'+
+        '<span style="flex:1">'+escHtml(m.email||m.member_id)+'</span>'+
+        '<button class="btn-mini" onclick="removeMember(\''+m.member_id+'\')">Удалить</button></div>';
+    }).join('')||'<div style="font-size:12px;color:var(--muted)">Пока нет участников.</div>';
+    var invHtml=(d.invites||[]).map(function(i){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:var(--muted);font-size:13px">'+
+        '⏳ '+escHtml(i.email)+' (приглашение)'+
+        '<button class="btn-mini" style="margin-left:auto" onclick="revokeInvite('+i.id+')">Отозвать</button></div>';
+    }).join('');
+    if(d.invites && d.invites.length) invHtml+='<div style="font-size:11px;color:var(--muted);margin-top:4px">Ссылку видно только при создании. Потеряли — отзовите и создайте заново.</div>';
+    document.getElementById('teamInvites').innerHTML=invHtml;
+  }catch(e){ console.warn('[team] load',e); }
+}
+async function inviteMember(){
+  var email=(document.getElementById('teamInviteEmail').value||'').trim();
+  var msg=document.getElementById('teamMsg');
+  try{
+    var {data:{session}}=await sb.auth.getSession();
+    var r=await fetch('/api/profile?resource=team',{method:'POST',
+      headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
+      body:JSON.stringify({email:email})});
+    var d=await r.json();
+    if(!r.ok){ msg.style.display='block';msg.style.color='var(--red)';
+      msg.textContent=({INVITE_EXISTS:'Уже приглашён',TEAM_LIMIT_REACHED:'Достигнут лимит участников',INVALID_EMAIL:'Неверный email',CANNOT_INVITE_SELF:'Нельзя пригласить себя',TEAM_REQUIRES_BUSINESS:'Доступно на тарифе Бизнес'})[d.error]||'Ошибка'; return; }
+    document.getElementById('teamInviteEmail').value='';
+    msg.style.display='block';msg.style.color='var(--green)';
+    msg.innerHTML='Ссылка-приглашение (скопируйте и отправьте участнику): <input readonly value="'+escHtml(d.invite.link)+'" style="width:100%;margin-top:6px" onclick="this.select()">';
+    loadTeam();
+  }catch(e){ msg.style.display='block';msg.style.color='var(--red)';msg.textContent='Ошибка сети'; }
+}
+async function removeMember(memberId){
+  if(!confirm('Удалить участника? Доступ пропадёт сразу.')) return;
+  var {data:{session}}=await sb.auth.getSession();
+  await fetch('/api/profile?resource=team&member_id='+encodeURIComponent(memberId),{method:'DELETE',headers:{Authorization:'Bearer '+session.access_token}});
+  loadTeam();
+}
+async function revokeInvite(id){
+  var {data:{session}}=await sb.auth.getSession();
+  await fetch('/api/profile?resource=team&invite_id='+encodeURIComponent(id),{method:'DELETE',headers:{Authorization:'Bearer '+session.access_token}});
+  loadTeam();
+}
+
+// === Фаза D: селектор пространств (где я участник) ===
+async function loadWorkspaces(){
+  var sel=document.getElementById('wsSelector'); if(!sel) return;
+  try{
+    var {data:{session}}=await sb.auth.getSession(); if(!session) return;
+    var r=await fetch('/api/profile?resource=team-workspaces',{headers:{Authorization:'Bearer '+session.access_token}});
+    if(!r.ok) return;
+    var d=await r.json();
+    sel.innerHTML='<option value="">Мой кабинет</option>'+(d.workspaces||[]).map(function(w){
+      return '<option value="'+w.owner_id+'">'+escHtml(w.owner_email||w.owner_id)+'</option>';}).join('');
+    sel.style.display=(d.workspaces&&d.workspaces.length)?'inline-block':'none';
+    sel.value=window._workspace||'';
+  }catch(e){ console.warn('[ws] load',e); }
+}
+
+// === Фаза D: приём инвайта по ?invite=<token> ===
+async function maybeAcceptInvite(){
+  var p=new URLSearchParams(location.search); var token=p.get('invite');
+  if(!token) return;
+  var {data:{session}}=await sb.auth.getSession();
+  if(!session){ location.href='/login.html?next='+encodeURIComponent(location.pathname+location.search); return; }
+  try{
+    var r=await fetch('/api/profile?resource=team-accept',{method:'POST',
+      headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
+      body:JSON.stringify({token:token})});
+    var d=await r.json();
+    if(r.ok){ showToast('Вы добавлены в команду','success'); await loadWorkspaces(); }
+    else { showToast(({INVITE_EXPIRED:'Срок приглашения истёк',EMAIL_MISMATCH:'Приглашение на другой email',INVITE_INVALID:'Приглашение недействительно',CANNOT_INVITE_SELF:'Это ваше собственное приглашение'})[d.error]||'Не удалось принять приглашение','error'); }
+  }catch(e){ showToast('Ошибка приёма приглашения','error'); }
+  p.delete('invite'); history.replaceState(null,'',location.pathname+(p.toString()?'?'+p.toString():''));
 }
 
 async function _wbAccApiFetch(path, opts){
@@ -5204,6 +5362,9 @@ function _findCacheEntry(df,dt){
 // 🔥 v0.7.12.36: также восстанавливаем слим-raw → Детализация/Аналитика работают сразу после reload.
 // 🔥 v0.7.12.38: берём нужную комбинацию из мульти-кэша.
 async function tryRestoreDataFromCache(){
+  // 🔥 Фаза D: в режиме просмотра чужого пространства НЕ восстанавливаем СВОЙ rawData
+  // (иначе скрытые Калькулятор/Детализация отрисовали бы мой прошлый отчёт под чужим баннером).
+  if(isViewingForeign()) return false;
   try{
     // Чистим legacy одиночные ключи (v0.6.2 / v0.7.12.36)
     try{localStorage.removeItem('wb_cache_raw');localStorage.removeItem('wb_cache_processed');}catch(e){}
@@ -5419,6 +5580,7 @@ function applyCustomPeriod(){
 }
 
 async function goFromHome(){
+  if(isViewingForeign()){ showToast('Обновление данных доступно только владельцу кабинета','info'); return; }
   var token=localStorage.getItem('wb_token');
   if(!token){
     alert('Сначала добавьте API токен в разделе «⚙️ Настройки»');
@@ -5714,6 +5876,7 @@ function buildStocksMap(stocks){
 // в окне 90 дней. Переиспользует loadSales/_loadSalesChunk (готовый chunking 30 дней + 429-retry).
 // Идемпотентно: повторный запуск с тем же диапазоном перезаписывает upsert'ом, ничего не дублируется.
 async function runHistoryImport(){
+  if(isViewingForeign()) return;               // R7-страховка: не импортируем в чужом пространстве
   // Guard: не запускать повторно если уже идёт.
   if(window._importInProgress) return;
   // Без токена — нечего грузить.
@@ -5863,6 +6026,7 @@ async function toggleDailyEmail(cb){
 // обход кусков с паузой 1.5 сек. Старая while-логика (429/401/204/rrdid pagination)
 // полностью сохранена внутри _loadSalesChunk без изменений.
 async function loadSales(tok,df,dt){
+  if(isViewingForeign()) return [];            // R7-страховка: никаких WB-pull на чужом пространстве
   var totalDays=1;
   try{var d1=new Date(df),d2=new Date(dt);totalDays=Math.max(1,Math.round((d2-d1)/86400000)+1);}catch(e){}
 
@@ -9249,7 +9413,10 @@ async function loadSnapshots(days){
     var session=await sb.auth.getSession();
     var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
     if(!jwt)return [];
-    var r=await fetch(withWbAccount('/api/snapshots?days='+(days||7)),{headers:{'Authorization':'Bearer '+jwt}});
+    var base='/api/snapshots?days='+(days||7);
+    // чужое пространство → не подмешиваем СВОЙ wb_account_id; сервер берёт дефолт владельца + ?workspace=
+    var url=isViewingForeign() ? (base+wsParam()) : withWbAccount(base);
+    var r=await fetch(url,{headers:{'Authorization':'Bearer '+jwt}});
     if(!r.ok)return [];
     var d=await r.json();
     return d.snapshots||[];
@@ -9281,6 +9448,8 @@ function _adsCacheKey(df, dt){
   return 'v2:'+df+'_'+dt+'_'+acc;
 }
 async function getOrLoadAdsCampaigns(df, dt){
+  // R7-страховка: на чужом пространстве рекламный WB-pull не делаем (токен участнику недоступен)
+  if(isViewingForeign()) return {totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_foreign:true};
   var key = _adsCacheKey(df, dt);
   var entry = __adsCampaignsCache[key];
   if(entry && (Date.now() - entry.ts) < 5*60*1000){

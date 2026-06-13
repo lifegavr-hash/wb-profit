@@ -10,6 +10,7 @@
 // он продолжит работать как раньше.
 
 import { extractJwt, getUserPlanWithLimits } from '../lib/plan-check.js';
+import { resolveWorkspace } from '../lib/team.js';
 
 // Маппинг статусов кампаний WB advert-api (по официальной документации)
 const STATUS_LABEL = {
@@ -27,6 +28,13 @@ export default async function handler(req, res) {
 
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: 'Токен не передан' });
+
+  // 🔥 Фаза D (R7): рекламный WB-pull нельзя на чужом пространстве (токен участнику недоступен).
+  if (req.query.workspace) {
+    const ws = await resolveWorkspace(extractJwt(req), req.query.workspace);
+    if (ws.error) return res.status(ws.status).json({ error: ws.error });
+    if (ws.role !== 'owner') return res.status(403).json({ error: 'WORKSPACE_NO_WB', message: 'Рекламные данные доступны только владельцу кабинета' });
+  }
 
   // 🔥 v0.7.11.1: блок свежих WB-данных рекламы для истёкших подписок (admin исключён).
   // 🔥 v0.7.12.45 (Фаза B): /api/wb-adv эксклюзивно питает рекламную разбивку Аналитики

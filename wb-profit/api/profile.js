@@ -413,6 +413,168 @@ async function handleNotifications(req, res, jwt) {
   return res.status(405).json({ error: 'Method not allowed for notifications' });
 }
 
+// ====== Фаза D: командный доступ ======
+// Карта id→email одним запросом к profiles (источник email как в админ-вьюхах).
+async function emailsByIds(supa, ids) {
+  const uniq = [...new Set(ids)].filter(Boolean);
+  if (!uniq.length) return {};
+  const { data } = await supa.from('profiles').select('id, email').in('id', uniq);
+  const map = {};
+  for (const p of (data || [])) map[p.id] = p.email;
+  return map;
+}
+
+// GET    ?resource=team               — участники + инвайты + счётчик мест
+// POST   ?resource=team {email}       — создать инвайт
+// DELETE ?resource=team&member_id=    — удалить участника (мгновенный отзыв)
+// DELETE ?resource=team&invite_id=    — отозвать pending-инвайт
+async function handleTeam(req, res, jwt) {
+  const plan = await getUserPlanWithLimits(jwt);
+  if (plan.error) return res.status(plan.status || 401).json({ error: plan.error, message: plan.message });
+  const ownerId = plan.user.id;                              // R3: owner_id ВСЕГДА из JWT
+
+  // R5: управлять командой может только активный Бизнес (прямо, без пересборки профиля)
+  const eligible = plan.isAdmin || (plan.plan === 'business' && !plan.isExpired);
+  if (!eligible) return res.status(403).json({ error: 'TEAM_REQUIRES_BUSINESS', message: 'Командный доступ доступен на тарифе Бизнес' });
+
+  const supa = makeServiceClient();
+  const maxTotal = plan.limits?.max_team_members || 1;       // всего мест вкл. владельца
+  const memberSeats = Math.max(maxTotal - 1, 0);
+
+  // ─── GET: участники + инвайты + места ───
+  if (req.method === 'GET') {
+    const { data: members, error: mErr } = await supa
+      .from('team_members')
+      .select('member_id, created_at')
+      .eq('owner_id', ownerId)
+      .order('created_at', { ascending: true });
+    if (mErr) return res.status(500).json({ error: 'DB_ERROR', message: mErr.message });
+
+    const { data: invites, error: iErr } = await supa
+      .from('team_invites')
+      .select('id, email, status, expires_at, created_at')
+      .eq('owner_id', ownerId)
+      .eq('status', 'pending')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: true });
+    if (iErr) return res.status(500).json({ error: 'DB_ERROR', message: iErr.message });
+
+    const emailMap = await emailsByIds(supa, (members || []).map(m => m.member_id));
+    const used = (members?.length || 0) + (invites?.length || 0);
+    return res.status(200).json({
+      members: (members || []).map(m => ({ member_id: m.member_id, email: emailMap[m.member_id] || null, created_at: m.created_at })),
+      invites: (invites || []).map(i => ({ id: i.id, email: i.email, status: i.status, expires_at: i.expires_at, created_at: i.created_at })),
+      seats: { used, member_seats: memberSeats, max_total: maxTotal },
+    });
+  }
+
+  // ─── POST: создать инвайт ───
+  if (req.method === 'POST') {
+    let body = {};
+    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); } catch (_) { body = {}; }
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return res.status(400).json({ error: 'INVALID_EMAIL', message: 'Введите корректный email' });
+    }
+    if (email === (plan.user.email || '').toLowerCase()) {
+      return res.status(400).json({ error: 'CANNOT_INVITE_SELF', message: 'Нельзя пригласить себя' });
+    }
+    // R6: lazy-expire протухших pending на этот email (освобождает seat-счёт и partial-unique)
+    await supa.from('team_invites')
+      .update({ status: 'expired' })
+      .eq('owner_id', ownerId).eq('status', 'pending')
+      .lte('expires_at', new Date().toISOString())
+      .ilike('email', email);
+    // вставка pending; триггер enforce_team_limit добьёт лимит, partial-unique — дубли
+    const { data, error } = await supa
+      .from('team_invites')
+      .insert({ owner_id: ownerId, email })
+      .select('id, email, token, expires_at')
+      .single();
+    if (error) {
+      if (String(error.message || '').includes('TEAM_LIMIT_REACHED'))
+        return res.status(403).json({ error: 'TEAM_LIMIT_REACHED', message: `Максимум ${memberSeats} участник(ов) кроме владельца` });
+      if (error.code === '23505')
+        return res.status(409).json({ error: 'INVITE_EXISTS', message: 'Приглашение на этот email уже отправлено' });
+      return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    }
+    const link = `https://swprofit.ru/dashboard.html?invite=${data.token}`;
+    return res.status(200).json({ ok: true, invite: { id: data.id, email: data.email, expires_at: data.expires_at, link } });
+  }
+
+  // ─── DELETE: участник или инвайт ───
+  if (req.method === 'DELETE') {
+    const memberId = req.query?.member_id;
+    const inviteId = req.query?.invite_id;
+    if (memberId) {
+      const { data, error } = await supa
+        .from('team_members')
+        .delete().eq('owner_id', ownerId).eq('member_id', memberId)   // R3: скоуп owner_id=JWT
+        .select('id');
+      if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+      if (!data?.length) return res.status(403).json({ error: 'FORBIDDEN' });  // не своя строка
+      return res.status(200).json({ ok: true });                              // мгновенный отзыв
+    }
+    if (inviteId) {
+      const { data, error } = await supa
+        .from('team_invites')
+        .update({ status: 'revoked' })
+        .eq('owner_id', ownerId).eq('id', inviteId).eq('status', 'pending')
+        .select('id');
+      if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+      if (!data?.length) return res.status(403).json({ error: 'FORBIDDEN' });
+      return res.status(200).json({ ok: true });
+    }
+    return res.status(400).json({ error: 'MISSING_TARGET' });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed for team' });
+}
+
+// resource=team-accept — приём инвайта участником
+async function handleTeamAccept(req, res, jwt) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const plan = await getUserPlanWithLimits(jwt);
+  if (plan.error) return res.status(plan.status || 401).json({ error: plan.error });
+  let body = {};
+  try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); } catch (_) { body = {}; }
+  const token = String(body.token || '').trim();
+  if (!token) return res.status(400).json({ error: 'TOKEN_REQUIRED' });
+
+  const supa = makeServiceClient();
+  // R2: личность СТРОГО из JWT (plan.user), НИКОГДА из тела запроса
+  const { data, error } = await supa.rpc('accept_team_invite', {
+    p_token: token,
+    p_user_id: plan.user.id,
+    p_user_email: plan.user.email,
+  });
+  if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+  if (!data?.ok) {
+    const map = { INVITE_INVALID: 404, INVITE_EXPIRED: 410, EMAIL_MISMATCH: 403, CANNOT_INVITE_SELF: 400, TEAM_LIMIT_REACHED: 403 };
+    return res.status(map[data?.error] || 400).json({ error: data?.error || 'ACCEPT_FAILED' });
+  }
+  return res.status(200).json({ ok: true, owner_id: data.owner_id, already_member: !!data.already_member });
+}
+
+// resource=team-workspaces — список пространств, где я участник (для селектора)
+async function handleTeamWorkspaces(req, res, jwt) {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  const plan = await getUserPlanWithLimits(jwt);
+  if (plan.error) return res.status(plan.status || 401).json({ error: plan.error });
+  const viewerId = plan.user.id;
+  const supa = makeServiceClient();
+
+  const { data: rows, error } = await supa
+    .from('team_members')
+    .select('owner_id')
+    .eq('member_id', viewerId);                       // только МОИ членства (из JWT)
+  if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+
+  const emailMap = await emailsByIds(supa, (rows || []).map(r => r.owner_id));
+  const workspaces = (rows || []).map(r => ({ owner_id: r.owner_id, owner_email: emailMap[r.owner_id] || null }));
+  return res.status(200).json({ workspaces });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -434,6 +596,16 @@ export default async function handler(req, res) {
   // 🔥 Фаза C: sub-router для настроек email-уведомлений (opt-in дайджеста)
   if (resource === 'notifications') {
     return handleNotifications(req, res, jwt);
+  }
+  // 🔥 Фаза D: командный доступ (Бизнес)
+  if (resource === 'team') {
+    return handleTeam(req, res, jwt);
+  }
+  if (resource === 'team-accept') {
+    return handleTeamAccept(req, res, jwt);
+  }
+  if (resource === 'team-workspaces') {
+    return handleTeamWorkspaces(req, res, jwt);
   }
 
   // Основной маршрут — GET профиль / DELETE аккаунт

@@ -3,6 +3,7 @@
 
 import crypto from 'node:crypto';
 import { extractJwt, checkPeriodLimit, sendIfPlanError } from '../lib/plan-check.js';
+import { resolveWorkspace } from '../lib/team.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -111,6 +112,14 @@ export default async function handler(req, res) {
 
   const token = req.headers['authorization'];
   if (!token) return res.status(401).json({ error: 'Токен не передан' });
+
+  // 🔥 Фаза D (R7): WB-pull нельзя инициировать на ЧУЖОМ пространстве — у участника нет WB-токена владельца.
+  // Срабатывает только при явном ?workspace= (своё пространство параметр не шлёт → нулевой оверхед).
+  if (req.query.workspace) {
+    const ws = await resolveWorkspace(extractJwt(req), req.query.workspace);
+    if (ws.error) return res.status(ws.status).json({ error: ws.error });
+    if (ws.role !== 'owner') return res.status(403).json({ error: 'WORKSPACE_NO_WB', message: 'Просмотр чужого кабинета — без живых WB-данных' });
+  }
 
   // === action=seller — вернуть инфу о селлере (имя/бренд) ===
   // Используем в Главной для приветствия «Здравствуйте, Чиркова А. В.»

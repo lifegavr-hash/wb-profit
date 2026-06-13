@@ -46,6 +46,29 @@ function findPlan(plans, planId) {
   return plans.find(p => p.id === planId) || plans.find(p => p.id === 'pro') || null;
 }
 
+// === Канонический расчёт истечения подписки (единая точка истины) ===
+// Над строкой профиля {plan, plan_expires_at, trial_until, billing_period, is_admin}.
+// Эффективный дедлайн: trial → trial_until, иначе plan_expires_at; с фолбэком на вторую
+// колонку при рассинхроне. Используется в getUserPlanWithLimits И в resolveWorkspace (Фаза D).
+export function isProfileExpired(p) {
+  if (!p) return true;
+  if (p.is_admin) return false;                       // админ — никогда
+  const now = Date.now();
+  const isTrial   = (p.billing_period || 'monthly') === 'trial';
+  const trialMs   = p.trial_until ? new Date(p.trial_until).getTime() : null;
+  const planExpMs = p.plan_expires_at ? new Date(p.plan_expires_at).getTime() : null;
+  const deadline  = isTrial ? (trialMs ?? planExpMs) : (planExpMs ?? trialMs);
+  if (deadline == null) return false;                 // нет дедлайна → бессрочный (платный без срока)
+  return deadline < now;
+}
+
+// Активный Бизнес = админ ИЛИ (план business И не истёк). Для командного доступа (Фаза D).
+export function isActiveBusiness(p) {
+  if (!p) return false;
+  if (p.is_admin) return true;
+  return p.plan === 'business' && !isProfileExpired(p);
+}
+
 // === Извлечение JWT из заголовков ===
 export function extractJwt(req) {
   const xUser = req.headers['x-user-auth'];
@@ -96,8 +119,9 @@ export async function getUserPlanWithLimits(jwt) {
   const now = Date.now();
   const isTrial = trialUntil && trialUntil.getTime() > now && billingPeriod === 'trial';
   const trialDaysLeft = isTrial ? Math.ceil((trialUntil.getTime() - now) / (24*60*60*1000)) : 0;
-  // Expired = plan истёк И (не trial или trial истёк) И не админ
-  const isExpired = !isAdmin && expiresAt && expiresAt.getTime() < now;
+  // Expired — каноническая формула (см. isProfileExpired). Учитывает trial_until,
+  // не зависит от синхронности plan_expires_at/trial_until. На текущих данных — идентично старой.
+  const isExpired = isProfileExpired(profile);
   // ВАЖНО: при expired НЕ переключаем plan на 'free' (free больше нет).
   // Возвращаем эффективный план как 'expired' — это виртуальный план
   // с доступом только к Главной (read-only).

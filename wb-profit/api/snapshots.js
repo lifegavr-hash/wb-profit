@@ -7,6 +7,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
 import { resolveWbAccountId } from '../lib/wb-account.js';
+import { resolveWorkspace } from '../lib/team.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,11 +25,19 @@ export default async function handler(req, res) {
   const user = planResult.user;
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+  // 🔥 Фаза D (R7): ?workspace= принимает ТОЛЬКО чтение (GET). POST его игнорирует → пишем всегда в СВОЁ.
+  const ws = await resolveWorkspace(token, req.method === 'GET' ? (req.query.workspace || null) : null);
+  if (ws.error) return res.status(ws.status).json({ error: ws.error });
+  const dataUserId = ws.ownerId;   // R4: ТОЛЬКО возврат resolver; сырой req.query.workspace в БД-запрос не идёт
+  // MVP-ограничение (Фаза D): участник видит снапшоты кабинета, который resolveWbAccountId считает
+  // дефолтным у ВЛАДЕЛЬЦА. Переключателя кабинетов владельца у участника нет (список кабинетов
+  // в /wb-accounts скоупится по своему user_id). Доработка — отдельно при необходимости.
+
   // 🔥 v0.7.7.30: разрешаем wb_account_id из query (GET) или body (POST)
-  const providedWbId = req.query.wb_account_id 
-    || (req.body && req.body.wb_account_id) 
+  const providedWbId = req.query.wb_account_id
+    || (req.body && req.body.wb_account_id)
     || null;
-  const wbResolve = await resolveWbAccountId(user.id, providedWbId);
+  const wbResolve = await resolveWbAccountId(dataUserId, providedWbId);  // кабинет принадлежит владельцу пространства
   if (!wbResolve.ok) {
     return res.status(wbResolve.status).json({ 
       error: wbResolve.error, 
@@ -39,9 +48,10 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const requested = parseInt(req.query.days || '7', 10);
-    const maxHistory = planResult.isAdmin
-      ? 99999
-      : (planResult.limits?.max_history_days || 30);
+    // owner — свои лимиты; viewer — лимит истории ВЛАДЕЛЬЦА (из resolveWorkspace)
+    const maxHistory = ws.role === 'owner'
+      ? (planResult.isAdmin ? 99999 : (planResult.limits?.max_history_days || 30))
+      : (ws.ownerLimits?.max_history_days ?? 30);
     const days = Math.min(requested, maxHistory);
     const wasTrimmed = requested > maxHistory;
 
@@ -52,7 +62,7 @@ export default async function handler(req, res) {
     const { data, error } = await supabase
       .from('daily_snapshots')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', dataUserId)
       .eq('wb_account_id', wbAccountId)
       .gte('day', sinceIso)
       .order('day', { ascending: true });
