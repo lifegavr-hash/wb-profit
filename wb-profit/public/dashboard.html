@@ -2368,6 +2368,19 @@ body{padding-top:var(--beta-h)}
         <button class="btn-primary" onclick="openFeedbackModal()">Сообщить об ошибке / предложение</button>
       </div>
 
+      <!-- 🔔 Уведомления (Фаза C, email-дайджест) -->
+      <div class="card" style="margin-top:14px">
+        <div class="ct">🔔 Уведомления</div>
+        <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
+          <input type="checkbox" id="dailyEmailToggle" onchange="toggleDailyEmail(this)" style="width:18px;height:18px;flex-shrink:0;margin-top:2px">
+          <span>
+            <span style="font-weight:600">Сводка прибыли по email</span><br>
+            <span style="font-size:12px;color:var(--muted)">Краткий итог дня: выручка, прибыль, маржа, продажи. Приходит утром, <b>когда есть свежие данные за день</b> — если вы не заходили и данных нет, письма не будет.</span>
+          </span>
+        </label>
+        <div id="dailyEmailHint" style="font-size:12px;margin-top:8px;display:none"></div>
+      </div>
+
       <!-- 🔥 v0.7.11.0: Экспорт данных (ФЗ-152 ст.14 — право на машиночитаемую выгрузку) -->
       <div class="card" style="margin-top:14px">
         <div class="ct">📦 Экспорт данных</div>
@@ -4029,7 +4042,7 @@ function showSection(name,el){
   if(name==='orders') renderOrders();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
-  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); /* v0.7.0/v0.7.5/v0.7.7 */ }
+  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); /* v0.7.0/v0.7.5/v0.7.7 */ }
   if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
@@ -5812,6 +5825,36 @@ function getJwt(){
   if(window.currentJwt)return window.currentJwt;
   // fallback: попробуем достать асинхронно (но это уже edge case)
   return null;
+}
+
+// 🔔 Фаза C: настройки email-уведомлений (читаем/пишем через ветку /api/profile?resource=notifications).
+// Токен берём через getSession — всегда свежий (как соседние auth-fetch), не зависим от window.currentJwt.
+async function loadNotificationSettings(){
+  var el=document.getElementById('dailyEmailToggle'); if(!el) return;
+  try{
+    var {data:{session}}=await sb.auth.getSession();
+    if(!session) return;
+    var r=await fetch('/api/profile?resource=notifications',{headers:{Authorization:'Bearer '+session.access_token}});
+    if(!r.ok) return;
+    var d=await r.json(); el.checked=!!d.daily_email_enabled;
+  }catch(e){ console.warn('[notif] load failed',e); }
+}
+async function toggleDailyEmail(cb){
+  var hint=document.getElementById('dailyEmailHint'); var want=cb.checked; cb.disabled=true;
+  try{
+    var {data:{session}}=await sb.auth.getSession();
+    if(!session) throw new Error('no session');
+    var r=await fetch('/api/profile?resource=notifications',{method:'PATCH',
+      headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},
+      body:JSON.stringify({daily_email_enabled:want})});
+    if(!r.ok) throw new Error('http '+r.status);
+    if(hint){hint.style.display='block';hint.style.color='var(--green)';
+      hint.textContent=want?'✓ Включено — будем присылать сводку':'✓ Выключено';}
+  }catch(e){
+    cb.checked=!want; // откат при ошибке
+    if(hint){hint.style.display='block';hint.style.color='var(--red)';
+      hint.textContent='Не удалось сохранить, попробуйте ещё раз';}
+  }finally{ cb.disabled=false; }
 }
 
 // 🔥 v0.7.9.8: для больших периодов (>30 дн.) делим запрос на куски по 30 дней,

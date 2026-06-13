@@ -373,6 +373,46 @@ async function handleExport(req, res, jwt) {
   return res.status(200).send(JSON.stringify(payload, null, 2));
 }
 
+// ====== Sub-router: настройки email-уведомлений (Фаза C) ======
+// GET   /api/profile?resource=notifications  — текущее состояние opt-in
+// PATCH /api/profile?resource=notifications  — переключить (body {daily_email_enabled:bool})
+// user_id строго из JWT; service-client (минует RLS штатно).
+async function handleNotifications(req, res, jwt) {
+  const planResult = await getUserPlanWithLimits(jwt);
+  if (planResult.error) {
+    return res.status(planResult.status || 500).json({ error: planResult.error, message: planResult.message });
+  }
+  const user = planResult.user;
+  const supa = makeServiceClient();
+
+  // GET — текущее состояние (нет строки → выключено по умолчанию)
+  if (req.method === 'GET') {
+    const { data, error } = await supa
+      .from('notification_settings')
+      .select('daily_email_enabled')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    return res.status(200).json({ daily_email_enabled: !!data?.daily_email_enabled });
+  }
+
+  // PATCH — переключить (upsert по user_id; unsubscribe_token создастся дефолтом при первой вставке)
+  if (req.method === 'PATCH') {
+    let body = {};
+    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); } catch (_) { body = {}; }
+    if (typeof body.daily_email_enabled !== 'boolean') {
+      return res.status(400).json({ error: 'INVALID_VALUE', message: 'daily_email_enabled должно быть boolean' });
+    }
+    const { error } = await supa
+      .from('notification_settings')
+      .upsert({ user_id: user.id, daily_email_enabled: body.daily_email_enabled }, { onConflict: 'user_id' });
+    if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    return res.status(200).json({ ok: true, daily_email_enabled: body.daily_email_enabled });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed for notifications' });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -390,6 +430,10 @@ export default async function handler(req, res) {
   // 🔥 v0.7.11.0: sub-router для экспорта данных юзера (ФЗ-152 ст.14)
   if (resource === 'export') {
     return handleExport(req, res, jwt);
+  }
+  // 🔥 Фаза C: sub-router для настроек email-уведомлений (opt-in дайджеста)
+  if (resource === 'notifications') {
+    return handleNotifications(req, res, jwt);
   }
 
   // Основной маршрут — GET профиль / DELETE аккаунт
