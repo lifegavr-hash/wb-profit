@@ -65,6 +65,9 @@ input:focus{border-color:var(--purple)}
     <button class="tab" id="tabReg" onclick="showTab('reg')">Регистрация</button>
   </div>
 
+  <!-- 🔥 Фаза D: баннер приглашения в команду (предзаполнение по invite-токену) -->
+  <div id="inviteBanner" style="display:none;background:#f5f3ff;border:1px solid #ddd6fe;color:#5433c6;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.5;margin-bottom:14px"></div>
+
   <div id="formLogin">
     <div class="field"><label>Email</label><input type="email" id="loginEmail" placeholder="you@example.com"></div>
     <div class="field"><label>Пароль</label><input type="password" id="loginPass" placeholder="••••••••"></div>
@@ -181,6 +184,34 @@ async function initSupabase() {
   }
   // 🔥 префилл email с прошлого входа (только email; пароль никогда не храним)
   try{ var le=localStorage.getItem('last_login_email'); var el=document.getElementById('loginEmail'); if(le&&el&&!el.value) el.value=le; }catch(e){}
+  // 🔥 Фаза D: предзаполнение формы по invite-токену (только если НЕ залогинен и НЕ возврат подтверждения)
+  if(!session && !isSignupConfirmation){ await maybeApplyInvite(); }
+}
+
+// 🔥 Фаза D: разбор invite-токена (из next или прямого ?invite=) → предзаполнение reg/login.
+async function maybeApplyInvite(){
+  try{
+    var sp = new URLSearchParams(location.search);
+    var token = sp.get('invite');
+    if(!token){ var nx = sp.get('next'); if(nx){ var m = nx.match(/[?&]invite=([^&]+)/); if(m) token = m[1]; } }
+    if(!token) return;
+    var banner = document.getElementById('inviteBanner');
+    var r = await fetch('/api/profile?resource=invite-info&token='+encodeURIComponent(token));
+    if(!r.ok) return;
+    var d = await r.json();
+    if(d && d.valid){
+      ['regEmail','loginEmail'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.value=d.invitee_email; el.readOnly=true; } });
+      if(banner){
+        banner.innerHTML='Вас пригласил <b></b> в команду SW Profit. Зарегистрируйтесь под этим email.';
+        banner.querySelector('b').textContent = d.owner_email || '';   // textContent → без HTML-инъекции
+        banner.style.display='block';
+      }
+      showTab('reg');
+    } else if(banner){
+      banner.textContent='Приглашение недействительно или истекло.';
+      banner.style.display='block';
+    }
+  }catch(e){ /* предзаполнение не критично — тихо */ }
 }
 
 // 🔥 v0.7.10.1: Глобальный лог JS-ошибок (копия из dashboard.html v0.7.7.33).

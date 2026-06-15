@@ -611,11 +611,39 @@ async function handleTeamWorkspaces(req, res, jwt) {
   return res.status(200).json({ workspaces });
 }
 
+// ПУБЛИЧНЫЙ (без JWT) резолв инвайта для предзаполнения формы login.
+// Отдаёт СТРОГО {valid, invitee_email, owner_email} по живому pending-токену; иначе {valid:false}.
+// Ничего больше (ни id, ни owner_id, ни статус). token/email в открытый лог НЕ пишем.
+const _INVITE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function handleInviteInfo(req, res) {
+  const token = String(req.query?.token || '');
+  if (!_INVITE_UUID_RE.test(token)) return res.status(200).json({ valid: false }); // кривой токен → без БД
+  const supa = makeServiceClient();
+  const { data: inv, error } = await supa
+    .from('team_invites')
+    .select('email, status, expires_at, owner_id')
+    .eq('token', token)
+    .maybeSingle();
+  if (error || !inv) return res.status(200).json({ valid: false });
+  if (inv.status !== 'pending' || new Date(inv.expires_at).getTime() <= Date.now()) {
+    return res.status(200).json({ valid: false }); // accepted/revoked/expired/просрочен → нейтрально
+  }
+  const { data: owner } = await supa
+    .from('profiles').select('email').eq('id', inv.owner_id).maybeSingle();
+  return res.status(200).json({ valid: true, invitee_email: inv.email, owner_email: owner?.email || null });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // 🔥 Фаза D: ЕДИНСТВЕННАЯ публичная ветка (без JWT) — СТРОГО GET + resource=invite-info.
+  // Никакие другие resource на публичном участке не обрабатываем (чтобы не открыть лишнее без JWT).
+  if (req.method === 'GET' && req.query?.resource === 'invite-info') {
+    return handleInviteInfo(req, res);
+  }
 
   const jwt = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!jwt) return res.status(401).json({ error: 'Нет токена авторизации' });
