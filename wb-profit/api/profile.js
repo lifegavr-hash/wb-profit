@@ -648,6 +648,14 @@ export default async function handler(req, res) {
   const jwt = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!jwt) return res.status(401).json({ error: 'Нет токена авторизации' });
 
+  // 🔒 ИНВАРИАНТ (Фаза D): /api/profile — CONTROL-эндпоинт. Скоуп СТРОГО по JWT (plan.user.id):
+  // токен/кабинеты/команда/настройки/экспорт/удаление аккаунта — только над собой.
+  // ?workspace= здесь НЕДОПУСТИМ (иначе оператор дотянулся бы до владельческого) → жёсткий отказ,
+  // а не молчаливый скоуп. Будущий разработчик не должен случайно прокинуть workspace в control.
+  if (req.query?.workspace) {
+    return res.status(400).json({ error: 'WORKSPACE_NOT_ALLOWED', message: 'workspace недопустим для управляющих операций' });
+  }
+
   // 🔥 v0.7.7.29: sub-router для wb-accounts
   const resource = req.query?.resource;
   if (resource === 'wb-accounts') {

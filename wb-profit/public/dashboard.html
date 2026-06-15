@@ -598,8 +598,8 @@ html[data-theme="dark"] .pwa-banner-close{color:#a78bfa}
 .content{padding:1.5rem;overflow-y:auto;flex:1}
 .topbar-title{font-size:16px;font-weight:500}
 /* 🔥 Фаза D: read-only просмотр чужого пространства */
-body.ws-foreign #nav-calc, body.ws-foreign #nav-detail, body.ws-foreign #nav-orders,
-body.ws-foreign #nav-unit, body.ws-foreign #nav-settings, body.ws-foreign #nav-promo { display:none !important; }
+/* оператор кабинета владельца: данные открыты (calc/detail/orders/unit), CONTROL скрыт */
+body.ws-foreign #nav-settings, body.ws-foreign #nav-promo { display:none !important; }
 body.ws-foreign .ws-hide-foreign { display:none !important; }
 .ws-banner{display:none;align-items:center;gap:10px;background:#fef9c3;border:1px solid #fde68a;color:#854d0e;padding:8px 14px;border-radius:8px;margin:0 0 12px;font-size:13px}
 .ws-selector{font-size:13px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);max-width:230px}
@@ -2189,7 +2189,7 @@ body{padding-top:var(--beta-h)}
 
   <!-- 🔥 Фаза D: баннер режима просмотра чужого пространства -->
   <div id="wsBanner" class="ws-banner">
-    👁 Просмотр кабинета <strong id="wsBannerEmail"></strong> — только чтение (Главная и Аналитика).
+    👤 Вы ведёте кабинет <strong id="wsBannerEmail"></strong> — полный доступ, кроме настроек и токена.
     <button type="button" onclick="onWorkspaceChange('')" style="margin-left:auto;background:none;border:1px solid #d97706;color:#854d0e;border-radius:6px;padding:3px 10px;cursor:pointer">Вернуться в свой кабинет</button>
   </div>
 
@@ -4053,9 +4053,10 @@ function showSection(name,el){
     );
     return;
   }
-  // 🔥 Фаза D: в режиме просмотра чужого пространства доступны ТОЛЬКО Главная и Аналитика.
-  if(isViewingForeign() && name!=='home' && name!=='analytics'){
-    showToast('В режиме просмотра кабинета доступны только Главная и Аналитика','info');
+  // 🔥 Фаза D шаг1: оператор кабинета владельца имеет полный ДОСТУП К ДАННЫМ
+  // (Главная/Аналитика/Калькулятор/Детализация/Прибыль/Подбор); закрыто только CONTROL.
+  if(isViewingForeign() && (name==='settings' || name==='promo' || name==='admin')){
+    showToast('Настройки и тариф доступны только в своём кабинете','info');
     name='home'; el=document.getElementById('nav-home');
   }
   // PRO-only разделы.
@@ -5637,9 +5638,10 @@ function applyCustomPeriod(){
 }
 
 async function goFromHome(){
-  if(isViewingForeign()){ showToast('Обновление данных доступно только владельцу кабинета','info'); return; }
+  // Фаза D шаг1: оператор кабинета владельца может обновлять данные (pull токеном владельца на сервере);
+  // свой WB-токен ему не нужен. Владелец — как раньше: требуется свой токен.
   var token=localStorage.getItem('wb_token');
-  if(!token){
+  if(!isViewingForeign() && !token){
     alert('Сначала добавьте API токен в разделе «⚙️ Настройки»');
     showSection('settings',document.getElementById('nav-settings'));
     return;
@@ -6083,7 +6085,7 @@ async function toggleDailyEmail(cb){
 // обход кусков с паузой 1.5 сек. Старая while-логика (429/401/204/rrdid pagination)
 // полностью сохранена внутри _loadSalesChunk без изменений.
 async function loadSales(tok,df,dt){
-  if(isViewingForeign()) return [];            // R7-страховка: никаких WB-pull на чужом пространстве
+  // Фаза D шаг1: в режиме оператора грузим данные ВЛАДЕЛЬЦА через ?workspace= (токен владельца — на сервере)
   var totalDays=1;
   try{var d1=new Date(df),d2=new Date(dt);totalDays=Math.max(1,Math.round((d2-d1)/86400000)+1);}catch(e){}
 
@@ -6173,9 +6175,12 @@ async function _loadSalesChunk(tok,df,dt,chunkIdx,totalChunks){
     var prefix = totalChunks > 1 ? 'Часть '+chunkIdx+'/'+totalChunks+': ' : '';
     setLoadStatus(prefix + 'Загружаем продажи... страница '+pg+' / период '+totalDays+' дн.');
     var jwt=getJwt();
-    var headers={Authorization:tok};
+    // Фаза D шаг1: оператор шлёт ?workspace= и НЕ свой WB-токен (сервер берёт токен владельца);
+    // владелец — как раньше (свой токен в Authorization).
+    var headers={};
+    if(!isViewingForeign() && tok) headers['Authorization']=tok;
     if(jwt)headers['X-User-Auth']='Bearer '+jwt;
-    var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid,{headers:headers});
+    var r=await fetch('/api/wb?dateFrom='+df+'&dateTo='+dt+'&rrdid='+rid+wsParam(),{headers:headers});
     if(r.status===403){
       // PRO-required / PERIOD_LIMIT / FEATURE_REQUIRED / SUBSCRIPTION_EXPIRED от backend
       var body={};try{body=await r.json();}catch(e){}
@@ -9441,6 +9446,10 @@ function toggleCalcAlerts(){
 }
 async function saveSnapshots(snapshots,token){
   if(!snapshots||!snapshots.length)return;
+  // 🔥 Фаза D шаг1: оператор в чужом пространстве НЕ персистит снапшоты (POST /api/snapshots self-scoped →
+  // иначе данные владельца легли бы в СВОИ снапшоты оператора). Calc/Детализация/Прибыль рендерятся
+  // из rawData в памяти, запись снапшотов владельца — не в этом шаге.
+  if(isViewingForeign()) return;
   // 🔥 v0.7.12.1: проверяем r.ok и бросаем при не-200, чтобы вызывающий код
   // (runHistoryImport / go / auto-save) узнал о проблеме, а не молча считал что записалось.
   // Прежнее silent-поведение скрыло баг с trigger-функцией (пустой search_path) → 500 → блокер беты.
@@ -9505,21 +9514,21 @@ function _adsCacheKey(df, dt){
   return 'v2:'+df+'_'+dt+'_'+acc;
 }
 async function getOrLoadAdsCampaigns(df, dt){
-  // R7-страховка: на чужом пространстве рекламный WB-pull не делаем (токен участнику недоступен)
-  if(isViewingForeign()) return {totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_foreign:true};
   var key = _adsCacheKey(df, dt);
   var entry = __adsCampaignsCache[key];
   if(entry && (Date.now() - entry.ts) < 5*60*1000){
     return entry.promise;
   }
   var tok = localStorage.getItem('wb_token');
-  if(!tok) return Promise.resolve({totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_noToken:true});
+  // Фаза D шаг1: оператор тянет рекламу владельца через ?workspace= (без своего токена). Владелец — со своим.
+  if(!isViewingForeign() && !tok) return Promise.resolve({totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_noToken:true});
   var jwt = (typeof getJwt === 'function') ? getJwt() : (window.currentJwt || '');
   var promise = (async function(){
     try {
-      var headers = {Authorization: tok};
+      var headers = {};
+      if(!isViewingForeign() && tok) headers['Authorization'] = tok;
       if(jwt) headers['X-User-Auth'] = 'Bearer '+jwt;
-      var r = await fetch('/api/wb-adv?from='+df+'&to='+dt, {headers: headers});
+      var r = await fetch('/api/wb-adv?from='+df+'&to='+dt+wsParam(), {headers: headers});
       if(!r.ok){
         // 403 SUBSCRIPTION_EXPIRED — тихо отдаём empty; expired-banner уже виден юзеру.
         return {totalSpend:0,byNm:{},byCampaign:[],byDay:[],noAccess:false,_httpError:r.status};

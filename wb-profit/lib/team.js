@@ -57,7 +57,7 @@ export async function resolveWorkspace(jwt, requestedOwnerId) {
   const ownerPlanId = owner.is_admin ? 'business' : owner.plan;
   const { data: ownerPlan } = await supa
     .from('plans')
-    .select('max_history_days')
+    .select('max_history_days, max_period_days')
     .eq('id', ownerPlanId)
     .maybeSingle();
 
@@ -65,6 +65,9 @@ export async function resolveWorkspace(jwt, requestedOwnerId) {
     ownerId: requestedOwnerId,
     viewerId,
     role: 'viewer',
-    ownerLimits: { max_history_days: ownerPlan?.max_history_days ?? 30 },
+    ownerLimits: {
+      max_history_days: ownerPlan?.max_history_days ?? 30,
+      max_period_days: ownerPlan?.max_period_days ?? 30,
+    },
   };
 }

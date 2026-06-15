@@ -11,6 +11,7 @@
 
 import { extractJwt, getUserPlanWithLimits } from '../lib/plan-check.js';
 import { resolveWorkspace } from '../lib/team.js';
+import { resolveWbAccountId } from '../lib/wb-account.js';
 
 // Маппинг статусов кампаний WB advert-api (по официальной документации)
 const STATUS_LABEL = {
@@ -26,55 +27,57 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ error: 'Токен не передан' });
-
-  // 🔥 Фаза D (R7): рекламный WB-pull нельзя на чужом пространстве (токен участнику недоступен).
+  let token = req.headers['authorization'];   // WB-токен своего кабинета
+  let viewerCtx = null;                        // оператор кабинета владельца
+  // 🔥 Фаза D шаг1: оператор тянет рекламу ВЛАДЕЛЬЦА — токеном владельца (серверно, в ответ НЕ кладём).
   if (req.query.workspace) {
     const ws = await resolveWorkspace(extractJwt(req), req.query.workspace);
     if (ws.error) return res.status(ws.status).json({ error: ws.error });
-    if (ws.role !== 'owner') return res.status(403).json({ error: 'WORKSPACE_NO_WB', message: 'Рекламные данные доступны только владельцу кабинета' });
+    if (ws.role === 'viewer') {
+      const acc = await resolveWbAccountId(ws.ownerId, req.query.wb_account_id || null);
+      if (!acc.ok) return res.status(200).json({ totalSpend: 0, byNm: {}, byCampaign: [], byDay: [], noAccess: true });
+      token = acc.account.wb_token;            // СЕРВЕРНО: токен владельца
+      viewerCtx = { ownerId: ws.ownerId, viewerId: ws.viewerId };
+    }
+    // ws.role==='owner' → обычный путь
   }
+  if (!token) return res.status(401).json({ error: 'Токен не передан' });
 
-  // 🔥 v0.7.11.1: блок свежих WB-данных рекламы для истёкших подписок (admin исключён).
-  // 🔥 v0.7.12.45 (Фаза B): /api/wb-adv эксклюзивно питает рекламную разбивку Аналитики
-  //   (единственный вызыватель — loadAnalytics → getOrLoadAdsCampaigns, шлёт X-User-Auth).
-  //   Поэтому здесь — настоящий серверный enforce фичи analytics, fail-closed:
-  //   нет валидного JWT → 403 (голый запрос больше не обходит гейт).
-  //   isExpired-проверка ниже сохранена 1-в-1; на ИНФРА-ошибке (catch) — fail-open, как было.
-  const jwt = extractJwt(req);
-  if (!jwt) {
-    return res.status(403).json({
-      error: 'FEATURE_REQUIRED', feature: 'analytics',
-      message: 'Аналитика доступна на тарифах PRO и Бизнес'
-    });
-  }
-  try {
-    const planResult = await getUserPlanWithLimits(jwt);
-    // нет валидного плана (невалидный JWT / профиль не найден) → fail-closed для фичи
-    if (planResult.error) {
+  // 🔥 v0.7.12.45 (Фаза B): серверный enforce фичи analytics для ВЛАДЕЛЬЦА/вызывающего (fail-closed).
+  // 🔥 Фаза D шаг1: для ОПЕРАТОРА этот гейт пропускаем — доступ держится на активном Бизнесе
+  //   ВЛАДЕЛЬЦА (уже проверен в resolveWorkspace). План самого оператора тут не при чём.
+  if (!viewerCtx) {
+    const jwt = extractJwt(req);
+    if (!jwt) {
       return res.status(403).json({
         error: 'FEATURE_REQUIRED', feature: 'analytics',
         message: 'Аналитика доступна на тарифах PRO и Бизнес'
       });
     }
-    // expired — поведение как было (срабатывает только для истёкших, admin исключён)
-    if (planResult.isExpired && !planResult.isAdmin) {
-      return res.status(403).json({
-        error: 'SUBSCRIPTION_EXPIRED',
-        message: 'Ваша подписка закончилась — свежие данные не поступают. Ваши сохранённые данные доступны для просмотра.'
-      });
+    try {
+      const planResult = await getUserPlanWithLimits(jwt);
+      if (planResult.error) {
+        return res.status(403).json({
+          error: 'FEATURE_REQUIRED', feature: 'analytics',
+          message: 'Аналитика доступна на тарифах PRO и Бизнес'
+        });
+      }
+      if (planResult.isExpired && !planResult.isAdmin) {
+        return res.status(403).json({
+          error: 'SUBSCRIPTION_EXPIRED',
+          message: 'Ваша подписка закончилась — свежие данные не поступают. Ваши сохранённые данные доступны для просмотра.'
+        });
+      }
+      if (!planResult.isAdmin && !planResult.features?.analytics) {
+        return res.status(403).json({
+          error: 'FEATURE_REQUIRED', feature: 'analytics',
+          message: 'Аналитика доступна на тарифах PRO и Бизнес'
+        });
+      }
+    } catch (e) {
+      console.warn('[wb-adv] plan-check error:', e.message);
+      // fail-open на ИНФРА-ошибке плана — прежнее поведение
     }
-    // гейт фичи analytics (admin байпас): Старт / тариф без analytics → 403
-    if (!planResult.isAdmin && !planResult.features?.analytics) {
-      return res.status(403).json({
-        error: 'FEATURE_REQUIRED', feature: 'analytics',
-        message: 'Аналитика доступна на тарифах PRO и Бизнес'
-      });
-    }
-  } catch (e) {
-    console.warn('[wb-adv] plan-check error:', e.message);
-    // fail-open на ИНФРА-ошибке плана — сохраняем прежнее поведение isExpired-проверки, скоуп не расширяем
   }
 
   const { from, to } = req.query;

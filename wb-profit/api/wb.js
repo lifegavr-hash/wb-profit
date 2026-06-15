@@ -4,6 +4,8 @@
 import crypto from 'node:crypto';
 import { extractJwt, checkPeriodLimit, sendIfPlanError } from '../lib/plan-check.js';
 import { resolveWorkspace } from '../lib/team.js';
+import { resolveWbAccountId } from '../lib/wb-account.js';
+import { audit } from '../lib/audit-log.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -110,16 +112,21 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const token = req.headers['authorization'];
-  if (!token) return res.status(401).json({ error: 'Токен не передан' });
-
-  // 🔥 Фаза D (R7): WB-pull нельзя инициировать на ЧУЖОМ пространстве — у участника нет WB-токена владельца.
-  // Срабатывает только при явном ?workspace= (своё пространство параметр не шлёт → нулевой оверхед).
+  let token = req.headers['authorization'];   // WB-токен своего кабинета
+  let viewerCtx = null;                        // {ownerId, viewerId, ownerLimits} — оператор кабинета владельца
+  // 🔥 Фаза D шаг1: оператор грузит данные ВЛАДЕЛЬЦА — pull токеном ВЛАДЕЛЬЦА (токен только на сервере, в ответ НЕ кладём).
   if (req.query.workspace) {
     const ws = await resolveWorkspace(extractJwt(req), req.query.workspace);
     if (ws.error) return res.status(ws.status).json({ error: ws.error });
-    if (ws.role !== 'owner') return res.status(403).json({ error: 'WORKSPACE_NO_WB', message: 'Просмотр чужого кабинета — без живых WB-данных' });
+    if (ws.role === 'viewer') {
+      const acc = await resolveWbAccountId(ws.ownerId, req.query.wb_account_id || null);
+      if (!acc.ok) return res.status(200).json([]);        // у владельца нет кабинета → пусто
+      token = acc.account.wb_token;                         // СЕРВЕРНО: токен владельца (наружу не уходит)
+      viewerCtx = { ownerId: ws.ownerId, viewerId: ws.viewerId, ownerLimits: ws.ownerLimits };
+    }
+    // ws.role==='owner' (workspace == свой id) → обычный путь со своим токеном
   }
+  if (!token) return res.status(401).json({ error: 'Токен не передан' });
 
   // === action=seller — вернуть инфу о селлере (имя/бренд) ===
   // Используем в Главной для приветствия «Здравствуйте, Чиркова А. В.»
@@ -142,6 +149,19 @@ export default async function handler(req, res) {
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
 
   // ─── Проверка тарифа ───
+  // 🔥 Фаза D шаг1: для ОПЕРАТОРА лимит периода и активность — по плану ВЛАДЕЛЬЦА (не участника).
+  // Активность владельца (Бизнес && !expired) уже проверена в resolveWorkspace.
+  if (viewerCtx) {
+    const days = Math.round((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    const maxDays = viewerCtx.ownerLimits?.max_period_days;
+    if (maxDays && days > maxDays) {
+      return res.status(403).json({
+        error: 'PERIOD_LIMIT',
+        message: `Период ${days} дней превышает лимит тарифа владельца (до ${maxDays} дней)`,
+        maxDays,
+      });
+    }
+  } else
   // v0.7.1: используем лимит max_period_days из таблицы plans, а не хардкод.
   // Free/Start: 30 дней / PRO/Business: 365. JWT в X-User-Auth (Authorization занят WB-токеном).
   try {
@@ -205,6 +225,12 @@ export default async function handler(req, res) {
 
   // 3) Помечаем заранее, чтобы параллельные вызовы получили 429 (а не пробивали лимит)
   await markRequest(tokenHash);
+
+  // 🔥 Фаза D шаг1: аудит pull кабинета владельца оператором (best-effort, не блокирует)
+  if (viewerCtx) {
+    try { await audit({ event_type: 'team_data_pull', user_id: viewerCtx.viewerId,
+      meta: { owner_id: viewerCtx.ownerId, df: dateFrom, dt: dateTo }, req }); } catch (_) {}
+  }
 
   // 4) Запрос к WB
   const url = `https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}&period=daily&limit=100000`;
