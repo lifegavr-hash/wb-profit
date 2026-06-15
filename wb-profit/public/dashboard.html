@@ -3334,11 +3334,19 @@ async function init(){
   // Фронтовый profile из Supabase больше не источник истины для лимитов —
   // источник: /api/profile (там JOIN с таблицей plans, с проверкой подписи JWT).
   fetchPlanLimits(session.access_token);
-  // 🔥 v0.7.7.30: подтягиваем кабинеты WB (и мигрируем localStorage.wb_token если нужно)
-  if(typeof loadWbAccounts === 'function') loadWbAccounts();
-  // 🔥 Фаза D: список пространств (если я чей-то участник) + приём инвайта по ?invite=
-  if(typeof loadWorkspaces === 'function') loadWorkspaces();
-  if(typeof maybeAcceptInvite === 'function') maybeAcceptInvite();
+  // 🔥 v0.7.7.30 + Фаза D: ждём кабинеты WB и список пространств (приём ?invite= → список) ДО автовхода,
+  // чтобы решить стартовое пространство до tryRestoreDataFromCache/loadHomeData ниже.
+  try{
+    await Promise.all([
+      (typeof loadWbAccounts === 'function') ? loadWbAccounts() : Promise.resolve(),
+      (async()=>{
+        if(typeof maybeAcceptInvite === 'function') await maybeAcceptInvite(); // accept по ?invite= (внутри обновит список)
+        if(typeof loadWorkspaces === 'function') await loadWorkspaces();        // гарантируем _workspacesList/_isTeamMember
+      })(),
+    ]);
+    // Автовход в кабинет владельца: есть membership И нет своего WB-кабинета (state-only, home загрузит init ниже)
+    if(typeof maybeAutoEnterWorkspace === 'function') maybeAutoEnterWorkspace();
+  }catch(e){ console.warn('[init] team/workspaces', e); }
   // 🔥 v0.6.1: восстанавливаем подсветку выбранного периода после загрузки DOM
   // (_currentPeriod уже подтянулся из localStorage)
   syncPeriodPills();
@@ -3831,6 +3839,8 @@ function updateUI(profile,email,token){
 
   // 🔥 v0.7.7.22: Trial и Expired баннеры (используют поля из /api/profile)
   updateTrialExpiredBanners();
+  // 🔥 Фаза D: скрыть PRO-бейдж/плашку у участника команды / в чужом пространстве
+  if(typeof applyMemberChrome==='function') applyMemberChrome();
 }
 
 // 🔥 v0.7.7.22: Управление trial/expired-баннерами
@@ -3838,6 +3848,12 @@ function updateTrialExpiredBanners(){
   var trialBanner = document.getElementById('trialBanner');
   var expiredBanner = document.getElementById('expiredBanner');
   if(!trialBanner || !expiredBanner) return;
+  // 🔥 Фаза D: участнику команды / в чужом пространстве свои триал-баннеры не показываем
+  if(isViewingForeign() || window._isTeamMember){
+    trialBanner.style.display='none';
+    expiredBanner.style.display='none';
+    return;
+  }
   // Берём расширенные поля из window.__profileExtended (заполняется в loadPlanLimits)
   var ext = window.__profileExtended || {};
   // Админу — никаких баннеров
@@ -4027,7 +4043,8 @@ function showSection(name,el){
   // 🔥 v0.7.7.22: При expired доступ только к Главной и Настройкам (для оплаты)
   var ext = window.__profileExtended || {};
   var isAdmin = currentProfile && currentProfile.is_admin;
-  if(ext.is_expired && !isAdmin && name!=='home' && name!=='settings' && name!=='help'){
+  // 🔥 Фаза D: в чужом пространстве свой expired НЕ блокирует — доступ держится на подписке владельца (resolveWorkspace)
+  if(ext.is_expired && !isAdmin && !isViewingForeign() && name!=='home' && name!=='settings' && name!=='help'){
     // 🔥 v0.7.11.1: честный текст для беты — оплаты пока нет, продление через промокод.
     showInfoModal('⏰ Подписка закончилась',
       '<p>Свежие данные не поступают. Доступен просмотр <b>Главной</b> с уже сохранёнными данными.</p>'+
@@ -4647,7 +4664,15 @@ function isViewingForeign(){ return !!window._workspace; }
 function wsParam(){ return window._workspace ? '&workspace='+encodeURIComponent(window._workspace) : ''; }
 
 // Переключение пространства (своё ↔ кабинет владельца, где я участник)
-async function onWorkspaceChange(ownerId, email){
+// 🔥 Фаза D: скрыть PRO-бейдж/плашку у участника команды или в чужом пространстве.
+function applyMemberChrome(){
+  var hide = isViewingForeign() || !!window._isTeamMember;
+  var pb=document.getElementById('planBadge'); if(pb) pb.style.display = hide?'none':'';
+  var pl=document.getElementById('userPlanLabel'); if(pl) pl.style.display = hide?'none':'';
+}
+
+// State-only мутация пространства (без перезагрузки данных). Используется и автовходом, и onWorkspaceChange.
+function _setWorkspaceState(ownerId, email){
   ownerId = ownerId || '';
   var enteringForeign = !!ownerId;
   window._workspace = ownerId || null;
@@ -4664,6 +4689,14 @@ async function onWorkspaceChange(ownerId, email){
   // сброс кэшей данных, чтобы не смешать своё/чужое
   window._lastSnapshots=null; __snaps90Cache=null;
   if(typeof invalidateAdsCampaigns==='function') invalidateAdsCampaigns();
+  // баннеры/бейдж зависят от foreign-режима
+  if(typeof updateTrialExpiredBanners==='function') updateTrialExpiredBanners();
+  applyMemberChrome();
+}
+
+async function onWorkspaceChange(ownerId, email){
+  var enteringForeign = !!(ownerId||'');
+  _setWorkspaceState(ownerId, email);
   if(enteringForeign){
     // не показываем чужому МОИ rawData (Калькулятор/Детализация живут в DOM, хоть и скрыты)
     window.rawData=[]; window.rows=[];
@@ -4673,6 +4706,19 @@ async function onWorkspaceChange(ownerId, email){
   }
   showSection('home', document.getElementById('nav-home'));
   loadHomeData();
+}
+
+// 🔥 Фаза D: автовход в кабинет владельца, если участник без своего WB-кабинета.
+// State-only — загрузку Главной делает init своим единственным loadHomeData ниже.
+function maybeAutoEnterWorkspace(){
+  try{
+    var ws = window._workspacesList || [];
+    var own = window._wbAccounts || [];
+    if(ws.length>0 && own.length===0 && !isViewingForeign()){
+      _setWorkspaceState(ws[0].owner_id, ws[0].owner_email);
+      window.rawData=[]; window.rows=[];   // своё (пустое) не показываем под чужим баннером
+    }
+  }catch(e){ console.warn('[ws] auto-enter', e); }
 }
 
 // === Фаза D: управление командой (владелец-Бизнес) ===
@@ -4744,10 +4790,15 @@ async function loadWorkspaces(){
     var r=await fetch('/api/profile?resource=team-workspaces',{headers:{Authorization:'Bearer '+session.access_token}});
     if(!r.ok) return;
     var d=await r.json();
+    window._workspacesList = d.workspaces || [];
+    window._isTeamMember = (d.workspaces && d.workspaces.length>0);   // B: участник чужой команды
     sel.innerHTML='<option value="">Мой кабинет</option>'+(d.workspaces||[]).map(function(w){
       return '<option value="'+w.owner_id+'">'+escHtml(w.owner_email||w.owner_id)+'</option>';}).join('');
     sel.style.display=(d.workspaces&&d.workspaces.length)?'inline-block':'none';
     sel.value=window._workspace||'';
+    // membership стал известен после первичного updateUI → перерисовать баннеры/бейдж
+    if(typeof updateTrialExpiredBanners==='function') updateTrialExpiredBanners();
+    if(typeof applyMemberChrome==='function') applyMemberChrome();
   }catch(e){ console.warn('[ws] load',e); }
 }
 
