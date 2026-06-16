@@ -2003,6 +2003,31 @@ html[data-theme="dark"] .orders-tbl-wide td.oc-sticky-last,html[data-theme="dark
 .ofp-btns{display:flex;gap:6px;margin-top:9px}
 .ofp-btns button{flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--purple);color:#fff;cursor:pointer;font-size:12px;font-weight:600}
 .ofp-btns .ofp-clear{background:var(--surface);color:var(--purple)}
+/* 🔥 Слой3/3a: карточка товара */
+.pc-open{cursor:pointer}
+.pc-back{display:inline-block;color:var(--purple);cursor:pointer;font-weight:600;font-size:13px;margin-bottom:14px}
+.pc-back:hover{text-decoration:underline}
+.pc-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:18px}
+.pc-head img,.pc-ph{width:64px;height:64px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
+.pc-ph{background:var(--bg)}
+.pc-title{font-size:17px;font-weight:700;color:var(--text);line-height:1.3}
+.pc-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.pc-block{margin-bottom:14px}
+.pc-block-h{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--text);cursor:pointer;padding:8px 2px;user-select:none}
+.pc-arrow{color:#94a3b8;font-size:11px}
+.pc-empty{color:var(--muted);padding:14px;font-size:13px}
+.pc-mx-scroll{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:60vh;-webkit-overflow-scrolling:touch}
+.pc-mx{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:100%}
+.pc-mx th,.pc-mx td{padding:7px 12px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:right}
+.pc-mx th:last-child,.pc-mx td:last-child{border-right:0}
+.pc-mx thead th{position:sticky;top:0;background:#f1f5f9;color:#475569;font-size:11px;font-weight:600;z-index:2}
+html[data-theme="dark"] .pc-mx thead th{background:#1a1a2e;color:#94a3b8}
+.pc-mx td.pc-metric,.pc-mx th.pc-metric{position:sticky;left:0;text-align:left;font-weight:500;background:var(--surface);z-index:1}
+.pc-mx thead th.pc-metric{z-index:3;background:#f1f5f9}
+html[data-theme="dark"] .pc-mx thead th.pc-metric{background:#1a1a2e}
+.pc-mx tbody tr:hover td{background:rgba(124,58,237,.05)}
+.pc-mx tbody tr:hover td.pc-metric{background:#f3eefe}
+html[data-theme="dark"] .pc-mx tbody tr:hover td.pc-metric{background:#262445}
 .oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:12px}
 .oc-wb:hover{text-decoration:underline}
 html[data-theme="dark"] .oc-wb{color:#7aa2ff}
@@ -2628,6 +2653,12 @@ body{padding-top:var(--beta-h)}
     </div>
 
     <!-- Аналитика -->
+    <!-- 🔥 Слой3/3a: карточка товара (drill-down по nmId) -->
+    <div class="section" id="sectionProduct">
+      <a class="pc-back" onclick="showSection('orders',document.getElementById('nav-orders'))">← К списку товаров</a>
+      <div id="pcHead" class="pc-head"></div>
+      <div id="pcBody"></div>
+    </div>
     <div class="section" id="sectionAnalytics">
       <!-- Переключатель периода -->
       <div class="analytics-tabs">
@@ -4118,8 +4149,8 @@ function showSection(name,el){
     requirePRO(featureName);
     return;
   }
-  var sections=['home','calc','detail','orders','analytics','unit','help','settings','promo','admin'];
-  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',orders:'Прибыль по товарам',analytics:'Аналитика',unit:'Подбор товара',help:'Помощь',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
+  var sections=['home','calc','detail','orders','product','analytics','unit','help','settings','promo','admin'];
+  var titles={home:'Главная',calc:'Калькулятор прибыли',detail:'Детализация расходов',orders:'Прибыль по товарам',product:'Карточка товара',analytics:'Аналитика',unit:'Подбор товара',help:'Помощь',settings:'Настройки',promo:'Промокод',admin:'Админ-панель'};
   sections.forEach(function(s){
     var sec=document.getElementById('section'+s.charAt(0).toUpperCase()+s.slice(1));
     if(sec) sec.classList.toggle('active',s===name);
@@ -4140,6 +4171,7 @@ function showSection(name,el){
   }
   if(name==='detail') renderDetail();
   if(name==='orders') renderOrders();
+  if(name==='product') renderProductCard();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
   if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); loadTeam(); /* v0.7.0/v0.7.5/v0.7.7 + Фаза D */ }
@@ -4153,7 +4185,7 @@ function showSection(name,el){
   // 🔥 v0.6.1: сохраняем активную секцию чтобы при F5 не возвращало на главную.
   // Промокод и admin не сохраняем — это служебные, лучше после reload оказаться там
   // где была реальная работа.
-  if(name!=='promo' && name!=='admin'){
+  if(name!=='promo' && name!=='admin' && name!=='product'){   // 🔥 Слой3: карточку не персистим (F5 без nmId → пустая)
     try{localStorage.setItem('wb_current_section', name);}catch(e){}
   }
 }
@@ -7214,13 +7246,68 @@ async function loadFunnelData(){
     _applyFunnel();
   }catch(e){ /* воронка некритична — молча */ }
 }
+// 🔥 Слой3/3a: карточка товара (drill-down). Шапка из _cardsMap+p+_stocksMap, блок «Воронка» Метрика×Дни (funnel-history).
+function _pcShortDate(d){ var x=String(d).split('-'); return x.length===3? x[2]+'.'+x[1] : String(d); }
+function _pcPhotoFail(img){ try{ img.outerHTML='<div class="pc-ph"></div>'; }catch(e){} }
+function _pcToggleBlock(h){ var c=h.nextElementSibling; if(!c) return; var open=c.style.display!=='none'; c.style.display=open?'none':''; var a=h.querySelector('.pc-arrow'); if(a) a.textContent=open?'▶':'▼'; }
+function _pcFunnelTable(hist){
+  if(!hist || !hist.length) return '<div class="pc-empty">Нет данных воронки за период.</div>';
+  var rowsDef=[
+    {l:'Просмотры', f:function(d){ return fmt(d.open); }},
+    {l:'Корзины', f:function(d){ return fmt(d.cart); }},
+    {l:'CR в корзину, %', f:function(d){ return _ordPct(d.crCart); }},
+    {l:'Заказы, шт', f:function(d){ return fmt(d.order); }},
+    {l:'Заказы, ₽', f:function(d){ return _ordAbsMoney(d.orderSum); }},
+    {l:'CR в заказ, %', f:function(d){ return _ordPct(d.crOrder); }},
+    {l:'Выкупы, шт', f:function(d){ return fmt(d.buyout); }},
+    {l:'Выкупы, ₽', f:function(d){ return _ordAbsMoney(d.buyoutSum); }},
+    {l:'Выкуп, %', f:function(d){ return _ordPct(d.buyoutPercent); }},
+    {l:'Отложенное', f:function(d){ return fmt(d.wishlist); }}
+  ];
+  var head='<thead><tr><th class="pc-metric">Метрика</th>'+hist.map(function(d){ return '<th>'+_pcShortDate(d.date)+'</th>'; }).join('')+'</tr></thead>';
+  var body='<tbody>'+rowsDef.map(function(rd){ return '<tr><td class="pc-metric">'+rd.l+'</td>'+hist.map(function(d){ return '<td>'+rd.f(d)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
+  return '<div class="pc-mx-scroll"><table class="pc-mx">'+head+body+'</table></div>';
+}
+function renderProductCard(){
+  var nm=window._pcNm; if(nm==null){ showSection('orders',document.getElementById('nav-orders')); return; }
+  var p=(window._ordersBuilt||[]).filter(function(x){ return String(x.nm)===String(nm); })[0] || {nm:nm, name:'', subject:'', brand:''};
+  var card=(window._cardsMap||{})[nm] || {};
+  var st=(window._stocksMap||{})[nm] || null;
+  var photo = card.p ? ('<img src="'+escHtml(card.p)+'" alt="" onerror="_pcPhotoFail(this)">') : '<div class="pc-ph"></div>';
+  var title = escHtml(card.t || p.name || ('Арт. '+nm));
+  var line2 = escHtml([p.brand, p.subject].filter(Boolean).join(' · '));
+  var line3 = 'Артикул WB: <a class="oc-wb" href="https://www.wildberries.ru/catalog/'+nm+'/detail.aspx" target="_blank" rel="noopener">'+nm+'</a>'+(p.name?(' · Артикул продавца: '+escHtml(p.name)):'');
+  var line4 = st ? ('Остаток: <b>'+fmt((st.total!=null?st.total:0))+' шт</b>') : '';
+  document.getElementById('pcHead').innerHTML = photo+'<div class="pc-meta"><div class="pc-title">'+title+'</div>'+
+    (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>';
+  document.getElementById('pcBody').innerHTML =
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Воронка продаж</div>'+
+    '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>';
+  _pcLoadFunnelHistory(nm);
+}
+function openProductCard(nmId){ window._pcNm=nmId; showSection('product', null); }
+async function _pcLoadFunnelHistory(nm){
+  var el=document.getElementById('pcFunnel'); if(!el) return;
+  try{
+    var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+    if(!df||!dt){ el.innerHTML='<div class="pc-empty">Сначала загрузите отчёт за период (Главная/Калькулятор).</div>'; return; }
+    var headers={}; var tok=localStorage.getItem('wb_token');
+    if(!isViewingForeign() && tok) headers['Authorization']=tok;
+    var jwt=window.currentJwt; if(jwt) headers['X-User-Auth']='Bearer '+jwt;
+    var r=await fetch('/api/wb?resource=funnel-history&nm='+encodeURIComponent(nm)+'&dateFrom='+encodeURIComponent(df)+'&dateTo='+encodeURIComponent(dt)+wsParam(),{headers:headers});
+    if(String(window._pcNm)!==String(nm)) return;   // юзер ушёл с карточки — не перетираем
+    if(!r.ok){ el.innerHTML='<div class="pc-empty">Воронка недоступна (возможно, лимит Analytics API). Повторите позже.</div>'; return; }
+    var d=await r.json();
+    el.innerHTML=_pcFunnelTable((d&&d.history)||[]);
+  }catch(e){ if(el) el.innerHTML='<div class="pc-empty">Ошибка загрузки воронки.</div>'; }
+}
 // Колонки в порядке AutoReport «Пульс». lft:true → левое выравнивание. v(p) → HTML ячейки.
 // Placeholder «—» (до отдельных этапов): Фото(B), Теги(фича), СПП(аналитика), TACoO(заказы), УСН(настройка налога).
 function _ordersColumns(){
   return [
-    {key:'photo', l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return _ordPhotoCell(p.nm); }},
+    {key:'photo', l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return p.nm!=null? '<span class="pc-open" onclick="event.stopPropagation();openProductCard('+p.nm+')" title="Открыть карточку">'+_ordPhotoCell(p.nm)+'</span>' : _ordPhotoCell(p.nm); }},
     {key:'nmwb', l:'Артикул WB', lft:true, cls:'oc-nm', v:function(p){ return p.nm? '<a class="oc-wb" href="https://www.wildberries.ru/catalog/'+p.nm+'/detail.aspx" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.nm+'</a>' : _ordDash(); }},
-    {key:'sa', l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); var c=(window._cardsMap||{})[p.nm]; var tip=(c&&c.t)?escHtml(c.t):(t||'—'); return '<div class="oc-sa" data-nm="'+(p.nm!=null?p.nm:'')+'" title="'+tip+'">'+(t||'—')+'</div>'; }},
+    {key:'sa', l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); var c=(window._cardsMap||{})[p.nm]; var tip=(c&&c.t)?escHtml(c.t):(t||'—'); var clk=p.nm!=null?(' onclick="event.stopPropagation();openProductCard('+p.nm+')" style="cursor:pointer"'):''; return '<div class="oc-sa pc-open" data-nm="'+(p.nm!=null?p.nm:'')+'" title="'+tip+'"'+clk+'>'+(t||'—')+'</div>'; }},
     {key:'tags', l:'Теги', lft:true, cls:'oc-tags', v:function(p){ return _ordDash(); }},
     {key:'stockTotal', l:'Остатки всего, шт', v:function(p){ return _ordNum(p.stockTotal); }},
     {key:'velocity', l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},

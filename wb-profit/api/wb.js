@@ -246,6 +246,39 @@ export default async function handler(req, res) {
     }
   }
 
+  // === resource=funnel-history — воронка по ДНЯМ для одного товара (карточка, Слой3). Кэш token+nm+period ===
+  if (req.query.resource === 'funnel-history') {
+    const nm = req.query.nm, hdf = req.query.dateFrom, hdt = req.query.dateTo;
+    if (!nm || !hdf || !hdt) return res.status(400).json({ error: 'funnel-history: nm/dateFrom/dateTo required' });
+    const hKey = `funnelh:${hashToken(token)}:${nm}:${hdf}:${hdt}`;
+    const hc = await getCache(hKey);
+    if (hc) { res.setHeader('X-Cache', 'HIT'); return res.status(200).json(hc.payload); }
+    res.setHeader('X-Cache', 'MISS');
+    try {
+      const r = await fetch('https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products/history', {
+        method: 'POST',
+        headers: { Authorization: token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nmIds: [Number(nm)], selectedPeriod: { start: hdf, end: hdt }, timezone: 'Europe/Moscow', aggregationLevel: 'day' }),
+      });
+      if (r.status === 429) { res.setHeader('Retry-After', '60'); return res.status(429).json({ error: 'Analytics rate limit', retryAfter: 60 }); }
+      if (!r.ok) { const t = await r.text(); return res.status(r.status).json({ error: 'FUNNEL_HISTORY_API', status: r.status, message: String(t).slice(0, 200) }); }
+      const data = await r.json();
+      const item = (Array.isArray(data) ? data[0] : null) || {};
+      const hist = (item.history || []).map(function (d) {
+        return { date: d.date, open: Number(d.openCount) || 0, cart: Number(d.cartCount) || 0,
+                 order: Number(d.orderCount) || 0, orderSum: Number(d.orderSum) || 0,
+                 buyout: Number(d.buyoutCount) || 0, buyoutSum: Number(d.buyoutSum) || 0,
+                 buyoutPercent: d.buyoutPercent, crCart: d.addToCartConversion, crOrder: d.cartToOrderConversion,
+                 wishlist: Number(d.addToWishlistCount) || 0 };
+      });
+      const payload = { nm: Number(nm), history: hist };
+      await setCache(hKey, 200, payload, 6 * 3600);
+      return res.status(200).json(payload);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   const { dateFrom, dateTo, rrdid = 0 } = req.query;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
 
