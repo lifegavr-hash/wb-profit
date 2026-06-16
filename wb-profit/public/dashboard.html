@@ -5784,10 +5784,12 @@ async function go(tokenArg){
   ['errBox','errBoxHome'].forEach(function(id){var e=document.getElementById(id);if(e)e.style.display='none';});
   var rs=document.getElementById('results');if(rs)rs.style.display='none';
   var ce=document.getElementById('calcEmpty');if(ce)ce.style.display='none';
-  if(!tok){showErr('Сначала добавьте токен в Настройках');return;}
+  // Фаза D шаг1: оператор кабинета владельца грузит без своего токена (сервер берёт токен владельца по ?workspace=).
+  if(!tok && !isViewingForeign()){showErr('Сначала добавьте токен в Настройках'); window._loadInProgress=false; return;}
   // 🔥 v0.7.7.9: последняя защита от повреждённого токена (буллеты, кириллица, эмодзи)
   // Без этой проверки fetch падает с "String contains non ISO-8859-1 code point"
-  if(!isAsciiToken(tok)){
+  // Фаза D шаг1: в foreign свой токен не используется (пустой) → проверку пропускаем.
+  if(!isViewingForeign() && !isAsciiToken(tok)){
     showErr('Токен повреждён (содержит маску ••• или нелатиницу). Откройте Настройки и введите токен заново.');
     localStorage.removeItem('wb_token');
     localStorage.removeItem('wb_seller_name');
@@ -5802,7 +5804,7 @@ async function go(tokenArg){
   if(!df||!dt){showErr('Выберите период');return;}
   // Сохраняем токен (для случая ввода в Настройках с галочкой «Запомнить»)
   var rt=document.getElementById('rememberTok');
-  if(rt&&rt.checked){localStorage.setItem('wb_token',tok);}
+  if(!isViewingForeign() && rt&&rt.checked){localStorage.setItem('wb_token',tok);}
   // Кнопки и индикаторы — скрываем во всех местах
   var btnHome=document.getElementById('loadBtnHome');if(btnHome)btnHome.disabled=true;
   var btnCalc=document.getElementById('loadBtn');if(btnCalc)btnCalc.disabled=true;
