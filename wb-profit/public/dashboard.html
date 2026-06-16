@@ -1981,6 +1981,15 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .ocp-mv{display:flex;gap:2px;flex-shrink:0}
 .ocp-mv button{width:22px;height:22px;border:1px solid var(--border);background:var(--surface);border-radius:5px;cursor:pointer;color:var(--text);font-size:11px;line-height:1;padding:0}
 .ocp-mv button:disabled{opacity:.35;cursor:default}
+/* 🔥 C3: заморозка левых колонок (sticky). Офсеты — инлайном из видимых колонок (C1). */
+.orders-tbl-wide td.oc-sticky{position:sticky;z-index:1;background:var(--surface)}
+.orders-tbl-wide thead th.oc-sticky{z-index:3}
+.orders-tbl-wide .orders-prow.zebra td.oc-sticky{background:#fafafa}
+.orders-tbl-wide .orders-prow:hover td.oc-sticky{background:#f3eefe}
+.orders-tbl-wide td.oc-sticky-last,.orders-tbl-wide thead th.oc-sticky-last{box-shadow:2px 0 5px -2px rgba(0,0,0,.14)}
+html[data-theme="dark"] .orders-tbl-wide .orders-prow.zebra td.oc-sticky{background:#1e1e30}
+html[data-theme="dark"] .orders-tbl-wide .orders-prow:hover td.oc-sticky{background:#262445}
+html[data-theme="dark"] .orders-tbl-wide td.oc-sticky-last,html[data-theme="dark"] .orders-tbl-wide thead th.oc-sticky-last{box-shadow:2px 0 6px -2px rgba(0,0,0,.5)}
 .oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:12px}
 .oc-wb:hover{text-decoration:underline}
 html[data-theme="dark"] .oc-wb{color:#7aa2ff}
@@ -7239,6 +7248,19 @@ function _ordersVisibleColumns(){
   var out=st.order.filter(function(k){ return !st.hidden[k]; }).map(function(k){ return byKey[k]; }).filter(Boolean);
   return out.length? out : catalog.slice();   // страховка: не оставляем 0 колонок
 }
+// 🔥 C3: sticky-раскладка левых колонок. Замораживаем ЛЕВЫЙ непрерывный префикс из {photo,nmwb,sa}
+// среди ВИДИМЫХ колонок (C1). Офсеты — из фикс. ширин, инлайном при рендере → подстройка под скрытие/порядок.
+function _ordersStickyLayout(COLS){
+  var W={photo:52, nmwb:110, sa:150};
+  var out=new Array(COLS.length), left=0, prefix=true, lastIdx=-1;
+  for(var i=0;i<COLS.length;i++){
+    var w=W[COLS[i].key];
+    if(prefix && w!=null){ out[i]={left:left, width:w}; left+=w; lastIdx=i; }
+    else { out[i]=null; prefix=false; }   // первый не-sticky-eligible → префикс закончился
+  }
+  if(lastIdx>=0) out[lastIdx].last=true;
+  return out;
+}
 // ── Панель «Колонки» ──
 function _ordersColLabels(){ var m={}; _ordersColumns().forEach(function(c){ m[c.key]=c.l; }); return m; }
 function renderOrdersColsPanel(){
@@ -7334,7 +7356,13 @@ function renderOrdersList(){
 
   // 🔥 Слой1/A: колоночная модель в порядке AutoReport «Пульс» (header+строки+colspan из одного источника)
   var COLS=_ordersVisibleColumns(); window._ORDERS_COLS=COLS;
-  var ths=COLS.map(function(c){ return '<th'+(c.lft?' class="l"':'')+'>'+c.l+'</th>'; }).join('');
+  var STK=_ordersStickyLayout(COLS); window._ORDERS_STK=STK;
+  var ths=COLS.map(function(c,idx){
+    var st=STK[idx];
+    var cls=((c.lft?'l ':'')+(st?('oc-sticky'+(st.last?' oc-sticky-last':'')):'')).trim();
+    var style=st?(' style="left:'+st.left+'px;width:'+st.width+'px;min-width:'+st.width+'px"'):'';
+    return '<th'+(cls?' class="'+cls+'"':'')+style+'>'+c.l+'</th>';
+  }).join('');
   var head='<div class="orders-scroll"><table class="orders-tbl orders-tbl-wide"><thead><tr>'+ths+'<th class="oc-exp-h"></th></tr></thead><tbody id="ordersTbody"></tbody></table></div>';
   listEl.innerHTML=head;
   _ordersShown=0;          // ← смена фильтра/сортировки/поиска перерисовывает с начала
@@ -7356,7 +7384,10 @@ function _ordersAppendRows(){
   for(var i=_ordersShown;i<end;i++){
     var p=view[i];
     var tds='';
-    for(var c=0;c<COLS.length;c++){ var col=COLS[c]; var cls=(col.lft?'ol':'')+(col.cls?(col.lft?' ':'')+col.cls:''); tds+='<td'+(cls?' class="'+cls+'"':'')+'>'+col.v(p)+'</td>'; }
+    for(var c=0;c<COLS.length;c++){ var col=COLS[c]; var st=(window._ORDERS_STK||[])[c];
+      var cls=((col.lft?'ol ':'')+(col.cls?col.cls+' ':'')+(st?('oc-sticky'+(st.last?' oc-sticky-last':'')):'')).trim();
+      var style=st?(' style="left:'+st.left+'px;width:'+st.width+'px;min-width:'+st.width+'px"'):'';
+      tds+='<td'+(cls?' class="'+cls+'"':'')+style+'>'+col.v(p)+'</td>'; }
     html+='<tr class="orders-prow'+(i%2?' zebra':'')+'" onclick="toggleOrderRow('+i+')">'+tds+
       '<td class="oc-exp"><span class="detail-expand orders-arrow" id="ord-exp-'+i+'">▶</span></td></tr>'+
       '<tr id="ord-pos-'+i+'" class="orders-posrow" style="display:none"><td colspan="'+(COLS.length+1)+'" class="orders-pos-cell"></td></tr>';
