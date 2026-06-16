@@ -5546,7 +5546,9 @@ function syncPeriodPills(){
 function setPeriod(days){
   // 🔥 v0.6.0: 30 дней доступны в Free (раньше PRO с 30+).
   // PRO-гейт остаётся для 90 дней и больше, и для Свой период.
-  if(days>=90&&!hasPRO()){
+  // Фаза D шаг1: в foreign возможности периода — по плану ВЛАДЕЛЬЦА (сервер энфорсит max_period_days),
+  // не по плану оператора → PRO-гейт не применяем в чужом пространстве.
+  if(days>=90&&!hasPRO()&&!isViewingForeign()){
     requirePRO('Период «'+days+' дней»');
     return;
   }
@@ -5562,7 +5564,8 @@ function setPeriod(days){
   refreshLastSync(dfStr, dtStr);
   // 🔥 v0.6.9: для длинных периодов спросим подтверждение, для коротких — сразу грузим.
   // Это убирает лишний клик "Загрузить" — селлер кликнул период = хочет данные.
-  if(localStorage.getItem('wb_token')){
+  // Фаза D шаг1: оператор (foreign) грузит без своего токена — авто-загрузка через ?workspace=.
+  if(isViewingForeign() || localStorage.getItem('wb_token')){
     // 🔥 v0.7.12.38: если этот период уже в свежем кэше (≤6ч) — показываем мгновенно, без запроса к WB.
     var _ce=_findCacheEntry(dfStr,dtStr);
     if(_ce && (Date.now()-_ce.ts)/3600000<=6){ tryRestoreDataFromCache(); return; }
@@ -5574,7 +5577,8 @@ function setPeriod(days){
   }
 }
 function openCustomPeriod(){
-  if(!hasPRO()){
+  // Фаза D шаг1: в foreign «Свой период» — по плану владельца (сервер энфорсит), не оператора.
+  if(!hasPRO()&&!isViewingForeign()){
     requirePRO('Произвольный период');
     return;
   }
@@ -5631,7 +5635,8 @@ function applyCustomPeriod(){
   closeCustomPeriod();
   // 🔥 v0.6.9: показать период в подзаголовке "Обновлено" и СРАЗУ запустить загрузку
   refreshLastSync(df, dt);
-  if(localStorage.getItem('wb_token')){
+  // Фаза D шаг1: оператор (foreign) грузит «Свой период» без своего токена — через ?workspace=.
+  if(isViewingForeign() || localStorage.getItem('wb_token')){
     // 🔥 v0.7.12.38: тот же период уже в свежем кэше (≤6ч) — мгновенно из кэша, без запроса к WB.
     var _ce=_findCacheEntry(df,dt);
     if(_ce && (Date.now()-_ce.ts)/3600000<=6){ tryRestoreDataFromCache(); return; }
