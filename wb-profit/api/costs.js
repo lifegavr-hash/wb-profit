@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { resolveWbAccountId } from '../lib/wb-account.js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
+import { resolveWorkspace } from '../lib/team.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -22,11 +23,24 @@ export default async function handler(req, res) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return res.status(401).json({ error: 'Неверный токен' });
 
+  // 🔥 Фаза D шаг1: оператор ЧИТАЕТ себестоимость ВЛАДЕЛЬЦА (?workspace=). Запись с workspace
+  // запрещена (это шаг 2) — иначе мог бы менять данные владельца до согласования механики.
+  const workspace = req.query.workspace || null;
+  let dataUserId = user.id;
+  if (workspace) {
+    if (req.method !== 'GET') {
+      return res.status(403).json({ error: 'WORKSPACE_WRITE_NOT_ALLOWED', message: 'Изменение себестоимости владельца пока недоступно' });
+    }
+    const ws = await resolveWorkspace(token, workspace);
+    if (ws.error) return res.status(ws.status).json({ error: ws.error });
+    if (ws.role === 'viewer') dataUserId = ws.ownerId;   // role==='owner' (workspace==self) → остаётся своё
+  }
+
   // 🔥 v0.7.7.30: разрешаем wb_account_id
-  const providedWbId = req.query.wb_account_id 
-    || (req.body && req.body.wb_account_id) 
+  const providedWbId = req.query.wb_account_id
+    || (req.body && req.body.wb_account_id)
     || null;
-  const wbResolve = await resolveWbAccountId(user.id, providedWbId);
+  const wbResolve = await resolveWbAccountId(dataUserId, providedWbId);
   if (!wbResolve.ok) {
     return res.status(wbResolve.status).json({ 
       error: wbResolve.error, 
@@ -39,7 +53,7 @@ export default async function handler(req, res) {
     const { data, error } = await supabase
       .from('user_costs')
       .select('nm_id, cost')
-      .eq('user_id', user.id)
+      .eq('user_id', dataUserId)
       .eq('wb_account_id', wbAccountId);
     if (error) return res.status(500).json({ error: error.message });
     const map = {};

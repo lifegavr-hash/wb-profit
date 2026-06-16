@@ -4705,6 +4705,8 @@ async function onWorkspaceChange(ownerId, email){
     // вернулись в своё → восстановить свой rawData из кэша
     if(typeof tryRestoreDataFromCache==='function') await tryRestoreDataFromCache();
   }
+  // Фаза D шаг1: обновить себестоимость под активное пространство (foreign → владельца в _foreignCosts; своё → свою)
+  if(typeof loadCostsFromServer==='function') await loadCostsFromServer();
   showSection('home', document.getElementById('nav-home'));
   loadHomeData();
 }
@@ -5663,8 +5665,16 @@ async function goFromHome(){
   await go(token);
 }
 
-function getCosts(){try{return JSON.parse(localStorage.getItem('wb_costs')||'{}');}catch(e){return {};}}
+function getCosts(){
+  // Фаза D шаг1: в чужом пространстве — себестоимость ВЛАДЕЛЬЦА (in-memory, НЕ из своего localStorage,
+  // чтобы не смешать со своими данными). Заполняется loadCostsFromServer через ?workspace=.
+  if(isViewingForeign()) return window._foreignCosts || {};
+  try{return JSON.parse(localStorage.getItem('wb_costs')||'{}');}catch(e){return {};}
+}
 function saveCosts(c){
+  // Фаза D шаг1: оператор в чужом пространстве НЕ персистит себестоимость (ни в свой localStorage,
+  // ни на сервер владельца). Запись себестоимости владельца — шаг 2.
+  if(isViewingForeign()) return;
   try{localStorage.setItem('wb_costs',JSON.stringify(c));}catch(e){}
   // Дебаунс отправки на сервер, чтобы не дёргать API на каждый ввод
   scheduleCostsSync(c);
@@ -5734,6 +5744,15 @@ async function loadCostsFromServer(){
     var session=await sb.auth.getSession();
     var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
     if(!jwt)return;
+    // Фаза D шаг1: в чужом пространстве читаем себестоимость ВЛАДЕЛЬЦА (?workspace=, GET) в in-memory,
+    // НЕ трогаем свой localStorage и НЕ синхронизируем обратно.
+    if(isViewingForeign()){
+      var rf=await fetch('/api/costs?'+wsParam().replace(/^&/,''),{headers:{'Authorization':'Bearer '+jwt}});
+      if(!rf.ok){ window._foreignCosts={}; return; }
+      var df2=await rf.json();
+      window._foreignCosts=df2.costs||{};
+      return;
+    }
     var r=await fetch(withWbAccount('/api/costs'),{headers:{'Authorization':'Bearer '+jwt}});
     if(!r.ok)return;
     var d=await r.json();
