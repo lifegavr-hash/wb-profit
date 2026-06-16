@@ -10,6 +10,8 @@ import { audit } from '../lib/audit-log.js';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const HAS_DB = Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY);
+// 🔥 v0.7.12.70: серверный рубильник аналитики (воронка/карточки) — env WB_ANALYTICS_OFF=1 снимает нагрузку при перегрузке Nano (без отката релиза).
+const ANALYTICS_OFF = process.env.WB_ANALYTICS_OFF === '1';
 
 // 🔥 v0.7.9.9: снижено с 65 до 15 сек. Это нужно для chunked-загрузки больших периодов
 // (v0.7.9.8 разрезает >30 дней на куски). Реально WB API допускает burst-режим —
@@ -140,9 +142,9 @@ export default async function handler(req, res) {
   // Используем в Главной для приветствия «Здравствуйте, Чиркова А. В.»
   if (req.query.action === 'seller') {
     try {
-      const r = await fetch('https://common-api.wildberries.ru/api/v1/seller-info', {
+      const r = await fetchWithTimeout('https://common-api.wildberries.ru/api/v1/seller-info', {
         headers: { Authorization: token },
-      });
+      }, 10000);
       const text = await r.text();
       let body;
       try { body = JSON.parse(text); } catch { body = text; }
@@ -168,7 +170,7 @@ export default async function handler(req, res) {
           method: 'POST',
           headers: { Authorization: token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ settings: { cursor: cur, filter: { withPhoto: -1 } } }),
-        }, 20000);
+        }, 12000);
         if (!r.ok) {
           const t = await r.text();
           if (pages === 0) return res.status(r.status).json({ error: 'CONTENT_API', status: r.status, message: String(t).slice(0, 200) });
@@ -198,6 +200,7 @@ export default async function handler(req, res) {
   // 🔥 Слой2: openCount/cartCount/orderCount/buyout + конверсии (+ past/comparison про запас). Analytics строже
   // статистики по rate limit → серверный кэш (инфра report) обязателен. Foreign — token уже владельца (резолв выше).
   if (req.query.resource === 'funnel') {
+    if (ANALYTICS_OFF) return res.status(200).json({ funnel: {}, pages: 0, disabled: true });
     const fdf = req.query.dateFrom, fdt = req.query.dateTo;
     if (!fdf || !fdt) return res.status(400).json({ error: 'funnel: dateFrom/dateTo required' });
     const fKey = `funnel:${hashToken(token)}:${fdf}:${fdt}`;
@@ -213,7 +216,7 @@ export default async function handler(req, res) {
           method: 'POST',
           headers: { Authorization: token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ selectedPeriod: { start: fdf, end: fdt }, page, timezone: 'Europe/Moscow' }),
-        }, 20000);
+        }, 12000);
         if (r.status === 429) {
           if (pages === 0) { res.setHeader('Retry-After', '60'); return res.status(429).json({ error: 'Analytics rate limit', retryAfter: 60 }); }
           break; // частичный результат
@@ -256,6 +259,7 @@ export default async function handler(req, res) {
 
   // === resource=funnel-history — воронка по ДНЯМ для одного товара (карточка, Слой3). Кэш token+nm+period ===
   if (req.query.resource === 'funnel-history') {
+    if (ANALYTICS_OFF) return res.status(200).json({ nm: Number(req.query.nm) || null, history: [], disabled: true });
     const nm = req.query.nm, hdf = req.query.dateFrom, hdt = req.query.dateTo;
     if (!nm || !hdf || !hdt) return res.status(400).json({ error: 'funnel-history: nm/dateFrom/dateTo required' });
     const hKey = `funnelh:${hashToken(token)}:${nm}:${hdf}:${hdt}`;
@@ -267,7 +271,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { Authorization: token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ nmIds: [Number(nm)], selectedPeriod: { start: hdf, end: hdt }, timezone: 'Europe/Moscow', aggregationLevel: 'day' }),
-      }, 20000);
+      }, 12000);
       if (r.status === 429) { res.setHeader('Retry-After', '60'); return res.status(429).json({ error: 'Analytics rate limit', retryAfter: 60 }); }
       if (!r.ok) { const t = await r.text(); return res.status(r.status).json({ error: 'FUNNEL_HISTORY_API', status: r.status, message: String(t).slice(0, 200) }); }
       const data = await r.json();
@@ -370,15 +374,15 @@ export default async function handler(req, res) {
 
   // 🔥 Фаза D шаг1: аудит pull кабинета владельца оператором (best-effort, не блокирует)
   if (viewerCtx) {
-    try { await audit({ event_type: 'team_data_pull', user_id: viewerCtx.viewerId,
-      meta: { owner_id: viewerCtx.ownerId, df: dateFrom, dt: dateTo }, req }); } catch (_) {}
+    try { await withTimeout(audit({ event_type: 'team_data_pull', user_id: viewerCtx.viewerId,
+      meta: { owner_id: viewerCtx.ownerId, df: dateFrom, dt: dateTo }, req }), 3000); } catch (_) {}
   }
 
   // 4) Запрос к WB
   const url = `https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}&period=daily&limit=100000`;
 
   try {
-    const response = await fetchWithTimeout(url, { headers: { Authorization: token } }, 45000);
+    const response = await fetchWithTimeout(url, { headers: { Authorization: token } }, 30000);
 
     // 204 — нет данных. Кэшируем тоже (на сутки если день прошедший).
     if (response.status === 204) {
