@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 import { resolveWbAccountId } from '../lib/wb-account.js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
 import { resolveWorkspace } from '../lib/team.js';
+import { audit } from '../lib/audit-log.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,17 +24,16 @@ export default async function handler(req, res) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return res.status(401).json({ error: 'Неверный токен' });
 
-  // 🔥 Фаза D шаг1: оператор ЧИТАЕТ себестоимость ВЛАДЕЛЬЦА (?workspace=). Запись с workspace
-  // запрещена (это шаг 2) — иначе мог бы менять данные владельца до согласования механики.
+  // 🔥 Фаза D шаг2: оператор ЧИТАЕТ и ПИШЕТ себестоимость ВЛАДЕЛЬЦА (?workspace=).
+  // Членство + активный Бизнес владельца проверяет resolveWorkspace. RLS не ослабляем (service-role + гейт).
   const workspace = req.query.workspace || null;
   let dataUserId = user.id;
+  let wsViewerId = null;               // оператор (actor для audit team_cost_edit)
   if (workspace) {
-    if (req.method !== 'GET') {
-      return res.status(403).json({ error: 'WORKSPACE_WRITE_NOT_ALLOWED', message: 'Изменение себестоимости владельца пока недоступно' });
-    }
     const ws = await resolveWorkspace(token, workspace);
     if (ws.error) return res.status(ws.status).json({ error: ws.error });
-    if (ws.role === 'viewer') dataUserId = ws.ownerId;   // role==='owner' (workspace==self) → остаётся своё
+    if (ws.role === 'viewer') { dataUserId = ws.ownerId; wsViewerId = ws.viewerId; }
+    // role==='owner' (workspace==self) → остаётся своё (dataUserId===user.id)
   }
 
   // 🔥 v0.7.7.30: разрешаем wb_account_id
@@ -64,7 +64,9 @@ export default async function handler(req, res) {
   // 🔥 v0.7.11.1: блок ИЗМЕНЕНИЯ себестоимостей для истёкших подписок (GET остаётся открытым).
   // Чтение своих сохранённых данных — право пользователя (terms «данные сохраняются»),
   // но обновление/удаление = активная работа → требует валидной подписки. Admin не блокируется.
-  if (req.method === 'POST' || req.method === 'DELETE') {
+  // 🔥 Фаза D шаг2: expired-чек по плану ОПЕРАТОРА — только для СВОЕГО пространства.
+  // Для workspace-записи активность гарантирует resolveWorkspace (isActiveBusiness ВЛАДЕЛЬЦА).
+  if (!workspace && (req.method === 'POST' || req.method === 'DELETE')) {
     try {
       const planResult = await getUserPlanWithLimits(token);
       if (!planResult.error && planResult.isExpired && !planResult.isAdmin) {
@@ -85,7 +87,7 @@ export default async function handler(req, res) {
     if (!keys.length) return res.status(200).json({ saved: 0 });
     const rows = keys
       .map((k) => ({
-        user_id: user.id,
+        user_id: dataUserId,
         wb_account_id: wbAccountId,
         nm_id: String(k),
         cost: Number(costs[k]) || 0,
@@ -97,6 +99,11 @@ export default async function handler(req, res) {
       .from('user_costs')
       .upsert(rows, { onConflict: 'user_id,wb_account_id,nm_id' });
     if (error) return res.status(500).json({ error: error.message });
+    // 🔥 Фаза D шаг2: аудит правки себестоимости ВЛАДЕЛЬЦА оператором (best-effort)
+    if (wsViewerId) {
+      try { await audit({ event_type: 'team_cost_edit', user_id: wsViewerId,
+        meta: { owner_id: dataUserId, count: rows.length, nm_ids: keys.slice(0, 20) }, req }); } catch (_) {}
+    }
     return res.status(200).json({ saved: rows.length, wb_account_id: wbAccountId });
   }
 
@@ -106,10 +113,14 @@ export default async function handler(req, res) {
     const { error } = await supabase
       .from('user_costs')
       .delete()
-      .eq('user_id', user.id)
+      .eq('user_id', dataUserId)
       .eq('wb_account_id', wbAccountId)
       .eq('nm_id', String(nm_id));
     if (error) return res.status(500).json({ error: error.message });
+    if (wsViewerId) {
+      try { await audit({ event_type: 'team_cost_edit', user_id: wsViewerId,
+        meta: { owner_id: dataUserId, nm_id: String(nm_id) }, req }); } catch (_) {}
+    }
     return res.status(200).json({ success: true });
   }
 
