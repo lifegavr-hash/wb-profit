@@ -186,6 +186,66 @@ export default async function handler(req, res) {
     }
   }
 
+  // === resource=funnel — воронка продаж (Analytics v3 sales-funnel), СЕРВЕРНО, кэш по token+period ===
+  // 🔥 Слой2: openCount/cartCount/orderCount/buyout + конверсии (+ past/comparison про запас). Analytics строже
+  // статистики по rate limit → серверный кэш (инфра report) обязателен. Foreign — token уже владельца (резолв выше).
+  if (req.query.resource === 'funnel') {
+    const fdf = req.query.dateFrom, fdt = req.query.dateTo;
+    if (!fdf || !fdt) return res.status(400).json({ error: 'funnel: dateFrom/dateTo required' });
+    const fKey = `funnel:${hashToken(token)}:${fdf}:${fdt}`;
+    const fc = await getCache(fKey);
+    if (fc) { res.setHeader('X-Cache', 'HIT'); return res.status(200).json(fc.payload); }
+    res.setHeader('X-Cache', 'MISS');
+    try {
+      const out = {};
+      let page = 1, pages = 0;
+      const MAX_PAGES = 30;
+      while (page <= MAX_PAGES) {
+        const r = await fetch('https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products', {
+          method: 'POST',
+          headers: { Authorization: token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ selectedPeriod: { start: fdf, end: fdt }, page, timezone: 'Europe/Moscow' }),
+        });
+        if (r.status === 429) {
+          if (pages === 0) { res.setHeader('Retry-After', '60'); return res.status(429).json({ error: 'Analytics rate limit', retryAfter: 60 }); }
+          break; // частичный результат
+        }
+        if (!r.ok) {
+          const t = await r.text();
+          if (pages === 0) return res.status(r.status).json({ error: 'FUNNEL_API', status: r.status, message: String(t).slice(0, 200) });
+          break;
+        }
+        const data = await r.json();
+        const products = (data && data.data && data.data.products) || [];
+        for (const it of products) {
+          const p = it.product || {};
+          const st = (it.statistic && it.statistic.selected) || {};
+          const cmp = (it.statistic && it.statistic.comparison) || {};
+          const cv = st.conversions || {};
+          if (p.nmId == null) continue;
+          out[p.nmId] = {
+            open: Number(st.openCount) || 0, cart: Number(st.cartCount) || 0,
+            order: Number(st.orderCount) || 0, orderSum: Number(st.orderSum) || 0,
+            buyout: Number(st.buyoutCount) || 0, buyoutSum: Number(st.buyoutSum) || 0,
+            cancel: Number(st.cancelCount) || 0,
+            conv: { cart: cv.addToCartPercent, order: cv.cartToOrderPercent, buyout: cv.buyoutPercent },
+            extra: { wishlist: Number(st.addToWishlist) || 0, balanceSum: (p.stocks && Number(p.stocks.balanceSum)) || 0,
+                     avgPrice: Number(st.avgPrice) || 0, localization: st.localizationPercent, avgPerDay: Number(st.avgOrdersCountPerDay) || 0 },
+            cmp: cmp, // про запас для дашборда (слой 4)
+          };
+        }
+        pages++;
+        if (!products.length || !(data && data.data && data.data.isNextPage)) break;
+        page++;
+      }
+      const payload = { funnel: out, pages };
+      await setCache(fKey, 200, payload, 6 * 3600); // 6ч — воронка по периоду + защита от rate limit
+      return res.status(200).json(payload);
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   const { dateFrom, dateTo, rrdid = 0 } = req.query;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
 

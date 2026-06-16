@@ -7183,6 +7183,37 @@ async function loadCardsContent(){
     applyCardPhotos();
   }catch(e){ /* фото некритичны — молча */ }
 }
+// 🔥 Слой2: карта воронки nmId→{open,cart,order,buyout,conv,extra,cmp}. Кэш ПО ПЕРИОДУ (не долгоживущий как фото).
+window._funnelMap = window._funnelMap || {};
+function _applyFunnel(){
+  var sec=document.getElementById('sectionOrders');
+  if(document.getElementById('ordersList') && sec && sec.classList.contains('active') && typeof renderOrdersList==='function') renderOrdersList();
+}
+async function loadFunnelData(){
+  try{
+    var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+    if(!df||!dt) return;
+    var accId = isViewingForeign() ? ('ws_'+(window._workspace||'')) : ((typeof _activeAccountIdForCache==='function'? _activeAccountIdForCache():null)||'self');
+    var KEY='wb_funnel_v1', TTL=6*3600*1000, combo=accId+'|'+df+'|'+dt;
+    var store={}; try{ store=JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){}
+    var entry=store[combo];
+    if(entry && entry.map && (Date.now()-entry.ts)<TTL){ window._funnelMap=entry.map; _applyFunnel(); return; }
+    var headers={};
+    var tok=localStorage.getItem('wb_token');
+    if(!isViewingForeign() && tok) headers['Authorization']=tok;
+    var jwt=window.currentJwt; if(jwt) headers['X-User-Auth']='Bearer '+jwt;
+    var r=await fetch('/api/wb?resource=funnel&dateFrom='+encodeURIComponent(df)+'&dateTo='+encodeURIComponent(dt)+wsParam(),{headers:headers});
+    if(!r.ok) return;                       // 429/ошибка — тихо, колонки останутся «—», аппроксимация выкупа работает
+    var d=await r.json();
+    var map=(d&&d.funnel)||{};
+    window._funnelMap=map;
+    store[combo]={ts:Date.now(),map:map};
+    var ks=Object.keys(store);              // прунинг: не больше 6 период-комбинаций (бюджет localStorage)
+    if(ks.length>6){ ks.map(function(k){return [k,store[k].ts||0];}).sort(function(a,b){return a[1]-b[1];}).slice(0,ks.length-6).forEach(function(x){delete store[x[0]];}); }
+    try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){}
+    _applyFunnel();
+  }catch(e){ /* воронка некритична — молча */ }
+}
 // Колонки в порядке AutoReport «Пульс». lft:true → левое выравнивание. v(p) → HTML ячейки.
 // Placeholder «—» (до отдельных этапов): Фото(B), Теги(фича), СПП(аналитика), TACoO(заказы), УСН(настройка налога).
 function _ordersColumns(){
@@ -7195,11 +7226,16 @@ function _ordersColumns(){
     {key:'velocity', l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},
     {key:'turnover', l:'Оборачиваемость, дней', v:function(p){ return _ordNum(p.turnover); }},
     {key:'daysLeft', l:'Хватит на, дней', v:function(p){ return _ordNum(p.daysLeft); }},
+    {key:'open', l:'Просмотры', v:function(p){ var f=(window._funnelMap||{})[p.nm]; return f? fmt(f.open) : _ordDash(); }},
+    {key:'cart', l:'Корзины', v:function(p){ var f=(window._funnelMap||{})[p.nm]; return f? fmt(f.cart) : _ordDash(); }},
+    {key:'crCart', l:'CR в корзину, %', v:function(p){ var f=(window._funnelMap||{})[p.nm]; return (f&&f.conv&&f.conv.cart!=null)? _ordPct(f.conv.cart) : _ordDash(); }},
+    {key:'orders', l:'Заказы, шт', v:function(p){ var f=(window._funnelMap||{})[p.nm]; return f? fmt(f.order) : _ordDash(); }},
+    {key:'crOrder', l:'CR в заказ, %', v:function(p){ var f=(window._funnelMap||{})[p.nm]; return (f&&f.conv&&f.conv.order!=null)? _ordPct(f.conv.order) : _ordDash(); }},
     {key:'salesUnits', l:'Продажи − возвраты, шт', v:function(p){ return fmt(p.soldUnits-p.retUnits); }},
     {key:'salesRub', l:'Продажи − возвраты, ₽', v:function(p){ return _ordAbsMoney(p.revenue); }},
     {key:'ppvz', l:'WB реализовал, ₽', v:function(p){ return _ordAbsMoney(p.ppvz); }},
     {key:'spp', l:'СПП, %', v:function(p){ return _ordDash(); }},
-    {key:'buyout', l:'Выкуп, %', v:function(p){ return _ordPct(p.buyoutPct); }},
+    {key:'buyout', l:'Выкуп, %', v:function(p){ var f=(window._funnelMap||{})[p.nm]; if(f&&f.conv&&f.conv.buyout!=null) return _ordPct(f.conv.buyout); return _ordPct(p.buyoutPct); }},
     {key:'commRub', l:'Комиссия, ₽', v:function(p){ return _ordAbsMoney(p.commission); }},
     {key:'commPct', l:'Комиссия, %', v:function(p){ return _ordPct(p.commPctRev); }},
     {key:'acqRub', l:'Эквайринг, ₽', v:function(p){ return _ordAbsMoney(p.acquiring); }},
@@ -7297,7 +7333,12 @@ function _ordersColFilterMeta(){
     salesUnits:{t:'num', f:function(p){ return p.soldUnits-p.retUnits; }},
     salesRub:{t:'num', f:function(p){ return p.revenue; }},
     ppvz:{t:'num', f:function(p){ return p.ppvz; }},
-    buyout:{t:'num', f:function(p){ return p.buyoutPct; }},
+    buyout:{t:'num', f:function(p){ var f=(window._funnelMap||{})[p.nm]; return (f&&f.conv&&f.conv.buyout!=null)? f.conv.buyout : p.buyoutPct; }},
+    open:{t:'num', f:function(p){ var f=(window._funnelMap||{})[p.nm]; return f? f.open : null; }},
+    cart:{t:'num', f:function(p){ var f=(window._funnelMap||{})[p.nm]; return f? f.cart : null; }},
+    orders:{t:'num', f:function(p){ var f=(window._funnelMap||{})[p.nm]; return f? f.order : null; }},
+    crCart:{t:'num', f:function(p){ var f=(window._funnelMap||{})[p.nm]; return (f&&f.conv)? f.conv.cart : null; }},
+    crOrder:{t:'num', f:function(p){ var f=(window._funnelMap||{})[p.nm]; return (f&&f.conv)? f.conv.order : null; }},
     commRub:{t:'num', f:function(p){ return Math.abs(p.commission); }},
     commPct:{t:'num', f:function(p){ return p.commPctRev; }},
     acqRub:{t:'num', f:function(p){ return Math.abs(p.acquiring); }},
@@ -7401,6 +7442,7 @@ function renderOrders(){
   _ordersShown=0;
   renderOrdersList();
   if(typeof loadCardsContent==='function') loadCardsContent();   // 🔥 Слой1/B: фото фоном поверх рендера
+  if(typeof loadFunnelData==='function') loadFunnelData();        // 🔥 Слой2: воронка фоном (кэш по периоду)
 }
 
 // Применяем поиск+фильтры+сортировку к построенному списку и рендерим первую страницу (пагинация).
