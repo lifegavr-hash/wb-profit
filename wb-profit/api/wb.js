@@ -23,6 +23,16 @@ function hashToken(token) {
   return crypto.createHash('sha256').update(String(token)).digest('hex').slice(0, 32);
 }
 
+// 🔥 v0.7.12.68 hotfix: таймауты против висящих внешних вызовов (WB/Supabase) → функция не держится 60с.
+function fetchWithTimeout(url, opts, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms || 20000);
+  return fetch(url, { ...(opts || {}), signal: ctrl.signal }).finally(() => clearTimeout(t));
+}
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+
 function isPastDay(dateIso) {
   // Москва = UTC+3. День считается прошедшим, если он раньше сегодня по MSK.
   const now = new Date();
@@ -33,28 +43,26 @@ function isPastDay(dateIso) {
 
 // === Supabase REST helpers ===
 async function sbSelect(table, query) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-    headers: {
-      apikey: SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-    },
-  });
-  if (!r.ok) return null;
-  return r.json();
+  // 🔥 v0.7.12.68: best-effort — Supabase медленна/лежит → возвращаем null (без кэша), НЕ виснем 60с.
+  try {
+    const r = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
+    }, 4000);
+    if (!r.ok) return null;
+    return r.json();
+  } catch (e) { return null; }
 }
 
 async function sbUpsert(table, body) {
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'resolution=merge-duplicates',
-    },
-    body: JSON.stringify(body),
-  });
-  return r.ok;
+  // 🔥 v0.7.12.68: best-effort — запись кэша не должна держать функцию при мёртвой БД.
+  try {
+    const r = await fetchWithTimeout(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify(body),
+    }, 4000);
+    return r.ok;
+  } catch (e) { return false; }
 }
 
 // === Cache ===
@@ -156,11 +164,11 @@ export default async function handler(req, res) {
       while (pages < MAX_PAGES) {
         const cur = { limit: 100 };
         if (cursor) { cur.updatedAt = cursor.updatedAt; cur.nmID = cursor.nmID; }
-        const r = await fetch('https://content-api.wildberries.ru/content/v2/get/cards/list', {
+        const r = await fetchWithTimeout('https://content-api.wildberries.ru/content/v2/get/cards/list', {
           method: 'POST',
           headers: { Authorization: token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ settings: { cursor: cur, filter: { withPhoto: -1 } } }),
-        });
+        }, 20000);
         if (!r.ok) {
           const t = await r.text();
           if (pages === 0) return res.status(r.status).json({ error: 'CONTENT_API', status: r.status, message: String(t).slice(0, 200) });
@@ -201,11 +209,11 @@ export default async function handler(req, res) {
       let page = 1, pages = 0;
       const MAX_PAGES = 30;
       while (page <= MAX_PAGES) {
-        const r = await fetch('https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products', {
+        const r = await fetchWithTimeout('https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products', {
           method: 'POST',
           headers: { Authorization: token, 'Content-Type': 'application/json' },
           body: JSON.stringify({ selectedPeriod: { start: fdf, end: fdt }, page, timezone: 'Europe/Moscow' }),
-        });
+        }, 20000);
         if (r.status === 429) {
           if (pages === 0) { res.setHeader('Retry-After', '60'); return res.status(429).json({ error: 'Analytics rate limit', retryAfter: 60 }); }
           break; // частичный результат
@@ -255,11 +263,11 @@ export default async function handler(req, res) {
     if (hc) { res.setHeader('X-Cache', 'HIT'); return res.status(200).json(hc.payload); }
     res.setHeader('X-Cache', 'MISS');
     try {
-      const r = await fetch('https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products/history', {
+      const r = await fetchWithTimeout('https://seller-analytics-api.wildberries.ru/api/analytics/v3/sales-funnel/products/history', {
         method: 'POST',
         headers: { Authorization: token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ nmIds: [Number(nm)], selectedPeriod: { start: hdf, end: hdt }, timezone: 'Europe/Moscow', aggregationLevel: 'day' }),
-      });
+      }, 20000);
       if (r.status === 429) { res.setHeader('Retry-After', '60'); return res.status(429).json({ error: 'Analytics rate limit', retryAfter: 60 }); }
       if (!r.ok) { const t = await r.text(); return res.status(r.status).json({ error: 'FUNNEL_HISTORY_API', status: r.status, message: String(t).slice(0, 200) }); }
       const data = await r.json();
@@ -301,7 +309,7 @@ export default async function handler(req, res) {
   try {
     const jwt = extractJwt(req);
     if (jwt) {
-      const check = await checkPeriodLimit(jwt, dateFrom, dateTo);
+      const check = await withTimeout(checkPeriodLimit(jwt, dateFrom, dateTo), 4000);
       if (check.error) {
         // PERIOD_LIMIT → 403 с понятным сообщением для фронта
         if (sendIfPlanError(res, check)) return;
@@ -370,7 +378,7 @@ export default async function handler(req, res) {
   const url = `https://statistics-api.wildberries.ru/api/v5/supplier/reportDetailByPeriod?dateFrom=${dateFrom}&dateTo=${dateTo}&rrdid=${rrdid}&period=daily&limit=100000`;
 
   try {
-    const response = await fetch(url, { headers: { Authorization: token } });
+    const response = await fetchWithTimeout(url, { headers: { Authorization: token } }, 45000);
 
     // 204 — нет данных. Кэшируем тоже (на сутки если день прошедший).
     if (response.status === 204) {

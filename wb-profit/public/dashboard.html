@@ -7217,6 +7217,7 @@ async function loadCardsContent(){
 }
 // 🔥 Слой2: карта воронки nmId→{open,cart,order,buyout,conv,extra,cmp}. Кэш ПО ПЕРИОДУ (не долгоживущий как фото).
 window._funnelMap = window._funnelMap || {};
+window._FUNNEL_ENABLED = false;   // 🔥 v0.7.12.68 hotfix: автозагрузка воронки ВЫКЛ (снятие нагрузки на БД/функции). Вернуть true после выноса кэша в KV/апгрейда compute.
 function _applyFunnel(){
   var sec=document.getElementById('sectionOrders');
   if(document.getElementById('ordersList') && sec && sec.classList.contains('active') && typeof renderOrdersList==='function') renderOrdersList();
@@ -7529,7 +7530,7 @@ function renderOrders(){
   _ordersShown=0;
   renderOrdersList();
   if(typeof loadCardsContent==='function') loadCardsContent();   // 🔥 Слой1/B: фото фоном поверх рендера
-  if(typeof loadFunnelData==='function') loadFunnelData();        // 🔥 Слой2: воронка фоном (кэш по периоду)
+  if(window._FUNNEL_ENABLED && typeof loadFunnelData==='function') loadFunnelData();   // 🔥 Слой2 (v68 hotfix: воронка под флагом _FUNNEL_ENABLED, сейчас OFF)
 }
 
 // Применяем поиск+фильтры+сортировку к построенному списку и рендерим первую страницу (пагинация).
