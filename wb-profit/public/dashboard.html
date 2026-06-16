@@ -1968,6 +1968,7 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .orders-tbl-wide td.ol{text-align:left}
 .orders-tbl-wide th:first-child,.orders-tbl-wide td.oc-photo{width:52px;min-width:52px}
 .oc-ph{width:38px;height:38px;border-radius:6px;background:var(--bg);border:1px solid var(--border)}
+.oc-img{width:38px;height:38px;border-radius:6px;object-fit:cover;background:var(--bg);border:1px solid var(--border);display:block}
 .oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:12px}
 .oc-wb:hover{text-decoration:underline}
 html[data-theme="dark"] .oc-wb{color:#7aa2ff}
@@ -7116,13 +7117,54 @@ function _ordPct(x){ if(x==null||isNaN(x))return '—'; return (x<0?'−':'')+Ma
 function _ordAbsMoney(x){ return fmt(Math.round(Math.abs(Number(x)||0)))+' ₽'; }
 function _ordProfitCell(x){ var n=Math.round(Number(x)||0); return '<span class="'+(n>=0?'green':'red')+'">'+(n<0?'−':'')+fmt(Math.abs(n))+' ₽</span>'; }
 function _ordDash(){ return '<span class="orders-units">—</span>'; }
+// 🔥 Слой1/B: карта карточек nmID→{p:photo,b:brand,t:title,v:vendorCode} (content API, см. loadCardsContent).
+window._cardsMap = window._cardsMap || {};
+function _ordPhotoFail(img){ try{ img.outerHTML='<div class="oc-ph"></div>'; }catch(e){} }
+function _ordPhotoCell(nm){
+  var card=(window._cardsMap||{})[nm];
+  if(card && card.p) return '<img class="oc-img" loading="lazy" src="'+escHtml(card.p)+'" onerror="_ordPhotoFail(this)">';
+  return '<div class="oc-ph" data-nm="'+(nm!=null?nm:'')+'"></div>';
+}
+// Async поверх рендера: проставляет загруженные фото и тултип-название в уже нарисованную таблицу.
+function applyCardPhotos(){
+  var map=window._cardsMap||{}; if(!map || !Object.keys(map).length) return;
+  var phs=document.querySelectorAll('#ordersTbody .oc-ph[data-nm]');
+  for(var i=0;i<phs.length;i++){ var nm=phs[i].getAttribute('data-nm'); var c=map[nm]; if(c && c.p){ phs[i].outerHTML='<img class="oc-img" loading="lazy" src="'+escHtml(c.p)+'" onerror="_ordPhotoFail(this)">'; } }
+  var sas=document.querySelectorAll('#ordersTbody .oc-sa[data-nm]');
+  for(var j=0;j<sas.length;j++){ var nm2=sas[j].getAttribute('data-nm'); var c2=map[nm2]; if(c2 && c2.t){ sas[j].title=c2.t; } }
+}
+// Долгоживущий кэш карточек: localStorage['wb_cards_v1'] → { [accId]:{ts,map} }. TTL 7 дней (фото/бренд меняются редко).
+// Серверно (api/wb?resource=cards): токен владельца на сервер, не на фронт. Foreign — через ?workspace=.
+async function loadCardsContent(){
+  try{
+    var accId = isViewingForeign() ? ('ws_'+(window._workspace||'')) : ((typeof _activeAccountIdForCache==='function'? _activeAccountIdForCache():null)||'self');
+    var KEY='wb_cards_v1', TTL=7*24*3600*1000;
+    var store={}; try{ store=JSON.parse(localStorage.getItem(KEY)||'{}')||{}; }catch(e){}
+    var entry=store[accId];
+    if(entry && entry.map && (Date.now()-entry.ts)<TTL){ window._cardsMap=entry.map; applyCardPhotos(); return; }
+    var headers={};
+    var tok=localStorage.getItem('wb_token');
+    if(!isViewingForeign() && tok) headers['Authorization']=tok;
+    var jwt=window.currentJwt; if(jwt) headers['X-User-Auth']='Bearer '+jwt;
+    var r=await fetch('/api/wb?resource=cards'+wsParam(),{headers:headers});
+    if(!r.ok) return;
+    var d=await r.json();
+    var map=(d&&d.cards)||{};
+    window._cardsMap=map;
+    store[accId]={ts:Date.now(),map:map};
+    var ids=Object.keys(store);
+    if(ids.length>3){ ids.map(function(k){return [k,store[k].ts||0];}).sort(function(a,b){return a[1]-b[1];}).slice(0,ids.length-3).forEach(function(x){delete store[x[0]];}); }
+    try{ localStorage.setItem(KEY,JSON.stringify(store)); }catch(e){ /* квота — карта уже в памяти, кэш пропустим */ }
+    applyCardPhotos();
+  }catch(e){ /* фото некритичны — молча */ }
+}
 // Колонки в порядке AutoReport «Пульс». lft:true → левое выравнивание. v(p) → HTML ячейки.
 // Placeholder «—» (до отдельных этапов): Фото(B), Теги(фича), СПП(аналитика), TACoO(заказы), УСН(настройка налога).
 function _ordersColumns(){
   return [
-    {l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return '<div class="oc-ph"></div>'; }},
+    {l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return _ordPhotoCell(p.nm); }},
     {l:'Артикул WB', lft:true, cls:'oc-nm', v:function(p){ return p.nm? '<a class="oc-wb" href="https://www.wildberries.ru/catalog/'+p.nm+'/detail.aspx" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.nm+'</a>' : _ordDash(); }},
-    {l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); return '<div class="oc-sa" title="'+(t||'—')+'">'+(t||'—')+'</div>'; }},
+    {l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); var c=(window._cardsMap||{})[p.nm]; var tip=(c&&c.t)?escHtml(c.t):(t||'—'); return '<div class="oc-sa" data-nm="'+(p.nm!=null?p.nm:'')+'" title="'+tip+'">'+(t||'—')+'</div>'; }},
     {l:'Теги', lft:true, cls:'oc-tags', v:function(p){ return _ordDash(); }},
     {l:'Остатки всего, шт', v:function(p){ return _ordNum(p.stockTotal); }},
     {l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},
@@ -7204,6 +7246,7 @@ function renderOrders(){
 
   _ordersShown=0;
   renderOrdersList();
+  if(typeof loadCardsContent==='function') loadCardsContent();   // 🔥 Слой1/B: фото фоном поверх рендера
 }
 
 // Применяем поиск+фильтры+сортировку к построенному списку и рендерим первую страницу (пагинация).

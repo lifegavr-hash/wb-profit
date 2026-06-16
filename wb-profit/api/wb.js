@@ -145,6 +145,47 @@ export default async function handler(req, res) {
     }
   }
 
+  // === resource=cards — фото/бренд/название карточек товара (content API), СЕРВЕРНО (токен не на фронт) ===
+  // 🔥 Слой1/B: курсорная пагинация content/v2/get/cards/list → карта nmID→{p,b,t,v}. Не зависит от периода.
+  // Работает и для оператора (?workspace=): token уже = токен ВЛАДЕЛЬЦА (резолв выше). Долго живёт на клиенте.
+  if (req.query.resource === 'cards') {
+    try {
+      const out = {};
+      let cursor = null, pages = 0;
+      const MAX_PAGES = 60; // потолок ~6000 карточек — не упираемся в maxDuration/лимит content API ~100/мин
+      while (pages < MAX_PAGES) {
+        const cur = { limit: 100 };
+        if (cursor) { cur.updatedAt = cursor.updatedAt; cur.nmID = cursor.nmID; }
+        const r = await fetch('https://content-api.wildberries.ru/content/v2/get/cards/list', {
+          method: 'POST',
+          headers: { Authorization: token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings: { cursor: cur, filter: { withPhoto: -1 } } }),
+        });
+        if (!r.ok) {
+          const t = await r.text();
+          if (pages === 0) return res.status(r.status).json({ error: 'CONTENT_API', status: r.status, message: String(t).slice(0, 200) });
+          break; // частичный результат — отдаём что успели собрать
+        }
+        const data = await r.json();
+        const cards = (data && data.cards) || [];
+        for (const c of cards) {
+          if (c.nmID == null) continue;
+          const ph = (c.photos && c.photos[0]) || null;
+          const photo = ph ? (ph.c246x328 || ph.square || ph.tm || ph.big || '') : '';
+          out[c.nmID] = { p: photo, b: c.brand || '', t: c.title || '', v: c.vendorCode || '' };
+        }
+        pages++;
+        const cc = (data && data.cursor) || {};
+        if (cards.length < 100 || cc.nmID == null) break;
+        cursor = { updatedAt: cc.updatedAt, nmID: cc.nmID };
+      }
+      res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate');
+      return res.status(200).json({ cards: out, pages });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
+  }
+
   const { dateFrom, dateTo, rrdid = 0 } = req.query;
   if (!dateFrom || !dateTo) return res.status(400).json({ error: 'Укажите dateFrom и dateTo' });
 
