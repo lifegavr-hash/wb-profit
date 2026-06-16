@@ -5461,6 +5461,26 @@ async function tryRestoreDataFromCache(){
     // Восстанавливаем глобальное состояние
     window.rows = cache.rows;
     rows = cache.rows; // также в локальную var, как делает process()
+    // 🔥 v0.7.12.59: cache.rows несут себестоимость, вшитую на момент записи кэша. Если
+    // пользователь поменял cost после этого (wb_costs обновлён, кэш — ещё нет), строка
+    // показывала бы устаревшую цену. Перечитываем АКТУАЛЬНУЮ costs-мапу (getCosts(): own→
+    // wb_costs; foreign недостижим — early-return выше) и применяем к строкам. Cost-зависимые
+    // тоталы правим по дельте, чтобы плитки «Себестоимость»/«Прибыль» не разошлись со строками.
+    (function reapplyFreshCostsToCacheRows(){
+      var fresh=(typeof getCosts==='function')?getCosts():{};
+      var costDelta=0;
+      (rows||[]).forEach(function(r){
+        var k=String(r.nm_id||r.sa||'x');
+        var nc=parseFloat(fresh[k])||0;
+        var units=Math.max((Number(r.sales)||0)-(Number(r.ret)||0),0);
+        costDelta+=(nc-(Number(r.cost)||0))*units;
+        r.cost=nc;
+      });
+      if(cache.totals && costDelta){
+        cache.totals.cost=(Number(cache.totals.cost)||0)+costDelta;
+        cache.totals.profit=(Number(cache.totals.profit)||0)-costDelta;
+      }
+    })();
     // 🔥 v0.7.12.36: восстанавливаем слим-raw → Детализация расходов и Аналитика считаются сразу,
     // без повторного запроса к WB. Если raw в кэше нет (был >4МБ) — останется [], детализация попросит обновить.
     rawData = Array.isArray(cache.rawSlim) ? cache.rawSlim : [];
