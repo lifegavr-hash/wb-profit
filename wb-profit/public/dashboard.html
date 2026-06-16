@@ -1969,6 +1969,18 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .orders-tbl-wide th:first-child,.orders-tbl-wide td.oc-photo{width:52px;min-width:52px}
 .oc-ph{width:38px;height:38px;border-radius:6px;background:var(--bg);border:1px solid var(--border)}
 .oc-img{width:38px;height:38px;border-radius:6px;object-fit:cover;background:var(--bg);border:1px solid var(--border);display:block}
+/* 🔥 C1: панель управления колонками */
+.orders-cols-wrap{position:relative;display:inline-block}
+.orders-cols-panel{position:absolute;right:0;top:100%;margin-top:6px;z-index:60;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 28px var(--shadow);width:300px;max-height:60vh;overflow:auto;padding:8px;text-align:left}
+.ocp-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;color:var(--text);padding:4px 6px 8px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.ocp-reset{background:none;border:0;color:var(--purple);cursor:pointer;font-size:12px;font-weight:600}
+.ocp-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 6px;border-radius:6px}
+.ocp-row:hover{background:var(--bg)}
+.ocp-lbl{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text);cursor:pointer;flex:1;min-width:0}
+.ocp-lbl input{flex-shrink:0}
+.ocp-mv{display:flex;gap:2px;flex-shrink:0}
+.ocp-mv button{width:22px;height:22px;border:1px solid var(--border);background:var(--surface);border-radius:5px;cursor:pointer;color:var(--text);font-size:11px;line-height:1;padding:0}
+.ocp-mv button:disabled{opacity:.35;cursor:default}
 .oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:12px}
 .oc-wb:hover{text-decoration:underline}
 html[data-theme="dark"] .oc-wb{color:#7aa2ff}
@@ -2592,6 +2604,7 @@ body{padding-top:var(--beta-h)}
             <option value="with">Только с продажами</option>
             <option value="without">Только без продаж</option>
           </select>
+          <span class="orders-cols-wrap"><button type="button" class="orders-csv-btn" onclick="toggleOrdersColsPanel(event)">⚙ Колонки</button><div id="ordersColsPanel" class="orders-cols-panel" style="display:none"></div></span>
           <button type="button" class="orders-csv-btn" onclick="resetOrdersFilters()">Сбросить</button>
           <button type="button" class="orders-csv-btn primary" onclick="exportOrdersCSV()">⬇ Скачать CSV</button>
         </div>
@@ -7162,45 +7175,88 @@ async function loadCardsContent(){
 // Placeholder «—» (до отдельных этапов): Фото(B), Теги(фича), СПП(аналитика), TACoO(заказы), УСН(настройка налога).
 function _ordersColumns(){
   return [
-    {l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return _ordPhotoCell(p.nm); }},
-    {l:'Артикул WB', lft:true, cls:'oc-nm', v:function(p){ return p.nm? '<a class="oc-wb" href="https://www.wildberries.ru/catalog/'+p.nm+'/detail.aspx" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.nm+'</a>' : _ordDash(); }},
-    {l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); var c=(window._cardsMap||{})[p.nm]; var tip=(c&&c.t)?escHtml(c.t):(t||'—'); return '<div class="oc-sa" data-nm="'+(p.nm!=null?p.nm:'')+'" title="'+tip+'">'+(t||'—')+'</div>'; }},
-    {l:'Теги', lft:true, cls:'oc-tags', v:function(p){ return _ordDash(); }},
-    {l:'Остатки всего, шт', v:function(p){ return _ordNum(p.stockTotal); }},
-    {l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},
-    {l:'Оборачиваемость, дней', v:function(p){ return _ordNum(p.turnover); }},
-    {l:'Хватит на, дней', v:function(p){ return _ordNum(p.daysLeft); }},
-    {l:'Продажи − возвраты, шт', v:function(p){ return fmt(p.soldUnits-p.retUnits); }},
-    {l:'Продажи − возвраты, ₽', v:function(p){ return _ordAbsMoney(p.revenue); }},
-    {l:'WB реализовал, ₽', v:function(p){ return _ordAbsMoney(p.ppvz); }},
-    {l:'СПП, %', v:function(p){ return _ordDash(); }},
-    {l:'Выкуп, %', v:function(p){ return _ordPct(p.buyoutPct); }},
-    {l:'Комиссия, ₽', v:function(p){ return _ordAbsMoney(p.commission); }},
-    {l:'Комиссия, %', v:function(p){ return _ordPct(p.commPctRev); }},
-    {l:'Эквайринг, ₽', v:function(p){ return _ordAbsMoney(p.acquiring); }},
-    {l:'Эквайринг, %', v:function(p){ return _ordPct(p.acqPct); }},
-    {l:'Хранение, ₽', v:function(p){ return _ordAbsMoney(p.storage); }},
-    {l:'Хранение, %', v:function(p){ return _ordPct(p.storPct); }},
-    {l:'Логистика, ₽', v:function(p){ return _ordAbsMoney(p.logistics); }},
-    {l:'Логистика, %', v:function(p){ return _ordPct(p.logPct); }},
-    {l:'Реклама, ₽', v:function(p){ return _ordAbsMoney(p.ads); }},
-    {l:'TACoO, %', v:function(p){ return _ordDash(); }},
-    {l:'Расч. TACoS, %', v:function(p){ return _ordPct(p.tacos); }},
-    {l:'Штрафы, ₽', v:function(p){ return _ordAbsMoney(p.penalty); }},
-    {l:'Себестоимость выкупл., ₽', v:function(p){ return p.hasCost? _ordAbsMoney(p.cost) : _ordDash(); }},
-    {l:'Себестоимость, %', v:function(p){ return p.hasCost? _ordPct(p.costPctRev) : _ordDash(); }},
-    {l:'ROI, %', v:function(p){ return p.hasCost? _ordPct(p.roi) : _ordDash(); }},
-    {l:'Маржа, %', v:function(p){ return _ordPct(p.marginPct); }},
-    {l:'Прибыль, ₽', v:function(p){ return _ordProfitCell(p.profit); }},
-    {l:'Комиссия на 1 ед., ₽', v:function(p){ return p.commPU==null? _ordDash() : _ordAbsMoney(p.commPU); }},
-    {l:'Хранение на 1 ед., ₽', v:function(p){ return p.storPU==null? _ordDash() : _ordAbsMoney(p.storPU); }},
-    {l:'Логистика на 1 ед., ₽', v:function(p){ return p.logPU==null? _ordDash() : _ordAbsMoney(p.logPU); }},
-    {l:'Реклама на 1 ед., ₽', v:function(p){ return p.adsPU==null? _ordDash() : _ordAbsMoney(p.adsPU); }},
-    {l:'Себестоимость 1 ед., ₽', v:function(p){ return (p.hasCost&&p.costPU!=null)? _ordAbsMoney(p.costPU) : _ordDash(); }},
-    {l:'УСН + НДС на 1 ед., ₽', v:function(p){ return _ordDash(); }},
-    {l:'Прибыль на 1 ед., ₽', v:function(p){ return p.profitPU==null? _ordDash() : _ordProfitCell(p.profitPU); }}
+    {key:'photo', l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return _ordPhotoCell(p.nm); }},
+    {key:'nmwb', l:'Артикул WB', lft:true, cls:'oc-nm', v:function(p){ return p.nm? '<a class="oc-wb" href="https://www.wildberries.ru/catalog/'+p.nm+'/detail.aspx" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.nm+'</a>' : _ordDash(); }},
+    {key:'sa', l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); var c=(window._cardsMap||{})[p.nm]; var tip=(c&&c.t)?escHtml(c.t):(t||'—'); return '<div class="oc-sa" data-nm="'+(p.nm!=null?p.nm:'')+'" title="'+tip+'">'+(t||'—')+'</div>'; }},
+    {key:'tags', l:'Теги', lft:true, cls:'oc-tags', v:function(p){ return _ordDash(); }},
+    {key:'stockTotal', l:'Остатки всего, шт', v:function(p){ return _ordNum(p.stockTotal); }},
+    {key:'velocity', l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},
+    {key:'turnover', l:'Оборачиваемость, дней', v:function(p){ return _ordNum(p.turnover); }},
+    {key:'daysLeft', l:'Хватит на, дней', v:function(p){ return _ordNum(p.daysLeft); }},
+    {key:'salesUnits', l:'Продажи − возвраты, шт', v:function(p){ return fmt(p.soldUnits-p.retUnits); }},
+    {key:'salesRub', l:'Продажи − возвраты, ₽', v:function(p){ return _ordAbsMoney(p.revenue); }},
+    {key:'ppvz', l:'WB реализовал, ₽', v:function(p){ return _ordAbsMoney(p.ppvz); }},
+    {key:'spp', l:'СПП, %', v:function(p){ return _ordDash(); }},
+    {key:'buyout', l:'Выкуп, %', v:function(p){ return _ordPct(p.buyoutPct); }},
+    {key:'commRub', l:'Комиссия, ₽', v:function(p){ return _ordAbsMoney(p.commission); }},
+    {key:'commPct', l:'Комиссия, %', v:function(p){ return _ordPct(p.commPctRev); }},
+    {key:'acqRub', l:'Эквайринг, ₽', v:function(p){ return _ordAbsMoney(p.acquiring); }},
+    {key:'acqPct', l:'Эквайринг, %', v:function(p){ return _ordPct(p.acqPct); }},
+    {key:'storRub', l:'Хранение, ₽', v:function(p){ return _ordAbsMoney(p.storage); }},
+    {key:'storPct', l:'Хранение, %', v:function(p){ return _ordPct(p.storPct); }},
+    {key:'logRub', l:'Логистика, ₽', v:function(p){ return _ordAbsMoney(p.logistics); }},
+    {key:'logPct', l:'Логистика, %', v:function(p){ return _ordPct(p.logPct); }},
+    {key:'adsRub', l:'Реклама, ₽', v:function(p){ return _ordAbsMoney(p.ads); }},
+    {key:'tacoo', l:'TACoO, %', v:function(p){ return _ordDash(); }},
+    {key:'tacos', l:'Расч. TACoS, %', v:function(p){ return _ordPct(p.tacos); }},
+    {key:'penaltyRub', l:'Штрафы, ₽', v:function(p){ return _ordAbsMoney(p.penalty); }},
+    {key:'costRub', l:'Себестоимость выкупл., ₽', v:function(p){ return p.hasCost? _ordAbsMoney(p.cost) : _ordDash(); }},
+    {key:'costPct', l:'Себестоимость, %', v:function(p){ return p.hasCost? _ordPct(p.costPctRev) : _ordDash(); }},
+    {key:'roi', l:'ROI, %', v:function(p){ return p.hasCost? _ordPct(p.roi) : _ordDash(); }},
+    {key:'marginPct', l:'Маржа, %', v:function(p){ return _ordPct(p.marginPct); }},
+    {key:'profitRub', l:'Прибыль, ₽', v:function(p){ return _ordProfitCell(p.profit); }},
+    {key:'commPU', l:'Комиссия на 1 ед., ₽', v:function(p){ return p.commPU==null? _ordDash() : _ordAbsMoney(p.commPU); }},
+    {key:'storPU', l:'Хранение на 1 ед., ₽', v:function(p){ return p.storPU==null? _ordDash() : _ordAbsMoney(p.storPU); }},
+    {key:'logPU', l:'Логистика на 1 ед., ₽', v:function(p){ return p.logPU==null? _ordDash() : _ordAbsMoney(p.logPU); }},
+    {key:'adsPU', l:'Реклама на 1 ед., ₽', v:function(p){ return p.adsPU==null? _ordDash() : _ordAbsMoney(p.adsPU); }},
+    {key:'costPU', l:'Себестоимость 1 ед., ₽', v:function(p){ return (p.hasCost&&p.costPU!=null)? _ordAbsMoney(p.costPU) : _ordDash(); }},
+    {key:'usnPU', l:'УСН + НДС на 1 ед., ₽', v:function(p){ return _ordDash(); }},
+    {key:'profitPU', l:'Прибыль на 1 ед., ₽', v:function(p){ return p.profitPU==null? _ordDash() : _ordProfitCell(p.profitPU); }}
   ];
 }
+// 🔥 C1: конфиг видимости/порядка колонок — персист ПО АККАУНТУ (foreign-оператор имеет свой вид).
+function _ordersColCfgKey(){ return isViewingForeign() ? ('ws_'+(window._workspace||'')) : ((typeof _activeAccountIdForCache==='function'? _activeAccountIdForCache():null)||'self'); }
+function _ordersReadColCfg(){ try{ var s=JSON.parse(localStorage.getItem('wb_orders_cols_v1')||'{}')||{}; return s[_ordersColCfgKey()]||null; }catch(e){ return null; } }
+function _ordersWriteColCfg(order,hidden){ try{ var s=JSON.parse(localStorage.getItem('wb_orders_cols_v1')||'{}')||{}; s[_ordersColCfgKey()]={order:order,hidden:hidden}; localStorage.setItem('wb_orders_cols_v1',JSON.stringify(s)); }catch(e){} }
+// Полный порядок ключей (сохранённый + новые из каталога в конец) и множество скрытых. Forward-compatible.
+function _ordersColState(){
+  var catalog=_ordersColumns(), cfg=_ordersReadColCfg();
+  var order=[], seen={}, hidden={}, valid={};
+  catalog.forEach(function(c){ valid[c.key]=1; });
+  if(cfg && Array.isArray(cfg.order)){
+    cfg.order.forEach(function(k){ if(valid[k] && !seen[k]){ seen[k]=1; order.push(k); } });
+    (cfg.hidden||[]).forEach(function(k){ if(valid[k]) hidden[k]=1; });
+  }
+  catalog.forEach(function(c){ if(!seen[c.key]){ seen[c.key]=1; order.push(c.key); } });   // новые колонки → в конец, видимыми
+  return {order:order, hidden:hidden};
+}
+// Каталог, отфильтрованный+переупорядоченный по конфигу. Дефолт (нет конфига) = каталог как есть.
+function _ordersVisibleColumns(){
+  var catalog=_ordersColumns(); var byKey={}; catalog.forEach(function(c){ byKey[c.key]=c; });
+  var cfg=_ordersReadColCfg();
+  if(!cfg || !Array.isArray(cfg.order)) return catalog.slice();
+  var st=_ordersColState();
+  var out=st.order.filter(function(k){ return !st.hidden[k]; }).map(function(k){ return byKey[k]; }).filter(Boolean);
+  return out.length? out : catalog.slice();   // страховка: не оставляем 0 колонок
+}
+// ── Панель «Колонки» ──
+function _ordersColLabels(){ var m={}; _ordersColumns().forEach(function(c){ m[c.key]=c.l; }); return m; }
+function renderOrdersColsPanel(){
+  var panel=document.getElementById('ordersColsPanel'); if(!panel) return;
+  var labels=_ordersColLabels(), st=_ordersColState();
+  var rows=st.order.map(function(k,idx){
+    var checked=st.hidden[k]?'':'checked';
+    return '<div class="ocp-row"><label class="ocp-lbl"><input type="checkbox" '+checked+' onchange="onOrdersColToggle(\''+k+'\',this.checked)"> '+escHtml(labels[k]||k)+'</label>'+
+      '<span class="ocp-mv"><button type="button" onclick="onOrdersColMove(\''+k+'\',-1)" '+(idx===0?'disabled':'')+'>↑</button>'+
+      '<button type="button" onclick="onOrdersColMove(\''+k+'\',1)" '+(idx===st.order.length-1?'disabled':'')+'>↓</button></span></div>';
+  }).join('');
+  panel.innerHTML='<div class="ocp-head">Колонки <button type="button" class="ocp-reset" onclick="onOrdersColReset()">Сбросить вид</button></div><div class="ocp-list">'+rows+'</div>';
+}
+function _ordersColsOutside(e){ var panel=document.getElementById('ordersColsPanel'); if(!panel) return; if(!panel.contains(e.target) && !(e.target.closest && e.target.closest('.orders-cols-wrap'))){ panel.style.display='none'; document.removeEventListener('click',_ordersColsOutside); } }
+function toggleOrdersColsPanel(ev){ if(ev) ev.stopPropagation(); var panel=document.getElementById('ordersColsPanel'); if(!panel) return; if(panel.style.display!=='block'){ renderOrdersColsPanel(); panel.style.display='block'; setTimeout(function(){ document.addEventListener('click',_ordersColsOutside); },0); } else { panel.style.display='none'; document.removeEventListener('click',_ordersColsOutside); } }
+function onOrdersColToggle(key,show){ var st=_ordersColState(); if(show) delete st.hidden[key]; else st.hidden[key]=1; var vis=st.order.filter(function(k){ return !st.hidden[k]; }).length; if(vis===0){ delete st.hidden[key]; return; } /* нельзя скрыть все */ _ordersWriteColCfg(st.order,Object.keys(st.hidden)); renderOrdersList(); setTimeout(renderOrdersColsPanel,0); }
+function onOrdersColMove(key,dir){ var st=_ordersColState(); var i=st.order.indexOf(key); if(i<0) return; var j=i+dir; if(j<0||j>=st.order.length) return; var t=st.order[i]; st.order[i]=st.order[j]; st.order[j]=t; _ordersWriteColCfg(st.order,Object.keys(st.hidden)); renderOrdersList(); setTimeout(renderOrdersColsPanel,0); }
+function onOrdersColReset(){ try{ var s=JSON.parse(localStorage.getItem('wb_orders_cols_v1')||'{}')||{}; delete s[_ordersColCfgKey()]; localStorage.setItem('wb_orders_cols_v1',JSON.stringify(s)); }catch(e){} renderOrdersList(); setTimeout(renderOrdersColsPanel,0); }
 
 function renderOrders(){
   var emptyEl=document.getElementById('ordersEmpty'), contentEl=document.getElementById('ordersContent');
@@ -7277,7 +7333,7 @@ function renderOrdersList(){
   if(view.length===0){ listEl.innerHTML='<div class="card" style="text-align:center;padding:24px;color:var(--muted)">Ничего не найдено по фильтрам. <a onclick="resetOrdersFilters()" style="color:var(--purple);cursor:pointer">Сбросить</a></div>'; document.getElementById('ordersMore').innerHTML=''; return; }
 
   // 🔥 Слой1/A: колоночная модель в порядке AutoReport «Пульс» (header+строки+colspan из одного источника)
-  var COLS=_ordersColumns(); window._ORDERS_COLS=COLS;
+  var COLS=_ordersVisibleColumns(); window._ORDERS_COLS=COLS;
   var ths=COLS.map(function(c){ return '<th'+(c.lft?' class="l"':'')+'>'+c.l+'</th>'; }).join('');
   var head='<div class="orders-scroll"><table class="orders-tbl orders-tbl-wide"><thead><tr>'+ths+'<th class="oc-exp-h"></th></tr></thead><tbody id="ordersTbody"></tbody></table></div>';
   listEl.innerHTML=head;
@@ -7295,7 +7351,7 @@ function _ordPctHtml(p){
 
 function _ordersAppendRows(){
   var tb=document.getElementById('ordersTbody'); if(!tb) return;
-  var COLS=window._ORDERS_COLS||_ordersColumns();
+  var COLS=window._ORDERS_COLS||_ordersVisibleColumns();
   var view=_ordersView, end=Math.min(_ordersShown+_ORDERS_PAGE, view.length), html='';
   for(var i=_ordersShown;i<end;i++){
     var p=view[i];
