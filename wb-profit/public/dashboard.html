@@ -1984,6 +1984,7 @@ html[data-theme="dark"] .orders-prow:hover td{background:rgba(167,139,250,.10)}
 .orders-prod{text-align:left;overflow:hidden}
 .op-art{margin-bottom:3px;line-height:1}
 .op-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--text);line-height:1.25}
+.op-brand{display:block;color:var(--muted);font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;line-height:1.2}
 .op-sub{display:block;color:var(--muted);font-size:11px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;line-height:1.2}
 /* маржа — цветной бейдж */
 .orders-mrg{display:inline-block;padding:2px 8px;border-radius:6px;font-weight:700}
@@ -5335,7 +5336,7 @@ function savePeriod(){
 // 🔥 v0.7.12.36: «слим» сырого отчёта для кэша — ТОЛЬКО поля, которые реально читают
 // computeFinancials + toggleDetailOp + aggregateRowsByDay. Полный raw (~50 полей) для 90 дней ~9МБ
 // не влезает в localStorage; слим (26 полей) ≈ в 2-3 раза меньше и помещается. Расчёт идентичен.
-var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','subject_name','quantity','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
+var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','subject_name','brand_name','quantity','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
 function _slimRawForCache(raw){
   if(!Array.isArray(raw)||!raw.length) return null;
   var out=new Array(raw.length);
@@ -7002,12 +7003,13 @@ function buildOrdersData(){
     var key = (r.nm_id!=null && r.nm_id!=='') ? String(r.nm_id) : (r.sa_name? String(r.sa_name) : '');
     if(!key){ orphanPpvz += ppvz; continue; }
     var p = byProd.get(key);
-    if(!p){ p={key:key, nm:(r.nm_id!=null?r.nm_id:null), name:r.sa_name||'', subject:r.subject_name||'',
+    if(!p){ p={key:key, nm:(r.nm_id!=null?r.nm_id:null), name:r.sa_name||'', subject:r.subject_name||'', brand:r.brand_name||'',
               revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0,
               soldUnits:0, retUnits:0, lastDate:'', positions:new Map()};
             byProd.set(key,p); }
     if(!p.name && r.sa_name) p.name=r.sa_name;
     if(!p.subject && r.subject_name) p.subject=r.subject_name;
+    if(!p.brand && r.brand_name) p.brand=r.brand_name;
     if(p.nm==null && r.nm_id!=null) p.nm=r.nm_id;
     var doc=(r.doc_type_name||'').toLowerCase();
     var sign = (doc==='возврат') ? -1 : 1;
@@ -7165,9 +7167,12 @@ function _ordersAppendRows(){
                      (!p.hasCost && !p.onlyReturns ? '<div><span class="orders-nocost orders-nocost-2">без себест.</span></div>' : '');
     var ttl = escHtml(p.name||('Арт. '+(p.nm||'?')));
     var nmBadge = p.nm ? '<span class="art-tag" title="Скопируйте артикул">'+p.nm+'</span>' : '';
-    var sub = (p.subject?escHtml(p.subject)+' · ':'')+fmt(p.netUnits)+' шт'+(p.retUnits>0?(' · возвр. '+fmt(p.retUnits)):'');
+    // 🔥 Слой1/1а: бренд+категория отдельной строкой (.op-brand). brand пуст → только категория (без «· »).
+    var brandCat = [p.brand, p.subject].filter(Boolean).map(escHtml).join(' · ');
+    var sub = fmt(p.netUnits)+' шт'+(p.retUnits>0?(' · возвр. '+fmt(p.retUnits)):'');
     var prod = '<td class="orders-prod"><div class="op-art">'+(nmBadge||'<span class="op-sub">— нет арт.</span>')+'</div>'+
                '<div class="op-title" title="'+ttl+'">'+ttl+'</div>'+
+               (brandCat?'<div class="op-brand" title="'+brandCat+'">'+brandCat+'</div>':'')+
                '<div class="op-sub" title="'+sub+'">'+sub+'</div></td>';
     html+='<tr class="orders-prow'+(i%2?' zebra':'')+'" onclick="toggleOrderRow('+i+')">'+prod+
       '<td>'+_ordMoney(p.revenue)+'</td>'+
