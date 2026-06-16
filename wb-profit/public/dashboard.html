@@ -1961,11 +1961,18 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 /* контейнер: вертикальный скролл (для sticky-шапки на длинных списках) + горизонтальный на мобайле */
 .orders-scroll{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:10px;-webkit-overflow-scrolling:touch}
 .orders-tbl{width:100%;min-width:940px;table-layout:fixed;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
-.orders-tbl col.c-prod{width:26%}
-.orders-tbl col.c-num{width:9%}
-.orders-tbl col.c-margin{width:10%}
-.orders-tbl col.c-mpct{width:8%}
-.orders-tbl col.c-exp{width:36px}
+/* 🔥 Слой1/A: широкая таблица Пульса — авто-ширины колонок + горизонтальный скролл */
+.orders-tbl.orders-tbl-wide{table-layout:auto;min-width:2600px}
+.orders-tbl-wide thead th{white-space:normal;vertical-align:bottom;min-width:64px}
+.orders-tbl-wide thead th.l{min-width:auto}
+.orders-tbl-wide td.ol{text-align:left}
+.orders-tbl-wide th:first-child,.orders-tbl-wide td.oc-photo{width:52px;min-width:52px}
+.oc-ph{width:38px;height:38px;border-radius:6px;background:var(--bg);border:1px solid var(--border)}
+.oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:12px}
+.oc-wb:hover{text-decoration:underline}
+html[data-theme="dark"] .oc-wb{color:#7aa2ff}
+.oc-sa{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.orders-tbl-wide td.oc-exp,.orders-tbl-wide th.oc-exp-h{width:34px;min-width:34px}
 .orders-tbl thead th{position:sticky;top:0;z-index:2;text-align:right;padding:9px 12px;background:#f1f5f9;color:#475569;font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e2e8f0;white-space:nowrap}
 .orders-tbl thead th.l{text-align:left}
 html[data-theme="dark"] .orders-tbl thead th{background:#1a1a2e;color:#94a3b8;border-color:#2a2a44}
@@ -7004,7 +7011,7 @@ function buildOrdersData(){
     if(!key){ orphanPpvz += ppvz; continue; }
     var p = byProd.get(key);
     if(!p){ p={key:key, nm:(r.nm_id!=null?r.nm_id:null), name:r.sa_name||'', subject:r.subject_name||'', brand:r.brand_name||'',
-              revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0,
+              revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, storage:0, ads:0, penalty:0,
               soldUnits:0, retUnits:0, lastDate:'', positions:new Map()};
             byProd.set(key,p); }
     if(!p.name && r.sa_name) p.name=r.sa_name;
@@ -7029,6 +7036,14 @@ function buildOrdersData(){
       if(doc==='продажа') p.soldUnits += q; else p.retUnits += q;
     }
     p.acquiring += Number(r.acquiring_fee||0);
+    // 🔥 Слой1/A: хранение/реклама/штрафы по товару — тот же разбор статей, что в computeFinancials/process
+    p.storage += Number(r.storage_fee||0);
+    var _dedA=Math.abs(Number(r.deduction||0));
+    var _penA=Number(r.penalty||0)+Number(r.acceptance||0);
+    if(typeof isWbFin==='function' && isWbFin(r.bonus_type_name,r.supplier_oper_name)){ /* ВБ-финанс не в товар */ }
+    else if(typeof isAdv==='function' && isAdv(r.bonus_type_name,r.supplier_oper_name)){ p.ads += _dedA; }
+    else { _penA += _dedA; }
+    p.penalty += _penA;
     p.ppvz += ppvz;
     p.logBuyout += bo; p.logReturn += ro;
     if(dt && dt>p.lastDate) p.lastDate=dt;
@@ -7044,7 +7059,9 @@ function buildOrdersData(){
       if(dt && dt>ps.date) ps.date=dt;
     }
   }
-  // финализация: себестоимость и честная маржа
+  // финализация: склад + скорость/оборачиваемость + полный P&L по товару + проценты + на 1 ед.
+  var periodDays=(window._rowsPeriodDays)||((typeof _currentPeriod!=='undefined'&&_currentPeriod&&_currentPeriod.days)||30);
+  var stocks=window._stocksMap||{};
   var list=[], sumPpvz=0;
   byProd.forEach(function(p){
     var netUnits = Math.max(p.soldUnits - p.retUnits, 0);
@@ -7053,8 +7070,39 @@ function buildOrdersData(){
     p.netUnits = netUnits;
     p.logistics = p.logBuyout + p.logReturn;
     p.cost = p.hasCost ? costPer*netUnits : 0;
-    p.margin = p.ppvz - p.logistics - p.cost;   // если !hasCost — это маржа БЕЗ себестоимости (помечаем)
+    // склад (из _stocksMap по nm)
+    var st=(p.nm!=null && stocks[p.nm])?stocks[p.nm]:null;
+    p.stockTotal = st? Number(st.total||0):null;
+    p.stockAvail = st? Number(st.avail||0):null;
+    // скорость заказов / оборачиваемость / хватит на N
+    p.velocity = periodDays>0 ? netUnits/periodDays : 0;
+    p.turnover = (p.velocity>0 && p.stockTotal!=null) ? p.stockTotal/p.velocity : null;
+    p.daysLeft = (p.velocity>0 && p.stockAvail!=null) ? p.stockAvail/p.velocity : null;
+    // выкуп %
+    var grossU=p.soldUnits+p.retUnits;
+    p.buyoutPct = grossU>0 ? p.soldUnits/grossU*100 : null;
+    // полный P&L по товару (налог УСН/НДС пока не включён — placeholder). Реклама из отчёта (как в Калькуляторе).
+    p.profit = p.ppvz - p.logistics - p.storage - p.ads - p.penalty - p.cost;
+    p.margin = p.profit;          // alias: фильтр прибыль/убыток и сортировка работают по полному P&L
     p.onlyReturns = (p.soldUnits===0);
+    // проценты от выручки (продажи−возвраты ₽)
+    var rev=p.revenue;
+    p.commPctRev = rev>0 ? Math.abs(p.commission)/rev*100 : null;
+    p.acqPct     = rev>0 ? Math.abs(p.acquiring)/rev*100 : null;
+    p.storPct    = rev>0 ? Math.abs(p.storage)/rev*100 : null;
+    p.logPct     = rev>0 ? Math.abs(p.logistics)/rev*100 : null;
+    p.costPctRev = rev>0 ? p.cost/rev*100 : null;
+    p.marginPct  = rev>0 ? p.profit/rev*100 : null;
+    p.tacos      = rev>0 ? p.ads/rev*100 : null;
+    p.roi        = p.cost>0 ? p.profit/p.cost*100 : null;
+    // на 1 ед. (по выкупленным netUnits)
+    var u=netUnits>0?netUnits:0;
+    p.commPU   = u>0 ? Math.abs(p.commission)/u : null;
+    p.storPU   = u>0 ? p.storage/u : null;
+    p.logPU    = u>0 ? p.logistics/u : null;
+    p.adsPU    = u>0 ? p.ads/u : null;
+    p.costPU   = u>0 ? p.cost/u : null;
+    p.profitPU = u>0 ? p.profit/u : null;
     sumPpvz += p.ppvz;
     list.push(p);
   });
@@ -7062,6 +7110,55 @@ function buildOrdersData(){
 }
 
 function _ordMoney(x){ var n=Math.round(Number(x)||0); return (n<0?'−':'')+fmt(Math.abs(n))+' ₽'; }
+// 🔥 Слой1/A: форматтеры ячеек Пульса
+function _ordNum(x){ return (x==null||isNaN(x))?'—':fmt(Math.round(x)); }
+function _ordPct(x){ if(x==null||isNaN(x))return '—'; return (x<0?'−':'')+Math.abs(x).toFixed(1).replace('.',',')+'%'; }
+function _ordAbsMoney(x){ return fmt(Math.round(Math.abs(Number(x)||0)))+' ₽'; }
+function _ordProfitCell(x){ var n=Math.round(Number(x)||0); return '<span class="'+(n>=0?'green':'red')+'">'+(n<0?'−':'')+fmt(Math.abs(n))+' ₽</span>'; }
+function _ordDash(){ return '<span class="orders-units">—</span>'; }
+// Колонки в порядке AutoReport «Пульс». lft:true → левое выравнивание. v(p) → HTML ячейки.
+// Placeholder «—» (до отдельных этапов): Фото(B), Теги(фича), СПП(аналитика), TACoO(заказы), УСН(настройка налога).
+function _ordersColumns(){
+  return [
+    {l:'Фото', lft:true, cls:'oc-photo', v:function(p){ return '<div class="oc-ph"></div>'; }},
+    {l:'Артикул WB', lft:true, cls:'oc-nm', v:function(p){ return p.nm? '<a class="oc-wb" href="https://www.wildberries.ru/catalog/'+p.nm+'/detail.aspx" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.nm+'</a>' : _ordDash(); }},
+    {l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); return '<div class="oc-sa" title="'+(t||'—')+'">'+(t||'—')+'</div>'; }},
+    {l:'Теги', lft:true, cls:'oc-tags', v:function(p){ return _ordDash(); }},
+    {l:'Остатки всего, шт', v:function(p){ return _ordNum(p.stockTotal); }},
+    {l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},
+    {l:'Оборачиваемость, дней', v:function(p){ return _ordNum(p.turnover); }},
+    {l:'Хватит на, дней', v:function(p){ return _ordNum(p.daysLeft); }},
+    {l:'Продажи − возвраты, шт', v:function(p){ return fmt(p.soldUnits-p.retUnits); }},
+    {l:'Продажи − возвраты, ₽', v:function(p){ return _ordAbsMoney(p.revenue); }},
+    {l:'WB реализовал, ₽', v:function(p){ return _ordAbsMoney(p.ppvz); }},
+    {l:'СПП, %', v:function(p){ return _ordDash(); }},
+    {l:'Выкуп, %', v:function(p){ return _ordPct(p.buyoutPct); }},
+    {l:'Комиссия, ₽', v:function(p){ return _ordAbsMoney(p.commission); }},
+    {l:'Комиссия, %', v:function(p){ return _ordPct(p.commPctRev); }},
+    {l:'Эквайринг, ₽', v:function(p){ return _ordAbsMoney(p.acquiring); }},
+    {l:'Эквайринг, %', v:function(p){ return _ordPct(p.acqPct); }},
+    {l:'Хранение, ₽', v:function(p){ return _ordAbsMoney(p.storage); }},
+    {l:'Хранение, %', v:function(p){ return _ordPct(p.storPct); }},
+    {l:'Логистика, ₽', v:function(p){ return _ordAbsMoney(p.logistics); }},
+    {l:'Логистика, %', v:function(p){ return _ordPct(p.logPct); }},
+    {l:'Реклама, ₽', v:function(p){ return _ordAbsMoney(p.ads); }},
+    {l:'TACoO, %', v:function(p){ return _ordDash(); }},
+    {l:'Расч. TACoS, %', v:function(p){ return _ordPct(p.tacos); }},
+    {l:'Штрафы, ₽', v:function(p){ return _ordAbsMoney(p.penalty); }},
+    {l:'Себестоимость выкупл., ₽', v:function(p){ return p.hasCost? _ordAbsMoney(p.cost) : _ordDash(); }},
+    {l:'Себестоимость, %', v:function(p){ return p.hasCost? _ordPct(p.costPctRev) : _ordDash(); }},
+    {l:'ROI, %', v:function(p){ return p.hasCost? _ordPct(p.roi) : _ordDash(); }},
+    {l:'Маржа, %', v:function(p){ return _ordPct(p.marginPct); }},
+    {l:'Прибыль, ₽', v:function(p){ return _ordProfitCell(p.profit); }},
+    {l:'Комиссия на 1 ед., ₽', v:function(p){ return p.commPU==null? _ordDash() : _ordAbsMoney(p.commPU); }},
+    {l:'Хранение на 1 ед., ₽', v:function(p){ return p.storPU==null? _ordDash() : _ordAbsMoney(p.storPU); }},
+    {l:'Логистика на 1 ед., ₽', v:function(p){ return p.logPU==null? _ordDash() : _ordAbsMoney(p.logPU); }},
+    {l:'Реклама на 1 ед., ₽', v:function(p){ return p.adsPU==null? _ordDash() : _ordAbsMoney(p.adsPU); }},
+    {l:'Себестоимость 1 ед., ₽', v:function(p){ return (p.hasCost&&p.costPU!=null)? _ordAbsMoney(p.costPU) : _ordDash(); }},
+    {l:'УСН + НДС на 1 ед., ₽', v:function(p){ return _ordDash(); }},
+    {l:'Прибыль на 1 ед., ₽', v:function(p){ return p.profitPU==null? _ordDash() : _ordProfitCell(p.profitPU); }}
+  ];
+}
 
 function renderOrders(){
   var emptyEl=document.getElementById('ordersEmpty'), contentEl=document.getElementById('ordersContent');
@@ -7078,9 +7175,9 @@ function renderOrders(){
 
   // Пояснение (честность)
   var noteEl=document.getElementById('ordersNote');
-  if(noteEl) noteEl.innerHTML='💡 <b>Чистая маржа по товару</b> = выплата WB − логистика − себестоимость. '+
-    'Выплата WB уже за вычетом комиссии и эквайринга. <b>Хранение, реклама и штрафы НЕ включены</b> — '+
-    'это общие расходы на весь объём (см. «Детализация расходов»). Раскройте строку ▶, чтобы увидеть отдельные продажи.';
+  if(noteEl) noteEl.innerHTML='💡 <b>Прибыль по товару</b> = выплата WB − логистика − хранение − реклама − штрафы − себестоимость. '+
+    'Выплата WB уже за вычетом комиссии и эквайринга. <b>Налог (УСН/НДС) пока не включён</b> — появится после настройки ставки. '+
+    'Реклама — из финотчёта WB (детальная разбивка по кампаниям — в разделе «Реклама»). Раскройте строку ▶, чтобы увидеть отдельные продажи.';
 
   // Сверка с дашбордом: Σ выплат по товарам + без-артикульные = общий ppvz из computeFinancials
   var prevWrap=document.getElementById('_ordReconWrap'); if(prevWrap) prevWrap.remove();
@@ -7136,11 +7233,10 @@ function renderOrdersList(){
   if(!listEl) return;
   if(view.length===0){ listEl.innerHTML='<div class="card" style="text-align:center;padding:24px;color:var(--muted)">Ничего не найдено по фильтрам. <a onclick="resetOrdersFilters()" style="color:var(--purple);cursor:pointer">Сбросить</a></div>'; document.getElementById('ordersMore').innerHTML=''; return; }
 
-  var head='<div class="orders-scroll"><table class="orders-tbl">'+
-    '<colgroup><col class="c-prod"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-num"><col class="c-margin"><col class="c-mpct"><col class="c-exp"></colgroup>'+
-    '<thead><tr>'+
-    '<th class="l">Товар</th><th>Выручка</th><th>Комиссия</th><th>Эквайринг</th><th>Логистика</th><th>Выплата&nbsp;WB</th><th>Себест.</th><th>Маржа&nbsp;₽</th><th>Маржа&nbsp;%</th><th></th>'+
-    '</tr></thead><tbody id="ordersTbody"></tbody></table></div>';
+  // 🔥 Слой1/A: колоночная модель в порядке AutoReport «Пульс» (header+строки+colspan из одного источника)
+  var COLS=_ordersColumns(); window._ORDERS_COLS=COLS;
+  var ths=COLS.map(function(c){ return '<th'+(c.lft?' class="l"':'')+'>'+c.l+'</th>'; }).join('');
+  var head='<div class="orders-scroll"><table class="orders-tbl orders-tbl-wide"><thead><tr>'+ths+'<th class="oc-exp-h"></th></tr></thead><tbody id="ordersTbody"></tbody></table></div>';
   listEl.innerHTML=head;
   _ordersShown=0;          // ← смена фильтра/сортировки/поиска перерисовывает с начала
   _ordersAppendRows();
@@ -7156,35 +7252,15 @@ function _ordPctHtml(p){
 
 function _ordersAppendRows(){
   var tb=document.getElementById('ordersTbody'); if(!tb) return;
+  var COLS=window._ORDERS_COLS||_ordersColumns();
   var view=_ordersView, end=Math.min(_ordersShown+_ORDERS_PAGE, view.length), html='';
   for(var i=_ordersShown;i<end;i++){
     var p=view[i];
-    var marginCls=p.margin>=0?'pos':'neg';
-    var hasCostNum = p.hasCost && !p.onlyReturns;
-    var costCell = p.onlyReturns ? '<span class="orders-nocost">возврат без продажи</span>'
-                  : (p.hasCost ? _ordMoney(p.cost) : '<span class="orders-nocost">не указана</span>');
-    var marginCell = '<span class="orders-mrg '+marginCls+'">'+_ordMoney(p.margin)+'</span>'+
-                     (!p.hasCost && !p.onlyReturns ? '<div><span class="orders-nocost orders-nocost-2">без себест.</span></div>' : '');
-    var ttl = escHtml(p.name||('Арт. '+(p.nm||'?')));
-    var nmBadge = p.nm ? '<span class="art-tag" title="Скопируйте артикул">'+p.nm+'</span>' : '';
-    // 🔥 Слой1/1а: бренд+категория отдельной строкой (.op-brand). brand пуст → только категория (без «· »).
-    var brandCat = [p.brand, p.subject].filter(Boolean).map(escHtml).join(' · ');
-    var sub = fmt(p.netUnits)+' шт'+(p.retUnits>0?(' · возвр. '+fmt(p.retUnits)):'');
-    var prod = '<td class="orders-prod"><div class="op-art">'+(nmBadge||'<span class="op-sub">— нет арт.</span>')+'</div>'+
-               '<div class="op-title" title="'+ttl+'">'+ttl+'</div>'+
-               (brandCat?'<div class="op-brand" title="'+brandCat+'">'+brandCat+'</div>':'')+
-               '<div class="op-sub" title="'+sub+'">'+sub+'</div></td>';
-    html+='<tr class="orders-prow'+(i%2?' zebra':'')+'" onclick="toggleOrderRow('+i+')">'+prod+
-      '<td>'+_ordMoney(p.revenue)+'</td>'+
-      '<td class="o-exp">'+_ordMoney(-Math.abs(p.commission))+'</td>'+
-      '<td class="o-exp">'+_ordMoney(-Math.abs(p.acquiring))+'</td>'+
-      '<td class="o-exp">'+_ordMoney(-Math.abs(p.logistics))+'</td>'+
-      '<td>'+_ordMoney(p.ppvz)+'</td>'+
-      '<td'+(hasCostNum?' class="o-exp"':'')+'>'+costCell+'</td>'+
-      '<td>'+marginCell+'</td>'+
-      '<td>'+_ordPctHtml(p)+'</td>'+
-      '<td><span class="detail-expand orders-arrow" id="ord-exp-'+i+'">▶</span></td></tr>'+
-      '<tr id="ord-pos-'+i+'" class="orders-posrow" style="display:none"><td colspan="10" class="orders-pos-cell"></td></tr>';
+    var tds='';
+    for(var c=0;c<COLS.length;c++){ var col=COLS[c]; var cls=(col.lft?'ol':'')+(col.cls?(col.lft?' ':'')+col.cls:''); tds+='<td'+(cls?' class="'+cls+'"':'')+'>'+col.v(p)+'</td>'; }
+    html+='<tr class="orders-prow'+(i%2?' zebra':'')+'" onclick="toggleOrderRow('+i+')">'+tds+
+      '<td class="oc-exp"><span class="detail-expand orders-arrow" id="ord-exp-'+i+'">▶</span></td></tr>'+
+      '<tr id="ord-pos-'+i+'" class="orders-posrow" style="display:none"><td colspan="'+(COLS.length+1)+'" class="orders-pos-cell"></td></tr>';
   }
   tb.insertAdjacentHTML('beforeend', html);
   _ordersShown=end;
