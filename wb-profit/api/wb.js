@@ -2,6 +2,7 @@
 // WB лимит: 1 запрос/мин на токен. Мы держим этот лимит сами и кэшируем прошлые дни.
 
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 import { extractJwt, checkPeriodLimit, sendIfPlanError } from '../lib/plan-check.js';
 import { resolveWorkspace } from '../lib/team.js';
 import { resolveWbAccountId } from '../lib/wb-account.js';
@@ -12,6 +13,13 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const HAS_DB = Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY);
 // 🔥 v0.7.12.70: серверный рубильник аналитики (воронка/карточки) — env WB_ANALYTICS_OFF=1 снимает нагрузку при перегрузке Nano (без отката релиза).
 const ANALYTICS_OFF = process.env.WB_ANALYTICS_OFF === '1';
+// 🔥 v0.7.12.71: вынос кэша из Postgres в Redis (Upstash). CACHE_BACKEND: redis|supabase|off.
+// Дефолт supabase — деплой безопасен ДО настройки Upstash; Виталий ставит env + CACHE_BACKEND=redis → переключение.
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const HAS_REDIS = Boolean(REDIS_URL && REDIS_TOKEN);
+const CACHE_BACKEND = (process.env.CACHE_BACKEND === 'redis' && HAS_REDIS) ? 'redis'
+  : (process.env.CACHE_BACKEND === 'off' ? 'off' : 'supabase');
 
 // 🔥 v0.7.9.9: снижено с 65 до 15 сек. Это нужно для chunked-загрузки больших периодов
 // (v0.7.9.8 разрезает >30 дней на куски). Реально WB API допускает burst-режим —
@@ -34,6 +42,21 @@ function fetchWithTimeout(url, opts, ms) {
 function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 }
+// 🔥 v0.7.12.71: Upstash Redis REST (command-array). best-effort: транспортная ошибка → {ok:false} (деградируем, не виснем).
+async function redisCmd(args, ms) {
+  try {
+    const r = await fetchWithTimeout(REDIS_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    }, ms || 3000);
+    if (!r.ok) return { ok: false };
+    const d = await r.json();
+    return { ok: true, result: (d && 'result' in d) ? d.result : null };
+  } catch (e) { return { ok: false }; }
+}
+function gzB64(obj) { return zlib.gzipSync(Buffer.from(JSON.stringify(obj))).toString('base64'); }
+function ungzB64(b64) { try { return JSON.parse(zlib.gunzipSync(Buffer.from(b64, 'base64')).toString()); } catch (e) { return null; } }
 
 function isPastDay(dateIso) {
   // Москва = UTC+3. День считается прошедшим, если он раньше сегодня по MSK.
@@ -69,6 +92,12 @@ async function sbUpsert(table, body) {
 
 // === Cache ===
 async function getCache(cacheKey) {
+  if (CACHE_BACKEND === 'off') return null;
+  if (CACHE_BACKEND === 'redis') {
+    const c = await redisCmd(['GET', `wbc:${cacheKey}`]);
+    if (!c.ok || c.result == null) return null;   // Redis недоступен ИЛи промах → cache miss (берём из WB)
+    return ungzB64(c.result);                       // { status, payload } | null (битые данные)
+  }
   if (!HAS_DB) return null;
   const rows = await sbSelect('wb_cache', `cache_key=eq.${encodeURIComponent(cacheKey)}&select=payload,status,expires_at`);
   if (!rows || !rows.length) return null;
@@ -78,6 +107,12 @@ async function getCache(cacheKey) {
 }
 
 async function setCache(cacheKey, status, payload, ttlSeconds) {
+  if (CACHE_BACKEND === 'off') return;
+  if (CACHE_BACKEND === 'redis') {
+    // gzip+base64 — отчёт 1-3МБ ужимается ~5-10× (под лимит запроса Upstash). Ошибка SET → no-op (best-effort).
+    await redisCmd(['SET', `wbc:${cacheKey}`, gzB64({ status, payload }), 'EX', String(ttlSeconds)]);
+    return;
+  }
   if (!HAS_DB) return;
   const expires = new Date(Date.now() + ttlSeconds * 1000).toISOString();
   await sbUpsert('wb_cache', {
@@ -92,6 +127,15 @@ async function setCache(cacheKey, status, payload, ttlSeconds) {
 // === Rate limit (per token) ===
 async function checkRateLimit(tokenHash) {
   // Возвращает { allowed: bool, retryAfterSec: number }
+  if (CACHE_BACKEND === 'off') return { allowed: true, retryAfterSec: 0 };
+  if (CACHE_BACKEND === 'redis') {
+    // Атомарно: SET ключ только если его НЕТ (NX), TTL = MIN_INTERVAL. OK → разрешено (и сразу помечено); null → недавно был запрос.
+    const ttl = Math.ceil(MIN_INTERVAL_MS / 1000);
+    const c = await redisCmd(['SET', `wbrl:${tokenHash}`, '1', 'EX', String(ttl), 'NX']);
+    if (!c.ok) return { allowed: true, retryAfterSec: 0 };        // Redis недоступен → РАЗРЕШАЕМ (деградируем, не блокируем)
+    if (c.result === null) return { allowed: false, retryAfterSec: ttl };  // ключ уже есть → лимит
+    return { allowed: true, retryAfterSec: 0 };                   // SET прошёл (OK) → разрешено + помечено
+  }
   if (!HAS_DB) return { allowed: true, retryAfterSec: 0 };
   const rows = await sbSelect('wb_rate_limit', `token_hash=eq.${tokenHash}&select=last_request_at`);
   if (!rows || !rows.length) return { allowed: true, retryAfterSec: 0 };
@@ -102,6 +146,7 @@ async function checkRateLimit(tokenHash) {
 }
 
 async function markRequest(tokenHash) {
+  if (CACHE_BACKEND === 'redis' || CACHE_BACKEND === 'off') return;  // redis: помечено атомарно в checkRateLimit (SET NX)
   if (!HAS_DB) return;
   await sbUpsert('wb_rate_limit', {
     token_hash: tokenHash,
