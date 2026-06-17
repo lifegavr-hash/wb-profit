@@ -3959,12 +3959,21 @@ function updateTrialExpiredBanners(){
     expiredBanner.style.display='none';
     return;
   }
+  // 🔥 v0.7.12.74: billing_period из профиля (currentProfile — сырой ряд БД, источник истины) с фолбэком на ext.
+  var bp = (currentProfile && currentProfile.billing_period) || ext.billing_period || 'monthly';
   if(ext.is_expired){
     trialBanner.style.display='none';
     expiredBanner.style.display='flex';
+  } else if(bp === 'promo'){
+    // Промо-план: «{PLAN} · до ДД.ММ» (без trial/бесплатно). План — effective_plan_id, дата — plan_expires_at.
+    var pPlan = (ext.effective_plan_id || (currentProfile && currentProfile.plan) || '').toUpperCase();
+    var pExp = (currentProfile && currentProfile.plan_expires_at) ? new Date(currentProfile.plan_expires_at) : null;
+    var pDate = pExp ? (('0'+pExp.getDate()).slice(-2)+'.'+('0'+(pExp.getMonth()+1)).slice(-2)) : '';
+    trialBanner.innerHTML = '<div class="trial-banner-icon">🎁</div><div class="trial-banner-text"><b>'+pPlan+'</b>'+(pDate?(' · до '+pDate):'')+'</div>';
+    trialBanner.style.display='flex';
+    expiredBanner.style.display='none';
   } else if(ext.is_trial){
-    var daysEl = document.getElementById('trialDaysLeft');
-    if(daysEl) daysEl.textContent = ext.trial_days_left || 0;
+    trialBanner.innerHTML = '<div class="trial-banner-icon">🎁</div><div class="trial-banner-text"><b>Trial PRO активен:</b> осталось '+(ext.trial_days_left || 0)+' дн. На период беты — бесплатно для всех приглашённых.</div>';
     trialBanner.style.display='flex';
     expiredBanner.style.display='none';
   } else {

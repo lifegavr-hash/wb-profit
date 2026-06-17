@@ -80,7 +80,10 @@ export default async function handler(req, res) {
 
   await supabase.from('promo_uses').insert({ promo_id: promo.id, user_id: userId });
   await supabase.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id);
-  await supabase.from('profiles').update({ plan: promo.plan, plan_expires_at: expires.toISOString() }).eq('id', userId);
+  // 🔥 v0.7.12.74: промокод задаёт plan/days + ЯВНО billing_period='promo' и сбрасывает trial_until
+  // (иначе оставались дефолты регистрации trial/+14, и фронт показывал «Trial PRO»). service_role-клиент
+  // (см. createClient выше) проходит триггер protect_profile_admin_fields, поэтому запись plan/expires/billing/trial разрешена.
+  await supabase.from('profiles').update({ plan: promo.plan, plan_expires_at: expires.toISOString(), billing_period: 'promo', trial_until: null }).eq('id', userId);
 
   await audit({
     event_type: 'promo_activated',
