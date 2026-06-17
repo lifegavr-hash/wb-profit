@@ -6082,15 +6082,17 @@ function buildStocksMap(stocks){
   for(var i=0;i<stocks.length;i++){
     var s=stocks[i];
     var nm=s.nmId;if(!nm)continue;
-    if(!m[nm])m[nm]={avail:0,total:0,inWay:0};
+    if(!m[nm])m[nm]={avail:0,total:0,inWay:0,inWayFrom:0};
     var qFull=Number(s.quantityFull||0);
     var qAvail=Number(s.quantity||0);
     // fallback: если quantityFull = 0 а quantity > 0, берём quantity
     if(qFull===0&&qAvail>0)qFull=qAvail;
     var inTo=Number(s.inWayToClient||0);
+    var inFrom=Number(s.inWayFromClient||0);   // 🔥 v0.7.12.79: в пути ОТ клиента (возвраты в пути)
     m[nm].avail+=qAvail;
     m[nm].total+=qFull;
     m[nm].inWay+=inTo;
+    m[nm].inWayFrom+=inFrom;
   }
   return m;
 }
@@ -7166,9 +7168,11 @@ function buildOrdersData(){
     var st=(p.nm!=null && stocks[p.nm])?stocks[p.nm]:null;
     p.stockTotal = st? Number(st.total||0):null;
     p.stockAvail = st? Number(st.avail||0):null;
+    p.stockInTo = st? Number(st.inWay||0):null;        // 🔥 v0.7.12.79: в пути к клиенту (inWayToClient)
+    p.stockInFrom = st? Number(st.inWayFrom||0):null;  // 🔥 v0.7.12.79: в пути от клиента (возвраты)
     // скорость заказов / оборачиваемость / хватит на N
     p.velocity = periodDays>0 ? netUnits/periodDays : 0;
-    p.turnover = (p.velocity>0 && p.stockTotal!=null) ? p.stockTotal/p.velocity : null;
+    p.turnover = (p.velocity>0 && p.stockAvail!=null) ? p.stockAvail/p.velocity : null;   // 🔥 v0.7.12.79: по остатку на складах
     p.daysLeft = (p.velocity>0 && p.stockAvail!=null) ? p.stockAvail/p.velocity : null;
     // выкуп %
     var grossU=p.soldUnits+p.retUnits;
@@ -7340,7 +7344,7 @@ function renderProductCard(){
   var title = escHtml(card.t || p.name || ('Арт. '+nm));
   var line2 = escHtml([p.brand, p.subject].filter(Boolean).join(' · '));
   var line3 = 'Артикул WB: <a class="oc-wb" href="https://www.wildberries.ru/catalog/'+nm+'/detail.aspx" target="_blank" rel="noopener">'+nm+'</a>'+(p.name?(' · Артикул продавца: '+escHtml(p.name)):'');
-  var line4 = st ? ('Остаток: <b>'+fmt((st.total!=null?st.total:0))+' шт</b>') : '';
+  var line4 = st ? ('Остаток: <b>'+fmt((st.avail!=null?st.avail:0))+' шт</b>') : '';   // 🔥 v0.7.12.79: на складах
   document.getElementById('pcHead').innerHTML = photo+'<div class="pc-meta"><div class="pc-title">'+title+'</div>'+
     (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>';
   document.getElementById('pcBody').innerHTML =
@@ -7374,7 +7378,9 @@ function _ordersColumns(){
     {key:'nmwb', l:'Артикул WB', lft:true, cls:'oc-nm', v:function(p){ return p.nm? '<a class="oc-wb" href="https://www.wildberries.ru/catalog/'+p.nm+'/detail.aspx" target="_blank" rel="noopener" onclick="event.stopPropagation()">'+p.nm+'</a>' : _ordDash(); }},
     {key:'sa', l:'Артикул', lft:true, cls:'oc-sa', v:function(p){ var t=escHtml(p.name||''); var c=(window._cardsMap||{})[p.nm]; var tip=(c&&c.t)?escHtml(c.t):(t||'—'); var clk=p.nm!=null?(' onclick="event.stopPropagation();openProductCard('+p.nm+')" style="cursor:pointer"'):''; return '<div class="oc-sa pc-open" data-nm="'+(p.nm!=null?p.nm:'')+'" title="'+tip+'"'+clk+'>'+(t||'—')+'</div>'; }},
     {key:'tags', l:'Теги', lft:true, cls:'oc-tags', v:function(p){ return _ordDash(); }},
-    {key:'stockTotal', l:'Остатки всего, шт', v:function(p){ return _ordNum(p.stockTotal); }},
+    {key:'stockTotal', l:'Остатки, шт', v:function(p){ return _ordNum(p.stockAvail); }},   // 🔥 v0.7.12.79: на складах (quantity) = WB «Товары на складах»
+    {key:'stockInTo', l:'В пути к клиенту, шт', v:function(p){ return _ordNum(p.stockInTo); }},
+    {key:'stockInFrom', l:'В пути от клиента, шт', v:function(p){ return _ordNum(p.stockInFrom); }},
     {key:'velocity', l:'Скорость, шт/день', v:function(p){ return _ordNum(p.velocity); }},
     {key:'turnover', l:'Оборачиваемость, дней', v:function(p){ return _ordNum(p.turnover); }},
     {key:'daysLeft', l:'Хватит на, дней', v:function(p){ return _ordNum(p.daysLeft); }},
@@ -7478,7 +7484,9 @@ function _ordersColFilterMeta(){
   return {
     nmwb:{t:'text', f:function(p){ return p.nm==null?'':String(p.nm); }},
     sa:{t:'text', f:function(p){ return p.name||''; }},
-    stockTotal:{t:'num', f:function(p){ return p.stockTotal; }},
+    stockTotal:{t:'num', f:function(p){ return p.stockAvail; }},
+    stockInTo:{t:'num', f:function(p){ return p.stockInTo; }},
+    stockInFrom:{t:'num', f:function(p){ return p.stockInFrom; }},
     velocity:{t:'num', f:function(p){ return p.velocity; }},
     turnover:{t:'num', f:function(p){ return p.turnover; }},
     daysLeft:{t:'num', f:function(p){ return p.daysLeft; }},
