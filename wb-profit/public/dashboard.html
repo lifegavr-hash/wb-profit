@@ -5599,7 +5599,7 @@ async function tryRestoreDataFromCache(){
       var adjHtml='';
       if(Math.abs(t.wbAdjust||0)>=50){
         var adjPos=t.wbAdjust>0;
-        var adjTitle=adjPos?'Доплаты WB':'Удержано WB';
+        var adjTitle=adjPos?'Компенсация СПП + доплаты WB':'Удержано WB';
         adjHtml='<div class="m m-info" onclick="showAdjustInfo('+(adjPos?'true':'false')+','+Math.abs(t.wbAdjust)+')">'+
                 '<div class="ml">'+adjTitle+'</div>'+
                 '<div class="mv '+(adjPos?'green':'red')+'">'+(adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div>'+
@@ -6724,7 +6724,7 @@ async function process(raw){
   var adjHtml='';
   if(Math.abs(t.wbAdjust)>=50){
     var adjPos=t.wbAdjust>0;
-    var adjTitle=adjPos?'Доплаты WB':'Удержано WB';
+    var adjTitle=adjPos?'Компенсация СПП + доплаты WB':'Удержано WB';
     adjHtml='<div class="m m-info" onclick="showAdjustInfo('+(adjPos?'true':'false')+','+Math.abs(t.wbAdjust)+')">'+
             '<div class="ml">'+adjTitle+'</div>'+
             '<div class="mv '+(adjPos?'green':'red')+'">'+(adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽</div>'+
@@ -7099,7 +7099,7 @@ function buildOrdersData(){
     if(!key){ orphanPpvz += ppvz; continue; }
     var p = byProd.get(key);
     if(!p){ p={key:key, nm:(r.nm_id!=null?r.nm_id:null), name:r.sa_name||'', subject:r.subject_name||'', brand:r.brand_name||'',
-              revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, storage:0, ads:0, penalty:0,
+              revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, storage:0, ads:0, penalty:0, wbFinance:0,
               soldUnits:0, retUnits:0, lastDate:'', positions:new Map()};
             byProd.set(key,p); }
     if(!p.name && r.sa_name) p.name=r.sa_name;
@@ -7128,7 +7128,7 @@ function buildOrdersData(){
     p.storage += Number(r.storage_fee||0);
     var _dedA=Math.abs(Number(r.deduction||0));
     var _penA=Number(r.penalty||0)+Number(r.acceptance||0);
-    if(typeof isWbFin==='function' && isWbFin(r.bonus_type_name,r.supplier_oper_name)){ /* ВБ-финанс не в товар */ }
+    if(typeof isWbFin==='function' && isWbFin(r.bonus_type_name,r.supplier_oper_name)){ p.wbFinance += _dedA; }  // 🔥 v0.7.12.76 (A): ВБ-финанс по товару, как в Калькуляторе (6526-6528)
     else if(typeof isAdv==='function' && isAdv(r.bonus_type_name,r.supplier_oper_name)){ p.ads += _dedA; }
     else { _penA += _dedA; }
     p.penalty += _penA;
@@ -7170,7 +7170,7 @@ function buildOrdersData(){
     var grossU=p.soldUnits+p.retUnits;
     p.buyoutPct = grossU>0 ? p.soldUnits/grossU*100 : null;
     // полный P&L по товару (налог УСН/НДС пока не включён — placeholder). Реклама из отчёта (как в Калькуляторе).
-    p.profit = p.ppvz - p.logistics - p.storage - p.ads - p.penalty - p.cost;
+    p.profit = p.ppvz - p.logistics - p.storage - p.ads - p.penalty - p.wbFinance - p.cost;   // 🔥 v0.7.12.76 (A): − ВБ-финанс (формула идентична Калькулятору computeFinancials)
     p.margin = p.profit;          // alias: фильтр прибыль/убыток и сортировка работают по полному P&L
     p.onlyReturns = (p.soldUnits===0);
     // проценты от выручки (продажи−возвраты ₽)
@@ -9109,7 +9109,7 @@ function recalcTotals(){
   // Корректировка может быть и плюсом и минусом — подбираем нужный лейбл
   if(Math.abs(t.wbAdjust)>=50){
     var adjPos=t.wbAdjust>0;
-    setCard(adjPos?'Доплаты WB':'Удержано WB',
+    setCard(adjPos?'Компенсация СПП + доплаты WB':'Удержано WB',
             (adjPos?'+':'−')+fmt(Math.abs(t.wbAdjust))+' ₽',
             'mv '+(adjPos?'green':'red'));
   }
@@ -10606,10 +10606,10 @@ async function submitFeedback(){
 
 // Готовые описания плиток — единое место для текстов
 function showAdjustInfo(isPos, amount){
-  var title=isPos?'Доплаты WB':'Удержано WB';
+  var title=isPos?'Компенсация СПП + доплаты WB':'Удержано WB';
   var html='';
   if(isPos){
-    html+='<p>Это <strong>дополнительные поступления</strong> от Wildberries сверх обычной формулы «выручка − комиссия».</p>';
+    html+='<p>Это <strong>дополнительные поступления</strong> от Wildberries сверх обычной формулы «выручка − комиссия». WB доплачивает продавцу компенсацию <strong>скидки постоянного покупателя (СПП)</strong> и прочие доплаты — поэтому <strong>выплата может быть больше выручки</strong>.</p>';
     html+='<p>Сюда входят:</p>';
     html+='<p>• <strong>Компенсация СПП</strong> — WB субсидирует часть скидки покупателю и доплачивает её селлеру<br>';
     html+='• <strong>Премии</strong> за участие в акциях, рейтинг продавца<br>';
