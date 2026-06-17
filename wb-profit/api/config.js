@@ -130,7 +130,7 @@ export default async function handler(req, res) {
     return res.status(allOk ? 200 : 503).json({
       ok: allOk,
       timestamp: new Date().toISOString(),
-      version: 'v0.7.12.74',
+      version: 'v0.7.12.75',
       checks: checks
     });
   }

@@ -7299,6 +7299,34 @@ function _pcFunnelTable(hist){
   var body='<tbody>'+rowsDef.map(function(rd){ return '<tr><td class="pc-metric">'+rd.l+'</td>'+hist.map(function(d){ return '<td>'+rd.f(d)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
   return '<div class="pc-mx-scroll"><table class="pc-mx">'+head+body+'</table></div>';
 }
+// 🔥 Слой3/3b: финансы по дням для одного товара — синхронно из window.rawData (без API), aggregateRowsByDay по nm.
+function _pcFinanceTable(nm){
+  var raw = window.rawData || [];
+  if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
+  var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
+  if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
+  var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+  var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
+  var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
+    .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
+  var rowsDef=[
+    {l:'Продажи, шт', f:function(d){ return fmt(d.sales_count); }},
+    {l:'Возвраты, шт', f:function(d){ return fmt(d.returns_count); }},
+    {l:'Выручка, ₽', f:function(d){ return _ordAbsMoney(d.revenue); }},
+    {l:'WB реализовал, ₽', f:function(d){ return _ordAbsMoney(d.payout); }},
+    {l:'Комиссия, ₽', f:function(d){ return _ordAbsMoney(d.commission); }},
+    {l:'Логистика, ₽', f:function(d){ return _ordAbsMoney(d.logistics); }},
+    {l:'Хранение, ₽', f:function(d){ return _ordAbsMoney(d.storage); }},
+    {l:'Реклама, ₽', f:function(d){ return _ordAbsMoney(d.ads); }},
+    {l:'Штрафы, ₽', f:function(d){ return _ordAbsMoney(d.penalties); }},
+    {l:'Себестоимость, ₽', f:function(d){ return _ordAbsMoney(d.cost); }},
+    {l:'Прибыль, ₽', f:function(d){ return _ordProfitCell(d.profit); }},
+    {l:'Маржа, %', f:function(d){ return d.revenue>0 ? _ordPct(d.profit/d.revenue*100) : _ordDash(); }}
+  ];
+  var head='<thead><tr><th class="pc-metric">Метрика</th>'+days.map(function(d){ return '<th>'+_pcShortDate(d.day)+'</th>'; }).join('')+'</tr></thead>';
+  var body='<tbody>'+rowsDef.map(function(rd){ return '<tr><td class="pc-metric">'+rd.l+'</td>'+days.map(function(d){ return '<td>'+rd.f(d)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
+  return '<div class="pc-mx-scroll"><table class="pc-mx">'+head+body+'</table></div>';
+}
 function renderProductCard(){
   var nm=window._pcNm; if(nm==null){ showSection('orders',document.getElementById('nav-orders')); return; }
   var p=(window._ordersBuilt||[]).filter(function(x){ return String(x.nm)===String(nm); })[0] || {nm:nm, name:'', subject:'', brand:''};
@@ -7313,7 +7341,9 @@ function renderProductCard(){
     (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>';
   document.getElementById('pcBody').innerHTML =
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Воронка продаж</div>'+
-    '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>';
+    '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>'+
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Финансы по дням</div>'+
+    '<div class="pc-block-c" id="pcFinance">'+_pcFinanceTable(nm)+'</div></div>';   // 🔥 3b: финансы синхронно из rawData
   _pcLoadFunnelHistory(nm);
 }
 function openProductCard(nmId){ window._pcNm=nmId; showSection('product', null); }
