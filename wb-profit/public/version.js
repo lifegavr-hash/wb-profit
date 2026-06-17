@@ -1,6 +1,6 @@
 // 🔥 v0.7.10.1: единая точка истины версии для всех HTML-страниц.
 // При релизе меняй только здесь (и в wb-profit/api/config.js для health-check).
-window.__APP_VERSION = 'v0.7.12.79';
+window.__APP_VERSION = 'v0.7.12.80';
 
 // 🔥 v0.7.10.9: inline Supabase config — снимает 4 лишних fetch('/api/config')
 // с критического пути логина/дашборда. supabaseKey — publishable_key,
