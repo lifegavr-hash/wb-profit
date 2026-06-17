@@ -15,8 +15,8 @@ const HAS_DB = Boolean(SUPABASE_URL && SUPABASE_SERVICE_KEY);
 const ANALYTICS_OFF = process.env.WB_ANALYTICS_OFF === '1';
 // 🔥 v0.7.12.71: вынос кэша из Postgres в Redis (Upstash). CACHE_BACKEND: redis|supabase|off.
 // Дефолт supabase — деплой безопасен ДО настройки Upstash; Виталий ставит env + CACHE_BACKEND=redis → переключение.
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;       // Vercel/Upstash REST URL (НЕ KV_URL/REDIS_URL — те TCP)
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;   // Vercel/Upstash REST token
 const HAS_REDIS = Boolean(REDIS_URL && REDIS_TOKEN);
 const CACHE_BACKEND = (process.env.CACHE_BACKEND === 'redis' && HAS_REDIS) ? 'redis'
   : (process.env.CACHE_BACKEND === 'off' ? 'off' : 'supabase');
