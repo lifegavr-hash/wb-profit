@@ -7238,7 +7238,7 @@ async function loadCardsContent(){
 }
 // 🔥 Слой2: карта воронки nmId→{open,cart,order,buyout,conv,extra,cmp}. Кэш ПО ПЕРИОДУ (не долгоживущий как фото).
 window._funnelMap = window._funnelMap || {};
-window._FUNNEL_ENABLED = false;   // 🔥 v0.7.12.68 hotfix: автозагрузка воронки ВЫКЛ (снятие нагрузки на БД/функции). Вернуть true после выноса кэша в KV/апгрейда compute.
+window._FUNNEL_ENABLED = true;    // 🔥 v0.7.12.73: воронка ВКЛ — кэш воронки уехал в Redis (Postgres не трогает), нагрузка снята.
 function _applyFunnel(){
   var sec=document.getElementById('sectionOrders');
   if(document.getElementById('ordersList') && sec && sec.classList.contains('active') && typeof renderOrdersList==='function') renderOrdersList();
