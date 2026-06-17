@@ -6457,6 +6457,10 @@ function stopLoadTimer(){
 //   profit        — Чистая прибыль = ppvz - delivery - storage - ads - penalty - wbFinance - cost
 //   salesCount, returnsCount — продажи и возвраты в шт.
 // ═══════════════════════════════════════════════════════════════════════════
+// 🔥 v0.7.12.77 — БАГ ВОЗВРАТОВ: WB отдаёт ppvz_for_pay по строке «Возврат» ПОЛОЖИТЕЛЬНЫМ числом
+// (подтверждено данными селлера: 8/8 возвратов >0). Код ПРИБАВЛЯЛ его к выплате → payout и прибыль
+// ЗАВЫШАЛИСЬ на товарах с возвратами (клавиатура: +6708 вместо −858). Возврат должен ВЫЧИТАТЬ выплату.
+function _ppvzSigned(r){ var v=Number((r&&r.ppvz_for_pay)||0); return (((r&&r.doc_type_name)||'').toLowerCase()==='возврат') ? -Math.abs(v) : v; }
 function computeFinancials(rawData, rows){
   var t={
     revenue:0, commission:0, ppvz:0, delivery:0, storage:0,
@@ -6485,7 +6489,7 @@ function computeFinancials(rawData, rows){
     var o=getOper(oper);
     o.count++;
     // Выплата от WB (учитывается ОТДЕЛЬНО, не входит в total группы — это поступление)
-    t.ppvz+=Number(r.ppvz_for_pay||0);
+    t.ppvz+=_ppvzSigned(r);   // 🔥 v0.7.12.77: возврат вычитает выплату
     // Логистика: delivery_rub + rebill_logistic_cost (rebill — допплата за возврат)
     var delRub=Number(r.delivery_rub||0);
     var rebill=Number(r.rebill_logistic_cost||0);
@@ -6606,7 +6610,7 @@ async function process(raw){
     var mo=getMonth(r);
     if(mo){
       if(!byMonthData[mo]) byMonthData[mo]={ppvz:0,del:0,stor:0,adv:0,pen:0};
-      byMonthData[mo].ppvz+=r.ppvz_for_pay||0;
+      byMonthData[mo].ppvz+=_ppvzSigned(r);   // 🔥 v0.7.12.77
       byMonthData[mo].del+=(Number(r.delivery_rub)||0)+(Number(r.rebill_logistic_cost)||0);
       byMonthData[mo].stor+=r.storage_fee||0;
       byMonthData[mo].pen+=Number(r.penalty||0)+Number(r.acceptance||0);
@@ -6628,7 +6632,7 @@ async function process(raw){
       a.commRub+=_sign*(_price*_pct/100);
       if(_pct>0){a._pctSum+=_pct;a._n++;}
     }
-    a.ppvz+=r.ppvz_for_pay||0;
+    a.ppvz+=_ppvzSigned(r);   // 🔥 v0.7.12.77: возврат вычитает выплату
     a.del+=(Number(r.delivery_rub)||0)+(Number(r.rebill_logistic_cost)||0);
     a.stor+=r.storage_fee||0;
     a.pen+=Number(r.penalty||0)+Number(r.acceptance||0);
@@ -7094,7 +7098,7 @@ function buildOrdersData(){
   var orphanPpvz = 0;        // выплата по строкам без артикула — для сверки с дашбордом
   for(var i=0;i<raw.length;i++){
     var r = raw[i];
-    var ppvz = Number(r.ppvz_for_pay||0);
+    var ppvz = _ppvzSigned(r);   // 🔥 v0.7.12.77: возврат вычитает выплату (orphan + p.ppvz + ps.ppvz)
     var key = (r.nm_id!=null && r.nm_id!=='') ? String(r.nm_id) : (r.sa_name? String(r.sa_name) : '');
     if(!key){ orphanPpvz += ppvz; continue; }
     var p = byProd.get(key);
@@ -9321,7 +9325,7 @@ function aggregateRowsByDay(rows,costMap,opts){
       s.revenue+=sign*price;
       s.commission+=sign*(price*pct/100);
     }
-    s.payout+=Number(r.ppvz_for_pay||0);
+    s.payout+=_ppvzSigned(r);   // 🔥 v0.7.12.77: возврат вычитает выплату
     s.logistics+=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
     s.storage+=Number(r.storage_fee||0);
     // Штрафы — собираем как в computeFinancials: penalty + acceptance + deduction (вне ads/wbf)
