@@ -120,9 +120,10 @@ export default async function handler(req, res) {
   }
   await markRequest(rlKey);
 
-  // Запрос к WB. Передаём dateFrom = вчера (формальное требование API).
-  const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const url = `https://statistics-api.wildberries.ru/api/v1/supplier/stocks?dateFrom=${yesterday}`;
+  // 🔥 v0.7.12.78: dateFrom ФИЛЬТРУЕТ по lastChangeDate (НЕ формальность!). WB отдаёт только
+  // записи с lastChangeDate >= dateFrom. С dateFrom=вчера выпадали «тихие» склады (без движения
+  // за сутки) → остаток занижался (мяч 390 вместо 596). Давняя дата (офиц. пример WB) → весь остаток.
+  const url = `https://statistics-api.wildberries.ru/api/v1/supplier/stocks?dateFrom=2019-06-20`;
 
   try {
     // Таймаут 9 секунд (на Vercel Hobby лимит выполнения 10 сек)
