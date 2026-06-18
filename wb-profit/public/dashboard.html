@@ -2016,6 +2016,13 @@ html[data-theme="dark"] .orders-tbl-wide td.oc-sticky-last,html[data-theme="dark
 .pc-block-h{display:flex;align-items:center;gap:7px;font-weight:700;font-size:14px;color:var(--text);cursor:pointer;padding:8px 2px;user-select:none}
 .pc-arrow{color:#94a3b8;font-size:11px}
 .pc-empty{color:var(--muted);padding:14px;font-size:13px}
+.pc-price{border-collapse:collapse;font-size:13px;width:100%;max-width:440px;font-variant-numeric:tabular-nums}
+.pc-price td{padding:6px 2px}
+.pc-price td:last-child{text-align:right;white-space:nowrap}
+.pc-price tr.pc-price-sum td{border-top:1px solid var(--border);font-weight:700}
+.pc-price tr.pc-price-spp td{color:#7c3aed}
+.pc-price tr.pc-price-mut td{color:var(--muted)}
+.pc-price .pc-price-hint{color:var(--muted);font-size:11px;font-weight:400}
 .pc-mx-scroll{overflow:auto;border:1px solid var(--border);border-radius:10px;max-height:60vh;-webkit-overflow-scrolling:touch}
 .pc-mx{border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:100%}
 .pc-mx th,.pc-mx td{padding:7px 12px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);text-align:right}
@@ -7345,6 +7352,45 @@ function _pcFinanceTable(nm){
 }
 // 🔥 Слой3/3c (v0.7.12.82): график динамики по дням — переиспользует renderTimelineChart (тот же SVG, что в Аналитике)
 // на дневном массиве aggregateRowsByDay (как 3b). Синхронно из rawData, без API и без внешних библиотек.
+// 🔥 Слой3/3c (v0.7.12.85): блок «Цена» — водопад НА ЕДИНИЦУ из строк продаж (синхронно из rawData).
+// Ваша цена(withdisc) − СПП(withdisc−amount) = покупатель заплатил(amount) − удержания(amount−ppvz) = выплачено(ppvz).
+// СПП ВЫЧИСЛЯЕМ (ppvz_spp_prc нет в слим-кэше). retail_price/withdisc — за единицу (×q); retail_amount/ppvz — итог строки.
+function _pcPriceBlock(nm){
+  var raw = window.rawData || [];
+  if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
+  var sales = raw.filter(function(r){ var d=(r.doc_type_name||'').toLowerCase(), o=(r.supplier_oper_name||'').toLowerCase(); return String(r.nm_id)===String(nm) && (d==='продажа' || (!d && o==='продажа')); });
+  if(!sales.length) return '<div class="pc-empty">Нет продаж по товару за период.</div>';
+  var U=0, sPrice=0, sWithdisc=0, sAmount=0, sPpvz=0;
+  sales.forEach(function(r){
+    var q=Number(r.quantity||0)||1; U+=q;
+    sPrice    += Number(r.retail_price||0)*q;
+    sWithdisc += Number(r.retail_price_withdisc_rub||0)*q;
+    sAmount   += Number(r.retail_amount||0);
+    sPpvz     += Number(r.ppvz_for_pay||0);
+  });
+  if(U<=0) return '<div class="pc-empty">Нет продаж по товару за период.</div>';
+  var price=sPrice/U, withdisc=sWithdisc/U, amount=sAmount/U, ppvz=sPpvz/U;
+  var spp=withdisc-amount, sppPct=withdisc>0?spp/withdisc*100:0;
+  var hold=amount-ppvz, ownDisc=price-withdisc;
+  var M=_ordAbsMoney, rows='';
+  if(ownDisc>0.5){
+    rows+='<tr><td>Цена до вашей скидки</td><td>'+M(price)+'</td></tr>';
+    rows+='<tr class="pc-price-mut"><td>Ваша скидка</td><td>−'+M(ownDisc)+'</td></tr>';
+  }
+  rows+='<tr><td>Ваша цена (со скидкой продавца)</td><td>'+M(withdisc)+'</td></tr>';
+  if(spp>0.5){
+    rows+='<tr class="pc-price-spp"><td>Скидка WB · СПП <span class="pc-price-hint">за счёт WB</span></td><td>−'+M(spp)+' ('+Math.round(sppPct)+'%)</td></tr>';
+  }
+  rows+='<tr class="pc-price-sum"><td>Покупатель заплатил</td><td>'+M(amount)+'</td></tr>';
+  if(hold>=0){
+    rows+='<tr class="pc-price-mut"><td>Удержания WB (комиссия и пр.)</td><td>−'+M(hold)+'</td></tr>';
+  } else {
+    rows+='<tr class="pc-price-spp"><td>Доплата WB</td><td>+'+M(-hold)+'</td></tr>';
+  }
+  rows+='<tr class="pc-price-sum"><td>Вам выплачено</td><td>'+M(ppvz)+'</td></tr>';
+  return '<table class="pc-price"><tbody>'+rows+'</tbody></table>'+
+    '<div class="pc-price-hint" style="margin-top:6px;display:block">Средние значения на единицу по продажам за период. Логистика, хранение и реклама — в блоке «Финансы по дням».</div>';
+}
 function _pcChartBlock(nm){
   var raw = window.rawData || [];
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
@@ -7371,6 +7417,8 @@ function renderProductCard(){
   document.getElementById('pcBody').innerHTML =
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> График</div>'+
     '<div class="pc-block-c" id="pcChart">'+_pcChartBlock(nm)+'</div></div>'+   // 🔥 3c: график динамики по дням
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Цена</div>'+
+    '<div class="pc-block-c" id="pcPrice">'+_pcPriceBlock(nm)+'</div></div>'+   // 🔥 3c (v85): водопад цены на единицу
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Воронка продаж</div>'+
     '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>'+
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Финансы по дням</div>'+
