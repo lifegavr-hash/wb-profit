@@ -7337,6 +7337,19 @@ function _pcFinanceTable(nm){
   var body='<tbody>'+rowsDef.map(function(rd){ return '<tr><td class="pc-metric">'+rd.l+'</td>'+days.map(function(d){ return '<td>'+rd.f(d)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
   return '<div class="pc-mx-scroll"><table class="pc-mx">'+head+body+'</table></div>';
 }
+// 🔥 Слой3/3c (v0.7.12.82): график динамики по дням — переиспользует renderTimelineChart (тот же SVG, что в Аналитике)
+// на дневном массиве aggregateRowsByDay (как 3b). Синхронно из rawData, без API и без внешних библиотек.
+function _pcChartBlock(nm){
+  var raw = window.rawData || [];
+  if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
+  var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
+  if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
+  var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+  var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
+  var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
+    .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
+  return renderTimelineChart(days);
+}
 function renderProductCard(){
   var nm=window._pcNm; if(nm==null){ showSection('orders',document.getElementById('nav-orders')); return; }
   var p=(window._ordersBuilt||[]).filter(function(x){ return String(x.nm)===String(nm); })[0] || {nm:nm, name:'', subject:'', brand:''};
@@ -7350,6 +7363,8 @@ function renderProductCard(){
   document.getElementById('pcHead').innerHTML = photo+'<div class="pc-meta"><div class="pc-title">'+title+'</div>'+
     (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>';
   document.getElementById('pcBody').innerHTML =
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> График</div>'+
+    '<div class="pc-block-c" id="pcChart">'+_pcChartBlock(nm)+'</div></div>'+   // 🔥 3c: график динамики по дням
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Воронка продаж</div>'+
     '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>'+
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Финансы по дням</div>'+
