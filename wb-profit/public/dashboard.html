@@ -1985,10 +1985,10 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .orders-tbl-wide td.oc-sticky{position:sticky;z-index:1;background:var(--surface)}
 .orders-tbl-wide thead th.oc-sticky{z-index:3}
 .orders-tbl-wide .orders-prow.zebra td.oc-sticky{background:#fafafa}
-.orders-tbl-wide .orders-prow:hover td.oc-sticky{background:#f3eefe}
+.orders-tbl-wide .orders-prow.clickable:hover td.oc-sticky{background:#f3eefe}
 .orders-tbl-wide td.oc-sticky-last,.orders-tbl-wide thead th.oc-sticky-last{box-shadow:2px 0 5px -2px rgba(0,0,0,.14)}
 html[data-theme="dark"] .orders-tbl-wide .orders-prow.zebra td.oc-sticky{background:#1e1e30}
-html[data-theme="dark"] .orders-tbl-wide .orders-prow:hover td.oc-sticky{background:#262445}
+html[data-theme="dark"] .orders-tbl-wide .orders-prow.clickable:hover td.oc-sticky{background:#262445}
 html[data-theme="dark"] .orders-tbl-wide td.oc-sticky-last,html[data-theme="dark"] .orders-tbl-wide thead th.oc-sticky-last{box-shadow:2px 0 6px -2px rgba(0,0,0,.5)}
 /* 🔥 C2: воронки-фильтры на колонку */
 .oc-fnl{display:inline-block;margin-left:5px;cursor:pointer;color:var(--hint);vertical-align:middle;line-height:0}
@@ -2042,11 +2042,11 @@ html[data-theme="dark"] .orders-tbl thead th{background:#1a1a2e;color:#94a3b8;bo
 .orders-tbl td,.orders-tbl thead th{border-right:1px solid var(--border)}
 .orders-tbl td:last-child,.orders-tbl thead th:last-child{border-right:0}
 /* зебра + hover (hover перекрывает зебру) */
-.orders-prow{cursor:pointer}
+.orders-prow.clickable{cursor:pointer}
 .orders-prow.zebra td{background:#fafafa}
 html[data-theme="dark"] .orders-prow.zebra td{background:rgba(255,255,255,.025)}
-.orders-prow:hover td{background:rgba(124,58,237,.07)}
-html[data-theme="dark"] .orders-prow:hover td{background:rgba(167,139,250,.10)}
+.orders-prow.clickable:hover td{background:rgba(124,58,237,.07)}
+html[data-theme="dark"] .orders-prow.clickable:hover td{background:rgba(167,139,250,.10)}
 /* 🔥 v0.7.12.42: ячейка товара — артикул сверху, название снизу, всё по левому краю */
 .orders-prod{text-align:left;overflow:hidden}
 .op-art{margin-bottom:3px;line-height:1}
@@ -2060,6 +2060,8 @@ html[data-theme="dark"] .orders-prow:hover td{background:rgba(167,139,250,.10)}
 .orders-nocost{display:inline-block;font-size:10px;color:#9a5b00;background:#fff7ed;border:1px solid #fdba74;border-radius:5px;padding:0 5px;font-weight:600;white-space:nowrap}
 .orders-nocost-2{margin-top:3px}
 .orders-arrow{color:#94a3b8;font-size:10px}
+.orders-hint{font-size:12px;color:var(--muted);margin:0 0 10px;padding:7px 11px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.12);border-radius:8px}
+.orders-prow.clickable:hover .orders-arrow{color:var(--purple)}
 /* вложенная таблица позиций (srid) — утоплена, серый фон, фиолетовый акцент слева */
 .orders-pos-cell{padding:0 0 0 16px;background:#fafafa;border-left:3px solid var(--purple)}
 html[data-theme="dark"] .orders-pos-cell{background:#10182e}
@@ -2647,6 +2649,7 @@ body{padding-top:var(--beta-h)}
           <div id="ordersFltPop" class="orders-flt-pop" style="display:none"></div>
         </div>
         <div id="ordersCount" class="orders-recon"></div>
+        <div class="orders-hint">💡 Нажмите на товар — откроется карточка с графиком, воронкой и финансами по дням</div>
         <div id="ordersList"></div>
         <div id="ordersMore" style="text-align:center;margin-top:12px"></div>
       </div>
@@ -7701,9 +7704,11 @@ function _ordersAppendRows(){
       var cls=((col.lft?'ol ':'')+(col.cls?col.cls+' ':'')+(st?('oc-sticky'+(st.last?' oc-sticky-last':'')):'')).trim();
       var style=st?(' style="left:'+st.left+'px;width:'+st.width+'px;min-width:'+st.width+'px"'):'';
       tds+='<td'+(cls?' class="'+cls+'"':'')+style+'>'+col.v(p)+'</td>'; }
-    html+='<tr class="orders-prow'+(i%2?' zebra':'')+'" onclick="toggleOrderRow('+i+')">'+tds+
-      '<td class="oc-exp"><span class="detail-expand orders-arrow" id="ord-exp-'+i+'">▶</span></td></tr>'+
-      '<tr id="ord-pos-'+i+'" class="orders-posrow" style="display:none"><td colspan="'+(COLS.length+1)+'" class="orders-pos-cell"></td></tr>';
+    // 🔥 v0.7.12.84: вся строка кликабельна → карточка товара (openProductCard). Inline-разворот позиций убран.
+    // Кликабелен только товар с артикулом (nm). Без артикула — строка не интерактивна (см. гард openProductCard).
+    var _clk=(p.nm!=null && String(p.nm)!=='0');
+    html+='<tr class="orders-prow'+(i%2?' zebra':'')+(_clk?' clickable':'')+'"'+(_clk?(' onclick="openProductCard('+p.nm+')"'):'')+'>'+tds+
+      '<td class="oc-exp">'+(_clk?'<span class="orders-arrow" title="Открыть карточку">›</span>':'')+'</td></tr>';
   }
   tb.insertAdjacentHTML('beforeend', html);
   _ordersShown=end;
@@ -7715,32 +7720,7 @@ function _ordersAppendRows(){
   }
 }
 
-// Ленивое раскрытие позиций (srid) товара
-function toggleOrderRow(i){
-  var posTr=document.getElementById('ord-pos-'+i), exp=document.getElementById('ord-exp-'+i);
-  if(!posTr) return;
-  if(posTr.style.display!=='none'){ posTr.style.display='none'; if(exp)exp.textContent='▶'; return; }
-  if(posTr.dataset.rendered!=='1'){
-    var p=_ordersView[i];
-    // 🔥 v0.7.12.42: позиции внутри товара — по дате, новые сверху (привычно для отчётов)
-    var rows=Array.from(p.positions.values()).sort(function(a,b){return (a.date<b.date)?1:((a.date>b.date)?-1:0);});
-    var h='<div class="detail-ops-wrap" style="font-variant-numeric:tabular-nums"><table class="detail-ops-table"><thead><tr>'+
-      '<th>Дата</th><th style="text-align:right">Выручка</th><th style="text-align:right">Логистика</th><th style="text-align:right">Выплата&nbsp;WB</th><th style="text-align:right">Маржа*</th></tr></thead><tbody>';
-    rows.forEach(function(ps){
-      var log=ps.logBuyout+ps.logReturn;
-      var m=ps.ppvz-log; // маржа позиции БЕЗ себестоимости (на уровне позиции себест. не делим — показываем gross)
-      var d=ps.date?ps.date.slice(0,10).split('-').reverse().slice(0,2).join('.'):'—';
-      h+='<tr><td>'+d+'</td><td style="text-align:right">'+_ordMoney(ps.revenue)+'</td>'+
-         '<td style="text-align:right">'+_ordMoney(-Math.abs(log))+'</td>'+
-         '<td style="text-align:right">'+_ordMoney(ps.ppvz)+'</td>'+
-         '<td style="text-align:right;font-weight:700" class="'+(m>=0?'green':'red')+'">'+_ordMoney(m)+'</td></tr>';
-    });
-    h+='</tbody></table><div style="font-size:10px;color:var(--muted);padding:6px 4px 0">* маржа позиции — без себестоимости (себестоимость задаётся на товар, не на отдельную продажу)</div></div>';
-    posTr.firstElementChild.innerHTML=h;
-    posTr.dataset.rendered='1';
-  }
-  posTr.style.display=''; if(exp)exp.textContent='▼';
-}
+// 🔥 v0.7.12.84: старый inline-разворот строки (toggleOrderRow + posrow) удалён — заменён карточкой товара openProductCard.
 
 function onOrdersSearch(v){ _ordersSearchQ=v; renderOrdersList(); }
 function onOrdersSort(v){ _ordersSortBy=v; renderOrdersList(); }
