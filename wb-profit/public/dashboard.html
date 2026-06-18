@@ -3901,10 +3901,16 @@ function updateUI(profile,email,token){
   // Бейдж в сайдбаре
   var badge=document.getElementById('planBadge');
   var daysLeft=daysUntilPlanExpires();
+  // 🔥 v0.7.12.81: промо-срок выводим компактно в бейдже тарифа (вместо широкого баннера сверху).
+  var _bpBadge = (currentProfile && currentProfile.billing_period) || (window.__profileExtended && window.__profileExtended.billing_period) || '';
+  var _expShort = expires ? (('0'+expires.getDate()).slice(-2)+'.'+('0'+(expires.getMonth()+1)).slice(-2)) : '';
   var badgeLabel, badgeCls='plan-badge';
   if(!hasPro){
     badgeLabel='Free';
     badgeCls+=' free';
+  } else if(_bpBadge==='promo'){
+    badgeLabel=plan.toUpperCase()+(_expShort?(' · до '+_expShort):'');   // напр. «BUSINESS · до 16.07»
+    if(daysLeft!==null&&daysLeft<=3)badgeCls+=' warning';
   } else if(daysLeft!==null&&daysLeft<=14){
     badgeLabel='PRO · '+daysLeft+' '+plural(daysLeft,'день','дня','дней');
     if(daysLeft<=3)badgeCls+=' warning';
@@ -3965,12 +3971,8 @@ function updateTrialExpiredBanners(){
     trialBanner.style.display='none';
     expiredBanner.style.display='flex';
   } else if(bp === 'promo'){
-    // Промо-план: «{PLAN} · до ДД.ММ» (без trial/бесплатно). План — effective_plan_id, дата — plan_expires_at.
-    var pPlan = (ext.effective_plan_id || (currentProfile && currentProfile.plan) || '').toUpperCase();
-    var pExp = (currentProfile && currentProfile.plan_expires_at) ? new Date(currentProfile.plan_expires_at) : null;
-    var pDate = pExp ? (('0'+pExp.getDate()).slice(-2)+'.'+('0'+(pExp.getMonth()+1)).slice(-2)) : '';
-    trialBanner.innerHTML = '<div class="trial-banner-icon">🎁</div><div class="trial-banner-text"><b>'+pPlan+'</b>'+(pDate?(' · до '+pDate):'')+'</div>';
-    trialBanner.style.display='flex';
+    // 🔥 v0.7.12.81: промо больше НЕ показываем широким баннером — срок выводится компактно в бейдже тарифа (renderUserPlan: «{PLAN} · до ДД.ММ»). Прячем оба баннера.
+    trialBanner.style.display='none';
     expiredBanner.style.display='none';
   } else if(ext.is_trial){
     trialBanner.innerHTML = '<div class="trial-banner-icon">🎁</div><div class="trial-banner-text"><b>Trial PRO активен:</b> осталось '+(ext.trial_days_left || 0)+' дн. На период беты — бесплатно для всех приглашённых.</div>';
