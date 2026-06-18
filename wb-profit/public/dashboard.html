@@ -7103,17 +7103,20 @@ function buildOrdersData(){
   for(var i=0;i<raw.length;i++){
     var r = raw[i];
     var ppvz = _ppvzSigned(r);   // 🔥 v0.7.12.77: возврат вычитает выплату (orphan + p.ppvz + ps.ppvz)
-    var key = (r.nm_id!=null && r.nm_id!=='') ? String(r.nm_id) : (r.sa_name? String(r.sa_name) : '');
+    // 🔥 v0.7.12.83: nm_id=0/''/null = служебная строка БЕЗ товара (общие удержания/хранение/реклама кабинета).
+    // Не плодим товар-фантом «Арт. 0»: такие строки → orphan (их ppvz идёт в сверку, но не в список товаров).
+    var nmRaw = (r.nm_id!=null && r.nm_id!=='' && String(r.nm_id)!=='0') ? r.nm_id : null;
+    var key = nmRaw!=null ? String(nmRaw) : (r.sa_name? String(r.sa_name) : '');
     if(!key){ orphanPpvz += ppvz; continue; }
     var p = byProd.get(key);
-    if(!p){ p={key:key, nm:(r.nm_id!=null?r.nm_id:null), name:r.sa_name||'', subject:r.subject_name||'', brand:r.brand_name||'',
+    if(!p){ p={key:key, nm:nmRaw, name:r.sa_name||'', subject:r.subject_name||'', brand:r.brand_name||'',
               revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, storage:0, ads:0, penalty:0, wbFinance:0,
               soldUnits:0, retUnits:0, lastDate:'', positions:new Map()};
             byProd.set(key,p); }
     if(!p.name && r.sa_name) p.name=r.sa_name;
     if(!p.subject && r.subject_name) p.subject=r.subject_name;
     if(!p.brand && r.brand_name) p.brand=r.brand_name;
-    if(p.nm==null && r.nm_id!=null) p.nm=r.nm_id;
+    if(p.nm==null && nmRaw!=null) p.nm=nmRaw;
     var doc=(r.doc_type_name||'').toLowerCase();
     var sign = (doc==='возврат') ? -1 : 1;
     var price = Number(r.retail_amount||r.retail_price_withdisc_rub||0);
@@ -7371,7 +7374,7 @@ function renderProductCard(){
     '<div class="pc-block-c" id="pcFinance">'+_pcFinanceTable(nm)+'</div></div>';   // 🔥 3b: финансы синхронно из rawData
   _pcLoadFunnelHistory(nm);
 }
-function openProductCard(nmId){ window._pcNm=nmId; showSection('product', null); }
+function openProductCard(nmId){ if(nmId==null || nmId==='' || String(nmId)==='0') return; window._pcNm=nmId; showSection('product', null); }   // 🔥 v0.7.12.83: нет карточки для служебного nm=0
 async function _pcLoadFunnelHistory(nm){
   var el=document.getElementById('pcFunnel'); if(!el) return;
   try{
