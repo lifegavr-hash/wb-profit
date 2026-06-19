@@ -16,6 +16,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';
+import { resolveWbAccountId } from '../lib/wb-account.js';
 import { audit } from '../lib/audit-log.js';
 import { sendTransactional } from '../lib/email.js';
 
@@ -633,6 +634,89 @@ async function handleInviteInfo(req, res) {
   return res.status(200).json({ valid: true, invitee_email: inv.email, owner_email: owner?.email || null });
 }
 
+// ====== Sub-router: налоговый режим кабинета (модуль «Расходы и налог», Часть 1) ======
+// GET   /api/profile?resource=tax[&wb_account_id=]  — текущие настройки или дефолты
+// PATCH /api/profile?resource=tax                   — upsert (валидация + onConflict user_id,wb_account_id)
+// Скоуп СТРОГО по JWT (?workspace= запрещён инвариантом profile.js, стр.~655). Запись — за активной подпиской.
+const TAX_MODES = ['none', 'usn6', 'usn15', 'patent'];
+const BASE_MODES = ['after_spp', 'full_price'];
+const PATENT_PERIODS = ['month', 'year'];
+const TAX_DEFAULTS = { tax_mode: 'none', tax_rate: 0, base_mode: 'full_price', patent_amount: 0, patent_period: 'month' };
+
+async function handleTax(req, res, jwt) {
+  const planResult = await getUserPlanWithLimits(jwt);
+  if (planResult.error) {
+    return res.status(planResult.status || 500).json({ error: planResult.error, message: planResult.message });
+  }
+  const user = planResult.user;            // user.id строго ИЗ JWT
+  const supa = makeServiceClient();
+
+  // Резолв кабинета (как в costs.js): дефолтный, если не передан
+  const providedWbId = req.query?.wb_account_id || (req.body && req.body.wb_account_id) || null;
+  const wbResolve = await resolveWbAccountId(user.id, providedWbId);
+  if (!wbResolve.ok) {
+    return res.status(wbResolve.status).json({ error: wbResolve.error, message: wbResolve.message });
+  }
+  const wbAccountId = wbResolve.wb_account_id;
+
+  // GET — текущие настройки (нет строки → дефолты). Открыт всегда.
+  if (req.method === 'GET') {
+    const { data, error } = await supa
+      .from('tax_settings')
+      .select('tax_mode, tax_rate, base_mode, patent_amount, patent_period')
+      .eq('user_id', user.id)
+      .eq('wb_account_id', wbAccountId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    return res.status(200).json({ ...TAX_DEFAULTS, ...(data || {}), wb_account_id: wbAccountId });
+  }
+
+  // PATCH — изменение требует активной подписки (как POST в costs.js). Admin не блокируется.
+  // planResult уже получен выше (тот же jwt, план иммутабелен в рамках запроса) — переиспользуем.
+  if (req.method === 'PATCH') {
+    if (planResult.isExpired && !planResult.isAdmin) {
+      return res.status(403).json({ error: 'SUBSCRIPTION_EXPIRED', message: 'Подписка закончилась — изменение налоговых настроек недоступно.' });
+    }
+
+    let body = {};
+    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {}); } catch (_) { body = {}; }
+
+    const tax_mode = String(body.tax_mode ?? '');
+    if (!TAX_MODES.includes(tax_mode)) {
+      return res.status(400).json({ error: 'INVALID_TAX_MODE', message: 'tax_mode ∈ ' + TAX_MODES.join('|') });
+    }
+    const tax_rate = Number(body.tax_rate);
+    if (!Number.isFinite(tax_rate) || tax_rate < 0 || tax_rate > 100) {
+      return res.status(400).json({ error: 'INVALID_TAX_RATE', message: 'tax_rate 0..100' });
+    }
+    const base_mode = String(body.base_mode ?? 'full_price');
+    if (!BASE_MODES.includes(base_mode)) {
+      return res.status(400).json({ error: 'INVALID_BASE_MODE', message: 'base_mode ∈ ' + BASE_MODES.join('|') });
+    }
+    const patent_amount = Number(body.patent_amount ?? 0);
+    if (!Number.isFinite(patent_amount) || patent_amount < 0) {
+      return res.status(400).json({ error: 'INVALID_PATENT_AMOUNT', message: 'patent_amount >= 0' });
+    }
+    const patent_period = String(body.patent_period ?? 'month');
+    if (!PATENT_PERIODS.includes(patent_period)) {
+      return res.status(400).json({ error: 'INVALID_PATENT_PERIOD', message: 'patent_period ∈ ' + PATENT_PERIODS.join('|') });
+    }
+
+    const row = {
+      user_id: user.id, wb_account_id: wbAccountId,
+      tax_mode, tax_rate, base_mode, patent_amount, patent_period,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supa
+      .from('tax_settings')
+      .upsert(row, { onConflict: 'user_id,wb_account_id' });
+    if (error) return res.status(500).json({ error: 'DB_ERROR', message: error.message });
+    return res.status(200).json({ ok: true, tax_mode, tax_rate, base_mode, patent_amount, patent_period, wb_account_id: wbAccountId });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed for tax' });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
@@ -668,6 +752,10 @@ export default async function handler(req, res) {
   // 🔥 Фаза C: sub-router для настроек email-уведомлений (opt-in дайджеста)
   if (resource === 'notifications') {
     return handleNotifications(req, res, jwt);
+  }
+  // 🔥 Модуль «Расходы и налог» Часть 1: налоговый режим кабинета
+  if (resource === 'tax') {
+    return handleTax(req, res, jwt);
   }
   // 🔥 Фаза D: командный доступ (Бизнес)
   if (resource === 'team') {
