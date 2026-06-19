@@ -5444,7 +5444,7 @@ function savePeriod(){
 // 🔥 v0.7.12.36: «слим» сырого отчёта для кэша — ТОЛЬКО поля, которые реально читают
 // computeFinancials + toggleDetailOp + aggregateRowsByDay. Полный raw (~50 полей) для 90 дней ~9МБ
 // не влезает в localStorage; слим (26 полей) ≈ в 2-3 раза меньше и помещается. Расчёт идентичен.
-var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','subject_name','brand_name','quantity','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
+var _CACHE_RAW_FIELDS=['supplier_oper_name','bonus_type_name','doc_type_name','ppvz_for_pay','delivery_rub','rebill_logistic_cost','delivery_amount','return_amount','storage_fee','penalty','acceptance','deduction','acquiring_fee','ppvz_reward','retail_amount','retail_price','retail_price_withdisc_rub','commission_percent','nm_id','sa_name','subject_name','brand_name','quantity','office_name','srid','gi_id','sale_dt','rr_dt','order_dt','create_dt','date'];
 function _slimRawForCache(raw){
   if(!Array.isArray(raw)||!raw.length) return null;
   var out=new Array(raw.length);
@@ -7352,51 +7352,60 @@ function _pcFinanceTable(nm){
 }
 // 🔥 Слой3/3c (v0.7.12.82): график динамики по дням — переиспользует renderTimelineChart (тот же SVG, что в Аналитике)
 // на дневном массиве aggregateRowsByDay (как 3b). Синхронно из rawData, без API и без внешних библиотек.
-// 🔥 Слой3/3c (v0.7.12.86): блок «Цена» — якорная модель (без формулы комиссии). СПП за счёт WB (доказано:
-// ppvz_kvw_prc_base−ppvz_kvw_prc = СПП; компенсация = отдельная операция «Компенсация лояльности»).
-// Прошёл код-ревью: продажа определяется по ОПЕРАЦИИ supplier_oper_name (у «Компенсации» doc_type_name тоже
-// «Продажа», qty=0 — нельзя считать её продажей); ВОЗВРАТЫ исключены (искажали «на единицу» — они в «Финансах»);
-// округление ОДИН раз до водопада (строки сходятся); guard на битую цену.
-// Вам выплачено = Σ ppvz_for_pay по НЕ-возвратным операциям (продажа + компенсация СПП) /шт. Удержания = Ваша цена − Выплачено.
+// 🔥 Слой3/3c (v0.7.12.87): блок «Цена» — на ТОЧНОЙ формуле выплаты WB (проверена верификатором на 104/104 продаж):
+// ppvz_for_pay = retail_amount − ppvz_vw − ppvz_vw_nds − acquiring_fee − ppvz_reward.
+// «Комиссия WB» выводим ОСТАТКОМ Comm = amount − pay − acq − reward (vw/vw_nds в кэше не нужны), ЗНАКОВОЕ:
+//   <0 → WB доплатил (СПП-компенсация через отрицательную комиссию, мяч); >0 → удержал (мчс). СПП — за счёт WB.
+// Вам выплачено = Σ ppvz_for_pay по ВСЕМ не-возвратным операциям (вкл. отдельную компенсацию, если есть). Ценовые/acq/reward — со строк продаж.
+// hasReward только если ВСЕ строки продаж несут ppvz_reward (иначе фолбэк — одна знаковая строка, для старого слим-кэша). Возвраты — в «Финансах».
 function _pcPriceBlock(nm){
   var raw = window.rawData || [];
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
   var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
   if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
-  var U=0, sPrice=0, sWithdisc=0, sAmount=0, sPay=0;
+  var U=0, sWithdisc=0, sPrice=0, sAmount=0, sPay=0, sAcq=0, sReward=0, nSale=0, nReward=0;
   rowsNm.forEach(function(r){
-    var d=(r.doc_type_name||'').toLowerCase(), o=(r.supplier_oper_name||'').toLowerCase();
-    if(o==='возврат' || (!o && d==='возврат')) return;          // возвраты — отдельно (Финансы), не искажают цену продажи
-    if(o==='продажа' || (!o && d==='продажа')){                 // продажа по ОПЕРАЦИИ (у компенсации doc='Продажа' — не считаем за продажу)
-      var q=Number(r.quantity||0)||1; U+=q;
+    var o=(r.supplier_oper_name||'').toLowerCase(), d=(r.doc_type_name||'').toLowerCase();
+    if(o==='возврат' || (!o && d==='возврат')) return;          // возвраты — отдельно (Финансы)
+    sPay += Number(r.ppvz_for_pay||0);                          // выплата ВСЕХ не-возвратных операций (вкл. отдельную компенсацию СПП)
+    if(o==='продажа' || (!o && d==='продажа')){                 // ценовые/формульные поля — только со строк продаж (по операции)
+      var q=Number(r.quantity||0)||1; U+=q; nSale++;
       sWithdisc += Number(r.retail_price_withdisc_rub||0)*q;
       sPrice    += Number(r.retail_price||0)*q;
       sAmount   += Number(r.retail_amount||0);
+      sAcq      += Number(r.acquiring_fee||0);
+      if(r.ppvz_reward!=null){ nReward++; sReward += Number(r.ppvz_reward||0); }
     }
-    sPay += Number(r.ppvz_for_pay||0);                           // выплата всех НЕ-возвратных операций (продажа + компенсация СПП + прочее)
   });
   if(U<=0) return '<div class="pc-empty">Нет продаж по товару за период.</div>';
-  var withdisc=Math.round(sWithdisc/U), payout=Math.round(sPay/U), price=Math.round(sPrice/U), amount=Math.round(sAmount/U);
-  if(withdisc<=0) return '<div class="pc-empty">Нет корректной цены по товару за период.</div>';
-  var spp=withdisc-amount, sppPct=Math.round(spp/withdisc*100);
-  var hold=withdisc-payout, ownDisc=price-withdisc;
+  var hasReward = (nSale>0 && nReward===nSale);
+  var W=Math.round(sWithdisc/U), Pr=Math.round(sPrice/U), A=Math.round(sAmount/U), P=Math.round(sPay/U);
+  if(W<=0) return '<div class="pc-empty">Нет корректной цены по товару за период.</div>';
+  var SPP=W-A, sppPct= W>0 ? Math.round(SPP/W*100) : 0, ownDisc=Pr-W;
   var M=_ordAbsMoney, rows='';
   if(ownDisc>0){
-    rows+='<tr><td>Цена до вашей скидки</td><td>'+M(price)+'</td></tr>';
+    rows+='<tr><td>Цена до вашей скидки</td><td>'+M(Pr)+'</td></tr>';
     rows+='<tr class="pc-price-mut"><td>Ваша скидка</td><td>−'+M(ownDisc)+'</td></tr>';
   }
-  rows+='<tr><td>Ваша цена (со скидкой продавца)</td><td>'+M(withdisc)+'</td></tr>';
-  if(hold>0){
-    rows+='<tr class="pc-price-mut"><td>Удержания WB (комиссия, эквайринг)</td><td>−'+M(hold)+'</td></tr>';
-  } else if(hold<0){
-    rows+='<tr class="pc-price-spp"><td>Доплата WB (компенсация СПП)</td><td>+'+M(-hold)+'</td></tr>';
+  rows+='<tr><td>Ваша цена (со скидкой продавца)</td><td>'+M(W)+'</td></tr>';
+  if(SPP>0) rows+='<tr class="pc-price-spp"><td>🎁 Скидка покупателю · СПП ('+sppPct+'%) <span class="pc-price-hint">за счёт WB</span></td><td>−'+M(SPP)+'</td></tr>';
+  else if(SPP<0) rows+='<tr class="pc-price-mut"><td>Надбавка/корректировка WB</td><td>+'+M(-SPP)+'</td></tr>';
+  rows+='<tr class="pc-price-sum"><td>Покупатель заплатил</td><td>'+M(A)+'</td></tr>';
+  if(hasReward){
+    var Acq=Math.round(sAcq/U), Rew=Math.round(sReward/U), Comm=A-P-Acq-Rew;
+    if(Comm>0) rows+='<tr class="pc-price-mut"><td>Комиссия WB</td><td>−'+M(Comm)+'</td></tr>';
+    else if(Comm<0) rows+='<tr class="pc-price-spp"><td>Компенсация WB (отрицательная комиссия)</td><td>+'+M(-Comm)+'</td></tr>';
+    if(Acq!==0) rows+='<tr class="pc-price-mut"><td>Эквайринг</td><td>'+(Acq>=0?'−':'+')+M(Acq)+'</td></tr>';
+    if(Rew!==0) rows+='<tr class="pc-price-mut"><td>Возмещение WB</td><td>'+(Rew>=0?'−':'+')+M(Rew)+'</td></tr>';
+  } else {
+    var net=A-P;
+    if(net>0) rows+='<tr class="pc-price-mut"><td>Удержания WB (комиссия и сборы)</td><td>−'+M(net)+'</td></tr>';
+    else if(net<0) rows+='<tr class="pc-price-spp"><td>Доплата WB (компенсация СПП)</td><td>+'+M(-net)+'</td></tr>';
   }
-  rows+='<tr class="pc-price-sum"><td>Вам выплачено (за товар)</td><td>'+M(payout)+'</td></tr>';
+  rows+='<tr class="pc-price-sum"><td>Вам выплачено</td><td>'+M(P)+'</td></tr>';
   var ref='<div class="pc-price-hint" style="margin-top:8px;display:block">';
-  if(spp>0){
-    ref+='🎁 Скидка покупателю −'+M(spp)+' ('+sppPct+'%, СПП) — <b>за счёт WB</b> (компенсирует отдельной операцией), не ваш расход.<br>';
-  }
-  ref+='Покупатель заплатил: '+M(amount)+'/шт. «Вам выплачено» — за проданные единицы (продажи + компенсации СПП); возвраты, логистика и хранение — в блоке «Финансы».</div>';
+  if(SPP>0) ref+='🎁 СПП −'+M(SPP)+' ('+sppPct+'%) — скидку покупателю даёт <b>WB за свой счёт</b> (снижает свою комиссию вплоть до отрицательной → тогда «Компенсация WB»). Не ваш расход.<br>';
+  ref+='Значения на проданную единицу за период. Возвраты, логистика и хранение — в блоке «Финансы».</div>';
   return '<table class="pc-price"><tbody>'+rows+'</tbody></table>'+ref;
 }
 function _pcChartBlock(nm){
