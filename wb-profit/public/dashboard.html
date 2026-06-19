@@ -1982,6 +1982,15 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .pc-metrics-wrap{position:absolute;right:0;top:0;display:inline-block}
 .ocp-grp{font-size:11px;color:var(--muted);font-weight:600;padding:7px 6px 2px;text-transform:uppercase;letter-spacing:.3px}
 .pc-mdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:2px;vertical-align:middle}
+.pc-period-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:12px;font-size:13px}
+.pc-period-lbl{color:var(--muted);font-weight:600;margin-right:2px}
+.pc-period-pill{background:var(--surface);color:var(--text);border:1px solid var(--border);padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;border-radius:7px;white-space:nowrap}
+.pc-period-pill:hover:not([disabled]){background:rgba(124,58,237,.06)}
+.pc-period-pill.active{background:var(--purple);color:#fff;border-color:var(--purple)}
+.pc-period-pill[disabled]{opacity:.4;cursor:not-allowed}
+.pc-period-custom{display:flex;align-items:center;gap:4px;color:var(--muted);font-size:12px}
+.pc-period-custom input{padding:3px 6px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)}
+.pc-period-range{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
 .ocp-mv{display:flex;gap:2px;flex-shrink:0}
 .ocp-mv button{width:22px;height:22px;border:1px solid var(--border);background:var(--surface);border-radius:5px;cursor:pointer;color:var(--text);font-size:11px;line-height:1;padding:0}
 .ocp-mv button:disabled{opacity:.35;cursor:default}
@@ -7363,6 +7372,61 @@ function _pcRerenderMetricBlocks(){
   var ch=document.getElementById('pcChart'); if(ch) ch.innerHTML=_pcChartBlock(nm);
   var fin=document.getElementById('pcFinance'); if(fin) fin.innerHTML=_pcFinanceTable(nm);
 }
+// 🔥 Слой3/3c (v0.7.12.89): независимый период карточки. window._pcPeriod={df,dt} — транзиентно (сброс при открытии).
+function _pcGlobalDates(){ return { df:(document.getElementById('df')||{}).value||'', dt:(document.getElementById('dt')||{}).value||'' }; }
+function _pcDates(){
+  var g=_pcGlobalDates(), pp=window._pcPeriod;
+  // guard: устаревший _pcPeriod (вне загруженного [g.df,g.dt]) → фолбэк на глобальный
+  if(pp && pp.df && pp.dt && g.df && g.dt && pp.df<=pp.dt && pp.df>=g.df && pp.dt<=g.dt) return {df:pp.df, dt:pp.dt};
+  return g;
+}
+function _pcRowInPeriod(r, df, dt){
+  var day=String(r.sale_dt||r.rr_dt||r.order_dt||r.create_dt||r.date||'').slice(0,10);   // как в aggregateRowsByDay
+  return day && day>=df && day<=dt;
+}
+function _pcRerenderAll(){   // смена периода → ВСЕ 4 блока (vs _pcRerenderMetricBlocks: только chart+finance для метрик)
+  var nm=window._pcNm; if(nm==null) return;
+  var ch=document.getElementById('pcChart'); if(ch) ch.innerHTML=_pcChartBlock(nm);
+  var pr=document.getElementById('pcPrice'); if(pr) pr.innerHTML=_pcPriceBlock(nm);
+  var fin=document.getElementById('pcFinance'); if(fin) fin.innerHTML=_pcFinanceTable(nm);
+  var fn=document.getElementById('pcFunnel'); if(fn){ fn.innerHTML='<div class="pc-empty">Загрузка воронки…</div>'; _pcLoadFunnelHistory(nm); }
+  _pcRenderPeriodBar();
+}
+function _pcDateMinus(dtIso,days){ var d=new Date(dtIso); d.setDate(d.getDate()-days); return d.toISOString().slice(0,10); }
+function _pcRenderPeriodBar(){
+  var bar=document.getElementById('pcPeriodBar'); if(!bar) return;
+  var g=_pcGlobalDates();
+  if(!g.df||!g.dt){ bar.innerHTML=''; return; }   // нет загруженного периода
+  var cur=_pcDates();
+  var span=Math.round((new Date(g.dt)-new Date(g.df))/86400000)+1;
+  var presets=[{n:0,l:'Весь'},{n:7,l:'7 дней'},{n:14,l:'14 дней'},{n:30,l:'30 дней'},{n:90,l:'90 дней'}];
+  var pills=presets.map(function(p){
+    if(p.n===90 && span<90) return '';                                  // 90 — только если загружено ≥90
+    var df = p.n===0 ? g.df : _pcDateMinus(g.dt, p.n-1); if(df<g.df) df=g.df;
+    var disabled = (p.n!==0 && p.n>span);
+    if(disabled) return '<button type="button" class="pc-period-pill" disabled title="Загрузите больший период на Главной">'+p.l+'</button>';
+    var active = (cur.df===df && cur.dt===g.dt) ? ' active' : '';
+    return '<button type="button" class="pc-period-pill'+active+'" onclick="setPcPeriod(\''+df+'\',\''+g.dt+'\')">'+p.l+'</button>';
+  }).join('');
+  bar.innerHTML='<span class="pc-period-lbl">Период:</span>'+pills+
+    '<span class="pc-period-custom">Свой: <input type="date" id="pcCustomDf" min="'+g.df+'" max="'+g.dt+'" value="'+cur.df+'" onchange="onPcCustomPeriod()"> – <input type="date" id="pcCustomDt" min="'+g.df+'" max="'+g.dt+'" value="'+cur.dt+'" onchange="onPcCustomPeriod()"></span>'+
+    '<span class="pc-period-range">'+_pcShortDate(cur.df)+'–'+_pcShortDate(cur.dt)+'</span>'+
+    '<div id="pcPeriodHint" class="pc-price-hint" style="display:none;width:100%;margin-top:4px"></div>';
+}
+function setPcPeriod(df, dt){
+  var g=_pcGlobalDates();
+  if(df<g.df) df=g.df; if(dt>g.dt) dt=g.dt; if(df>dt) df=dt;   // кламп в загруженные границы
+  window._pcPeriod={df:df, dt:dt};
+  _pcRerenderAll();
+}
+function onPcCustomPeriod(){
+  var g=_pcGlobalDates();
+  var df=(document.getElementById('pcCustomDf')||{}).value||g.df;
+  var dt=(document.getElementById('pcCustomDt')||{}).value||g.dt;
+  var widened=(df<g.df)||(dt>g.dt);
+  setPcPeriod(df, dt);   // кламп + ре-рендер (пересоберёт бар)
+  if(widened){ var h=document.getElementById('pcPeriodHint'); if(h){ h.style.display='block'; h.textContent='Данные за этот период не загружены. Чтобы посмотреть шире — увеличьте период на Главной.'; } }
+}
 function _pcMetricsOutside(e){ var p=document.getElementById('pcMetricsPanel'); if(!p) return; if(!p.contains(e.target) && !(e.target.closest && e.target.closest('.pc-metrics-wrap'))){ p.style.display='none'; document.removeEventListener('click',_pcMetricsOutside); } }
 function togglePcMetricsPanel(ev){ if(ev) ev.stopPropagation(); var p=document.getElementById('pcMetricsPanel'); if(!p) return; if(p.style.display!=='block'){ renderPcMetricsPanel(); p.style.display='block'; setTimeout(function(){ document.addEventListener('click',_pcMetricsOutside); },0); } else { p.style.display='none'; document.removeEventListener('click',_pcMetricsOutside); } }
 function renderPcMetricsPanel(){
@@ -7397,7 +7461,8 @@ function _pcFinanceTable(nm){
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
   var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
   if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
-  var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+  var _d=_pcDates(), df=_d.df, dt=_d.dt;   // 🔥 v89: период карточки
+  if(df && dt) rowsNm = rowsNm.filter(function(r){ return _pcRowInPeriod(r, df, dt); });
   var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
   var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
     .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
@@ -7421,6 +7486,7 @@ function _pcPriceBlock(nm){
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
   var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
   if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
+  var _d=_pcDates(); if(_d.df && _d.dt) rowsNm = rowsNm.filter(function(r){ return _pcRowInPeriod(r, _d.df, _d.dt); });   // 🔥 v89: период карточки
   var U=0, sWithdisc=0, sPrice=0, sAmount=0, sPay=0, sAcq=0, sReward=0, nSale=0, nReward=0;
   rowsNm.forEach(function(r){
     var o=(r.supplier_oper_name||'').toLowerCase(), d=(r.doc_type_name||'').toLowerCase();
@@ -7471,7 +7537,8 @@ function _pcChartBlock(nm){
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
   var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
   if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
-  var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+  var _d=_pcDates(), df=_d.df, dt=_d.dt;   // 🔥 v89: период карточки
+  if(df && dt) rowsNm = rowsNm.filter(function(r){ return _pcRowInPeriod(r, df, dt); });
   var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
   var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
     .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
@@ -7495,7 +7562,9 @@ function renderProductCard(){
   document.getElementById('pcHead').innerHTML = photo+'<div class="pc-meta"><div class="pc-title">'+title+'</div>'+
     (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>'+
     '<span class="pc-metrics-wrap"><button type="button" class="orders-csv-btn" style="padding:6px 11px;font-size:13px" onclick="togglePcMetricsPanel(event)">⚙ Строки</button><div id="pcMetricsPanel" class="orders-cols-panel" style="display:none"></div></span>';   // 🔥 v88: выбор метрик (график+таблица)
+  window._pcPeriod = null;   // 🔥 v89: транзиентный период карточки — дефолт = глобальный при открытии
   document.getElementById('pcBody').innerHTML =
+    '<div id="pcPeriodBar" class="pc-period-bar"></div>'+   // 🔥 v89: селектор периода (над графиком)
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> График</div>'+
     '<div class="pc-block-c" id="pcChart">'+_pcChartBlock(nm)+'</div></div>'+   // 🔥 3c: график динамики по дням
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Цена</div>'+
@@ -7504,19 +7573,21 @@ function renderProductCard(){
     '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>'+
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Финансы по дням</div>'+
     '<div class="pc-block-c" id="pcFinance">'+_pcFinanceTable(nm)+'</div></div>';   // 🔥 3b: финансы синхронно из rawData
+  _pcRenderPeriodBar();
   _pcLoadFunnelHistory(nm);
 }
 function openProductCard(nmId){ if(nmId==null || nmId==='' || String(nmId)==='0') return; window._pcNm=nmId; showSection('product', null); }   // 🔥 v0.7.12.83: нет карточки для служебного nm=0
 async function _pcLoadFunnelHistory(nm){
   var el=document.getElementById('pcFunnel'); if(!el) return;
   try{
-    var df=(document.getElementById('df')||{}).value, dt=(document.getElementById('dt')||{}).value;
+    var _d=_pcDates(), df=_d.df, dt=_d.dt;   // 🔥 v89: период карточки
     if(!df||!dt){ el.innerHTML='<div class="pc-empty">Сначала загрузите отчёт за период (Главная/Калькулятор).</div>'; return; }
     var headers={}; var tok=localStorage.getItem('wb_token');
     if(!isViewingForeign() && tok) headers['Authorization']=tok;
     var jwt=window.currentJwt; if(jwt) headers['X-User-Auth']='Bearer '+jwt;
     var r=await fetch('/api/wb?resource=funnel-history&nm='+encodeURIComponent(nm)+'&dateFrom='+encodeURIComponent(df)+'&dateTo='+encodeURIComponent(dt)+wsParam(),{headers:headers});
     if(String(window._pcNm)!==String(nm)) return;   // юзер ушёл с карточки — не перетираем
+    var _nd=_pcDates(); if(_nd.df!==df || _nd.dt!==dt) return;   // 🔥 v89: период сменился пока грузили — не перетираем неактуальным
     if(!r.ok){ el.innerHTML='<div class="pc-empty">Воронка недоступна (возможно, лимит Analytics API). Повторите позже.</div>'; return; }
     var d=await r.json();
     el.innerHTML=_pcFunnelTable((d&&d.history)||[]);
