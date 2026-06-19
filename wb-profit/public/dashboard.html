@@ -1978,6 +1978,10 @@ html[data-theme="dark"] .orders-note{background:#16213e;border-color:#3b3b52}
 .ocp-row:hover{background:var(--bg)}
 .ocp-lbl{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text);cursor:pointer;flex:1;min-width:0}
 .ocp-lbl input{flex-shrink:0}
+.pc-head{position:relative}
+.pc-metrics-wrap{position:absolute;right:0;top:0;display:inline-block}
+.ocp-grp{font-size:11px;color:var(--muted);font-weight:600;padding:7px 6px 2px;text-transform:uppercase;letter-spacing:.3px}
+.pc-mdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:2px;vertical-align:middle}
 .ocp-mv{display:flex;gap:2px;flex-shrink:0}
 .ocp-mv button{width:22px;height:22px;border:1px solid var(--border);background:var(--surface);border-radius:5px;cursor:pointer;color:var(--text);font-size:11px;line-height:1;padding:0}
 .ocp-mv button:disabled{opacity:.35;cursor:default}
@@ -7323,6 +7327,71 @@ function _pcFunnelTable(hist){
   return '<div class="pc-mx-scroll"><table class="pc-mx">'+head+body+'</table></div>';
 }
 // 🔥 Слой3/3b: финансы по дням для одного товара — синхронно из window.rawData (без API), aggregateRowsByDay по nm.
+// 🔥 Слой3/3c (v0.7.12.88): единый каталог метрик карточки. Каждая знает метку(l), единицу(unit),
+// можно ли на график(chart, только ₽), цвет линии(color), val(d)=число (график/расчёт), cell(d)=ячейка таблицы.
+function _pcMetrics(){
+  var EXP=function(d){ return Number(d.commission||0)+Number(d.logistics||0)+Number(d.storage||0)+Number(d.ads||0)+Number(d.penalties||0)+Number(d.wb_finance||0)+Number(d.cost||0); };
+  return [
+    {key:'sales_count',   l:'Продажи, шт',        unit:'шт',                      val:function(d){return Number(d.sales_count||0);},  cell:function(d){return fmt(d.sales_count);}},
+    {key:'returns_count', l:'Возвраты, шт',        unit:'шт',                      val:function(d){return Number(d.returns_count||0);},cell:function(d){return fmt(d.returns_count);}},
+    {key:'revenue',       l:'Выручка, ₽',          unit:'₽', chart:true, color:'#22c55e', val:function(d){return Number(d.revenue||0);},   cell:function(d){return _ordAbsMoney(d.revenue);}},
+    {key:'payout',        l:'WB реализовал, ₽',    unit:'₽', chart:true, color:'#0ea5e9', val:function(d){return Number(d.payout||0);},    cell:function(d){return _ordAbsMoney(d.payout);}},
+    {key:'commission',    l:'Комиссия, ₽',         unit:'₽', chart:true, color:'#f59e0b', val:function(d){return Number(d.commission||0);},cell:function(d){return _ordAbsMoney(d.commission);}},
+    {key:'logistics',     l:'Логистика, ₽',        unit:'₽', chart:true, color:'#8b5cf6', val:function(d){return Number(d.logistics||0);}, cell:function(d){return _ordAbsMoney(d.logistics);}},
+    {key:'storage',       l:'Хранение, ₽',         unit:'₽', chart:true, color:'#14b8a6', val:function(d){return Number(d.storage||0);},   cell:function(d){return _ordAbsMoney(d.storage);}},
+    {key:'ads',           l:'Реклама, ₽',          unit:'₽', chart:true, color:'#f97316', val:function(d){return Number(d.ads||0);},       cell:function(d){return _ordAbsMoney(d.ads);}},
+    {key:'penalties',     l:'Штрафы, ₽',           unit:'₽', chart:true, color:'#dc2626', val:function(d){return Number(d.penalties||0);}, cell:function(d){return _ordAbsMoney(d.penalties);}},
+    {key:'cost',          l:'Себестоимость, ₽',    unit:'₽', chart:true, color:'#64748b', val:function(d){return Number(d.cost||0);},      cell:function(d){return _ordAbsMoney(d.cost);}},
+    {key:'expenses',      l:'Расходы (всего), ₽',  unit:'₽', chart:true, color:'#ef4444', val:EXP,                                          cell:function(d){return _ordAbsMoney(EXP(d));}},
+    {key:'profit',        l:'Прибыль, ₽',          unit:'₽', chart:true, color:'#7c3aed', val:function(d){return Number(d.profit||0);},    cell:function(d){return _ordProfitCell(d.profit);}},
+    {key:'margin',        l:'Маржа, %',            unit:'%',                       val:function(d){return d.revenue>0?d.profit/d.revenue*100:0;}, cell:function(d){return d.revenue>0?_ordPct(d.profit/d.revenue*100):_ordDash();}}
+  ];
+}
+var _PC_METRICS_DEFAULT=['sales_count','returns_count','revenue','profit','expenses'];   // дефолт: 5 метрик → график 3 ₽-линии
+function _pcMetricsCfgKey(){ return _ordersColCfgKey(); }   // тот же ключ аккаунта/воркспейса, что у Пульса
+function _pcReadMetricsCfg(){ try{ var s=JSON.parse(localStorage.getItem('wb_card_metrics_v1')||'{}')||{}; return s[_pcMetricsCfgKey()]||null; }catch(e){ return null; } }
+function _pcWriteMetricsCfg(enabled){ try{ var s=JSON.parse(localStorage.getItem('wb_card_metrics_v1')||'{}')||{}; s[_pcMetricsCfgKey()]={enabled:enabled}; localStorage.setItem('wb_card_metrics_v1',JSON.stringify(s)); }catch(e){} }
+function _pcEnabledMetrics(){
+  var valid={}; _pcMetrics().forEach(function(m){ valid[m.key]=1; });
+  var cfg=_pcReadMetricsCfg();
+  var en=(cfg && Array.isArray(cfg.enabled)) ? cfg.enabled.filter(function(k){return valid[k];}) : _PC_METRICS_DEFAULT.slice();
+  if(!en.length) en=_PC_METRICS_DEFAULT.slice();
+  return en;
+}
+function _pcRerenderMetricBlocks(){
+  var nm=window._pcNm; if(nm==null) return;
+  var ch=document.getElementById('pcChart'); if(ch) ch.innerHTML=_pcChartBlock(nm);
+  var fin=document.getElementById('pcFinance'); if(fin) fin.innerHTML=_pcFinanceTable(nm);
+}
+function _pcMetricsOutside(e){ var p=document.getElementById('pcMetricsPanel'); if(!p) return; if(!p.contains(e.target) && !(e.target.closest && e.target.closest('.pc-metrics-wrap'))){ p.style.display='none'; document.removeEventListener('click',_pcMetricsOutside); } }
+function togglePcMetricsPanel(ev){ if(ev) ev.stopPropagation(); var p=document.getElementById('pcMetricsPanel'); if(!p) return; if(p.style.display!=='block'){ renderPcMetricsPanel(); p.style.display='block'; setTimeout(function(){ document.addEventListener('click',_pcMetricsOutside); },0); } else { p.style.display='none'; document.removeEventListener('click',_pcMetricsOutside); } }
+function renderPcMetricsPanel(){
+  var panel=document.getElementById('pcMetricsPanel'); if(!panel) return;
+  var cat=_pcMetrics(), en={}; _pcEnabledMetrics().forEach(function(k){ en[k]=1; });
+  var groups=[['Штуки', 'шт'],['Рубли (видны на графике)', '₽'],['Проценты', '%']];
+  var h='';
+  groups.forEach(function(g){
+    var items=cat.filter(function(m){ return m.unit===g[1]; }); if(!items.length) return;
+    h+='<div class="ocp-grp">'+g[0]+'</div>';
+    items.forEach(function(m){
+      var checked=en[m.key]?'checked':'';
+      var dot=(m.unit==='₽'&&m.color)?('<span class="pc-mdot" style="background:'+m.color+'"></span>'):'';
+      h+='<div class="ocp-row"><label class="ocp-lbl"><input type="checkbox" '+checked+' onchange="onPcMetricToggle(\''+m.key+'\',this.checked)"> '+dot+escHtml(m.l)+'</label></div>';
+    });
+  });
+  h+='<div class="ocp-row" style="justify-content:flex-end;margin-top:4px"><button type="button" class="orders-csv-btn" style="padding:4px 10px;font-size:12px" onclick="onPcMetricsReset()">Сбросить</button></div>';
+  panel.innerHTML=h;
+}
+function onPcMetricToggle(key,show){
+  var set={}; _pcEnabledMetrics().forEach(function(k){ set[k]=1; });
+  if(show) set[key]=1; else delete set[key];
+  var ordered=_pcMetrics().filter(function(m){ return set[m.key]; }).map(function(m){ return m.key; });
+  if(!ordered.length){ setTimeout(renderPcMetricsPanel,0); return; }   // гард: нельзя выключить все — вернуть чекбокс
+  _pcWriteMetricsCfg(ordered);
+  _pcRerenderMetricBlocks();
+  setTimeout(renderPcMetricsPanel,0);
+}
+function onPcMetricsReset(){ try{ var s=JSON.parse(localStorage.getItem('wb_card_metrics_v1')||'{}')||{}; delete s[_pcMetricsCfgKey()]; localStorage.setItem('wb_card_metrics_v1',JSON.stringify(s)); }catch(e){} _pcRerenderMetricBlocks(); setTimeout(renderPcMetricsPanel,0); }
 function _pcFinanceTable(nm){
   var raw = window.rawData || [];
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
@@ -7332,22 +7401,11 @@ function _pcFinanceTable(nm){
   var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
   var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
     .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
-  var rowsDef=[
-    {l:'Продажи, шт', f:function(d){ return fmt(d.sales_count); }},
-    {l:'Возвраты, шт', f:function(d){ return fmt(d.returns_count); }},
-    {l:'Выручка, ₽', f:function(d){ return _ordAbsMoney(d.revenue); }},
-    {l:'WB реализовал, ₽', f:function(d){ return _ordAbsMoney(d.payout); }},
-    {l:'Комиссия, ₽', f:function(d){ return _ordAbsMoney(d.commission); }},
-    {l:'Логистика, ₽', f:function(d){ return _ordAbsMoney(d.logistics); }},
-    {l:'Хранение, ₽', f:function(d){ return _ordAbsMoney(d.storage); }},
-    {l:'Реклама, ₽', f:function(d){ return _ordAbsMoney(d.ads); }},
-    {l:'Штрафы, ₽', f:function(d){ return _ordAbsMoney(d.penalties); }},
-    {l:'Себестоимость, ₽', f:function(d){ return _ordAbsMoney(d.cost); }},
-    {l:'Прибыль, ₽', f:function(d){ return _ordProfitCell(d.profit); }},
-    {l:'Маржа, %', f:function(d){ return d.revenue>0 ? _ordPct(d.profit/d.revenue*100) : _ordDash(); }}
-  ];
+  var en={}; _pcEnabledMetrics().forEach(function(k){ en[k]=1; });
+  var rowsDef=_pcMetrics().filter(function(m){ return en[m.key]; });   // 🔥 v88: строки = выбранные метрики каталога
+  if(!rowsDef.length) return '<div class="pc-empty">Не выбрано ни одной строки — откройте «⚙ Строки».</div>';
   var head='<thead><tr><th class="pc-metric">Метрика</th>'+days.map(function(d){ return '<th>'+_pcShortDate(d.day)+'</th>'; }).join('')+'</tr></thead>';
-  var body='<tbody>'+rowsDef.map(function(rd){ return '<tr><td class="pc-metric">'+rd.l+'</td>'+days.map(function(d){ return '<td>'+rd.f(d)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
+  var body='<tbody>'+rowsDef.map(function(m){ return '<tr><td class="pc-metric">'+m.l+'</td>'+days.map(function(d){ return '<td>'+m.cell(d)+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
   return '<div class="pc-mx-scroll"><table class="pc-mx">'+head+body+'</table></div>';
 }
 // 🔥 Слой3/3c (v0.7.12.82): график динамики по дням — переиспользует renderTimelineChart (тот же SVG, что в Аналитике)
@@ -7417,7 +7475,12 @@ function _pcChartBlock(nm){
   var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
   var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
     .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
-  return renderTimelineChart(days);
+  var en={}; _pcEnabledMetrics().forEach(function(k){ en[k]=1; });   // 🔥 v88: линии = выбранные ₽-метрики
+  var series=_pcMetrics().filter(function(m){ return m.unit==='₽' && m.chart && en[m.key]; })
+    .map(function(m){ return {key:m.key, color:m.color, label:m.l.replace(/, ₽$/,'').replace(' (всего)',''), val:m.val}; });
+  if(!series.length) return '<div class="pc-empty">Выберите хотя бы одну ₽-метрику в «⚙ Строки», чтобы построить график.</div>';
+  var hint = series.length>6 ? '<div class="pc-price-hint" style="display:block;margin-bottom:4px">Много линий ('+series.length+') — для читаемости снимите часть метрик в «⚙ Строки».</div>' : '';
+  return hint + renderTimelineChart(days, {series:series});
 }
 function renderProductCard(){
   var nm=window._pcNm; if(nm==null){ showSection('orders',document.getElementById('nav-orders')); return; }
@@ -7430,7 +7493,8 @@ function renderProductCard(){
   var line3 = 'Артикул WB: <a class="oc-wb" href="https://www.wildberries.ru/catalog/'+nm+'/detail.aspx" target="_blank" rel="noopener">'+nm+'</a>'+(p.name?(' · Артикул продавца: '+escHtml(p.name)):'');
   var line4 = st ? ('Остаток: <b>'+fmt((st.avail!=null?st.avail:0))+' шт</b>') : '';   // 🔥 v0.7.12.79: на складах
   document.getElementById('pcHead').innerHTML = photo+'<div class="pc-meta"><div class="pc-title">'+title+'</div>'+
-    (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>';
+    (line2?'<div class="pc-sub">'+line2+'</div>':'')+'<div class="pc-sub">'+line3+'</div>'+(line4?'<div class="pc-sub">'+line4+'</div>':'')+'</div>'+
+    '<span class="pc-metrics-wrap"><button type="button" class="orders-csv-btn" style="padding:6px 11px;font-size:13px" onclick="togglePcMetricsPanel(event)">⚙ Строки</button><div id="pcMetricsPanel" class="orders-cols-panel" style="display:none"></div></span>';   // 🔥 v88: выбор метрик (график+таблица)
   document.getElementById('pcBody').innerHTML =
     '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> График</div>'+
     '<div class="pc-block-c" id="pcChart">'+_pcChartBlock(nm)+'</div></div>'+   // 🔥 3c: график динамики по дням
@@ -11788,7 +11852,7 @@ function renderAdsCampaigns(snaps, adsData){
 }
 
 // === ВИДЖЕТ 1: Линейный график ===
-function renderTimelineChart(snaps){
+function renderTimelineChart(snaps, opts){
   if(!snaps.length)return '<div class="home-empty-mini">Нет данных</div>';
   var W=900,H=240,pad={l:60,r:20,t:20,b:30};
   var iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
@@ -11797,21 +11861,24 @@ function renderTimelineChart(snaps){
     var rev=Number(s.revenue||0);
     var exp=Number(s.commission||0)+Number(s.logistics||0)+Number(s.storage||0)+Number(s.ads||0)+Number(s.penalties||0)+Number(s.wb_finance||0)+Number(s.cost||0);
     var prof=Number(s.profit||0);
-    return {day:s.day,rev:rev,exp:exp,prof:prof,
+    var _p={day:s.day,rev:rev,exp:exp,prof:prof,
       commission:Number(s.commission||0),logistics:Number(s.logistics||0),
       storage:Number(s.storage||0),ads:Number(s.ads||0),
       penalties:Number(s.penalties||0),cost:Number(s.cost||0)};
+    if(opts&&opts.series){ opts.series.forEach(function(se){ _p[se.key]=Number((se.val?se.val(s):s[se.key])||0); }); }
+    return _p;
   });
   // 🔥 v0.7.12.4: учитываем и max(p.ads) для шкалы — иначе если рекламы много,
   // линия упирается в верх и обрезается (но в большинстве случаев ads < exp, так что эффект минимален).
+  var hasAds = pts.some(function(p){ return p.ads > 0; });
+  // 🔥 v88: серии — кастом (карточка) или дефолт 4 (Аналитика: байт-в-байт прежнее поведение).
+  var series = (opts&&opts.series&&opts.series.length) ? opts.series : [
+    {key:'rev', color:'#22c55e', label:'Выручка', width:2},
+    {key:'exp', color:'#ef4444', label:'Расходы', width:2},
+    {key:'prof', color:'#7c3aed', label:'Прибыль', width:2.5}
+  ].concat(hasAds ? [{key:'ads', color:'#f97316', label:'Реклама', width:1.5, dash:true, dotIf:function(p){return p.ads>0;}}] : []);
   var maxV=0,minV=0;
-  pts.forEach(function(p){
-    if(p.rev>maxV)maxV=p.rev;
-    if(p.exp>maxV)maxV=p.exp;
-    if(p.prof>maxV)maxV=p.prof;
-    if(p.ads>maxV)maxV=p.ads;
-    if(p.prof<minV)minV=p.prof;
-  });
+  pts.forEach(function(p){ series.forEach(function(se){ var v=Number(p[se.key]||0); if(v>maxV)maxV=v; if(v<minV)minV=v; }); });
   if(maxV===0)maxV=1;
   var range=maxV-minV||1;
   function x(i){return pad.l+(pts.length<=1?iw/2:i*iw/(pts.length-1));}
@@ -11824,15 +11891,10 @@ function renderTimelineChart(snaps){
   var avgProfit=total.prof/pts.length;
   // 🔥 v0.5.9: Сохраняем точки глобально для tooltip
   window._tlPoints = pts;
-  // 🔥 v0.7.12.4: показываем линию «Реклама» только если за период была реклама хоть в один день.
-  // Иначе легенда замусоривается, а линия лежит на нуле и не несёт информации.
-  var hasAds = pts.some(function(p){ return p.ads > 0; });
-  // SVG
+  window._tlSeries = series;
+  // SVG · легенда по сериям (дефолт = Выручка/Расходы/Прибыль[/Реклама])
   var h='<div class="an-legend">'+
-    '<span><span class="an-legend-dot" style="background:#22c55e"></span>Выручка</span>'+
-    '<span><span class="an-legend-dot" style="background:#ef4444"></span>Расходы</span>'+
-    '<span><span class="an-legend-dot" style="background:#7c3aed"></span>Прибыль</span>'+
-    (hasAds ? '<span><span class="an-legend-dot" style="background:#f97316"></span>Реклама</span>' : '')+
+    series.map(function(se){ return '<span><span class="an-legend-dot" style="background:'+se.color+'"></span>'+escHtml(se.label)+'</span>'; }).join('')+
     '<span style="margin-left:auto;color:#94a3b8;font-size:11px">👆 наведи на точку</span>'+
   '</div>';
   h+='<svg class="an-chart-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" onmouseleave="hideChartTooltip();hideTlCursor()">';
@@ -11848,23 +11910,20 @@ function renderTimelineChart(snaps){
     h+='<line x1="'+pad.l+'" y1="'+yp+'" x2="'+(W-pad.r)+'" y2="'+yp+'" stroke="#f1f5f9"/>';
     h+='<text x="'+(pad.l-6)+'" y="'+(yp+4)+'" font-size="10" fill="#94a3b8" text-anchor="end">'+fmtR(v)+'</text>';
   }
-  // Линии
-  h+='<path d="'+path('rev')+'" stroke="#22c55e" stroke-width="2" fill="none"/>';
-  h+='<path d="'+path('exp')+'" stroke="#ef4444" stroke-width="2" fill="none"/>';
-  h+='<path d="'+path('prof')+'" stroke="#7c3aed" stroke-width="2.5" fill="none"/>';
-  // 🔥 v0.7.12.4: 4-я серия — расходы на рекламу по дням. Тоньше и пунктиром,
-  // чтобы не конкурировала визуально с тремя основными линиями.
-  if(hasAds) h+='<path d="'+path('ads')+'" stroke="#f97316" stroke-width="1.5" stroke-dasharray="4,3" fill="none"/>';
+  // Линии по сериям
+  series.forEach(function(se){ h+='<path d="'+path(se.key)+'" stroke="'+se.color+'" stroke-width="'+(se.width||2)+'"'+(se.dash?' stroke-dasharray="4,3"':'')+' fill="none"/>'; });
   // Vertical cursor (показывается при hover, id для управления)
   h+='<line id="tlCursor" class="tl-cursor" x1="0" y1="'+pad.t+'" x2="0" y2="'+(H-pad.b)+'"/>';
   // 🔥 v0.5.9: Точки на ВСЕХ днях для ВСЕХ 3 метрик (не только на прибыли)
   // v0.7.12.4: + 4-я точка (реклама), только если за период была реклама.
+  // Точки по сериям
   pts.forEach(function(p,i){
     var cx=x(i);
-    h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.rev)+'" r="3" fill="#22c55e" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
-    h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.exp)+'" r="3" fill="#ef4444" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
-    h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.prof)+'" r="3" fill="#7c3aed" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
-    if(hasAds && p.ads>0) h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(p.ads)+'" r="2.5" fill="#f97316" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
+    series.forEach(function(se){
+      if(se.dotIf && !se.dotIf(p)) return;
+      var r=(se.width&&se.width<2)?2.5:3;
+      h+='<circle class="tl-dot" cx="'+cx+'" cy="'+y(Number(p[se.key]||0))+'" r="'+r+'" fill="'+se.color+'" data-i="'+i+'" onmouseenter="showTlTooltip(event,'+i+')"/>';
+    });
   });
   // 🔥 v0.5.9: Hit-зоны — вертикальные прозрачные полоски на каждый день
   // ловят мышь между точками для удобного hover
@@ -11952,11 +12011,12 @@ function showTlTooltip(e, i){
     dateStr = d.getDate()+' '+months[d.getMonth()]+' '+d.getFullYear();
   }catch(e){}
   var rows = '';
-  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#22c55e"></span>Выручка</div><div class="chart-tooltip-row-val">'+fmtR(p.rev)+'</div></div>';
-  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#ef4444"></span>Расходы</div><div class="chart-tooltip-row-val">'+fmtR(p.exp)+'</div></div>';
-  rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#7c3aed"></span>Прибыль</div><div class="chart-tooltip-row-val" style="color:'+(p.prof>=0?'#22c55e':'#ef4444')+'">'+(p.prof>=0?'+':'')+fmtR(p.prof)+'</div></div>';
-  // 🔥 v0.7.12.4: строка «Реклама» в tooltip — только если был расход в этот день.
-  if(p.ads>0) rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:#f97316"></span>Реклама</div><div class="chart-tooltip-row-val">'+fmtR(p.ads)+'</div></div>';
+  (window._tlSeries||[]).forEach(function(se){
+    if(se.dotIf && !se.dotIf(p)) return;   // дефолтная «Реклама» — только если был расход в этот день
+    var v=Number(p[se.key]||0), isP=(se.key==='prof'||se.key==='profit');
+    var valHtml = isP ? ('<span style="color:'+(v>=0?'#22c55e':'#ef4444')+'">'+(v>=0?'+':'')+fmtR(v)+'</span>') : fmtR(v);
+    rows += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl"><span class="chart-tooltip-dot" style="background:'+se.color+'"></span>'+escHtml(se.label)+'</div><div class="chart-tooltip-row-val">'+valHtml+'</div></div>';
+  });
   // Топ-3 расходные статьи этого дня
   var breakdown = [
     {lbl:'Себестоимость', val:p.cost},
