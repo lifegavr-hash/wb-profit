@@ -7352,44 +7352,52 @@ function _pcFinanceTable(nm){
 }
 // 🔥 Слой3/3c (v0.7.12.82): график динамики по дням — переиспользует renderTimelineChart (тот же SVG, что в Аналитике)
 // на дневном массиве aggregateRowsByDay (как 3b). Синхронно из rawData, без API и без внешних библиотек.
-// 🔥 Слой3/3c (v0.7.12.85): блок «Цена» — водопад НА ЕДИНИЦУ из строк продаж (синхронно из rawData).
-// Ваша цена(withdisc) − СПП(withdisc−amount) = покупатель заплатил(amount) − удержания(amount−ppvz) = выплачено(ppvz).
-// СПП ВЫЧИСЛЯЕМ (ppvz_spp_prc нет в слим-кэше). retail_price/withdisc — за единицу (×q); retail_amount/ppvz — итог строки.
+// 🔥 Слой3/3c (v0.7.12.86): блок «Цена» — якорная модель (без формулы комиссии). СПП за счёт WB (доказано:
+// ppvz_kvw_prc_base−ppvz_kvw_prc = СПП; компенсация = отдельная операция «Компенсация лояльности»).
+// Прошёл код-ревью: продажа определяется по ОПЕРАЦИИ supplier_oper_name (у «Компенсации» doc_type_name тоже
+// «Продажа», qty=0 — нельзя считать её продажей); ВОЗВРАТЫ исключены (искажали «на единицу» — они в «Финансах»);
+// округление ОДИН раз до водопада (строки сходятся); guard на битую цену.
+// Вам выплачено = Σ ppvz_for_pay по НЕ-возвратным операциям (продажа + компенсация СПП) /шт. Удержания = Ваша цена − Выплачено.
 function _pcPriceBlock(nm){
   var raw = window.rawData || [];
   if(!raw.length) return '<div class="pc-empty">Загрузите отчёт за период (Главная/Калькулятор).</div>';
-  var sales = raw.filter(function(r){ var d=(r.doc_type_name||'').toLowerCase(), o=(r.supplier_oper_name||'').toLowerCase(); return String(r.nm_id)===String(nm) && (d==='продажа' || (!d && o==='продажа')); });
-  if(!sales.length) return '<div class="pc-empty">Нет продаж по товару за период.</div>';
-  var U=0, sPrice=0, sWithdisc=0, sAmount=0, sPpvz=0;
-  sales.forEach(function(r){
-    var q=Number(r.quantity||0)||1; U+=q;
-    sPrice    += Number(r.retail_price||0)*q;
-    sWithdisc += Number(r.retail_price_withdisc_rub||0)*q;
-    sAmount   += Number(r.retail_amount||0);
-    sPpvz     += Number(r.ppvz_for_pay||0);
+  var rowsNm = raw.filter(function(r){ return String(r.nm_id)===String(nm); });
+  if(!rowsNm.length) return '<div class="pc-empty">Нет операций по товару за период.</div>';
+  var U=0, sPrice=0, sWithdisc=0, sAmount=0, sPay=0;
+  rowsNm.forEach(function(r){
+    var d=(r.doc_type_name||'').toLowerCase(), o=(r.supplier_oper_name||'').toLowerCase();
+    if(o==='возврат' || (!o && d==='возврат')) return;          // возвраты — отдельно (Финансы), не искажают цену продажи
+    if(o==='продажа' || (!o && d==='продажа')){                 // продажа по ОПЕРАЦИИ (у компенсации doc='Продажа' — не считаем за продажу)
+      var q=Number(r.quantity||0)||1; U+=q;
+      sWithdisc += Number(r.retail_price_withdisc_rub||0)*q;
+      sPrice    += Number(r.retail_price||0)*q;
+      sAmount   += Number(r.retail_amount||0);
+    }
+    sPay += Number(r.ppvz_for_pay||0);                           // выплата всех НЕ-возвратных операций (продажа + компенсация СПП + прочее)
   });
   if(U<=0) return '<div class="pc-empty">Нет продаж по товару за период.</div>';
-  var price=sPrice/U, withdisc=sWithdisc/U, amount=sAmount/U, ppvz=sPpvz/U;
-  var spp=withdisc-amount, sppPct=withdisc>0?spp/withdisc*100:0;
-  var hold=amount-ppvz, ownDisc=price-withdisc;
+  var withdisc=Math.round(sWithdisc/U), payout=Math.round(sPay/U), price=Math.round(sPrice/U), amount=Math.round(sAmount/U);
+  if(withdisc<=0) return '<div class="pc-empty">Нет корректной цены по товару за период.</div>';
+  var spp=withdisc-amount, sppPct=Math.round(spp/withdisc*100);
+  var hold=withdisc-payout, ownDisc=price-withdisc;
   var M=_ordAbsMoney, rows='';
-  if(ownDisc>0.5){
+  if(ownDisc>0){
     rows+='<tr><td>Цена до вашей скидки</td><td>'+M(price)+'</td></tr>';
     rows+='<tr class="pc-price-mut"><td>Ваша скидка</td><td>−'+M(ownDisc)+'</td></tr>';
   }
   rows+='<tr><td>Ваша цена (со скидкой продавца)</td><td>'+M(withdisc)+'</td></tr>';
-  if(spp>0.5){
-    rows+='<tr class="pc-price-spp"><td>Скидка WB · СПП <span class="pc-price-hint">за счёт WB</span></td><td>−'+M(spp)+' ('+Math.round(sppPct)+'%)</td></tr>';
+  if(hold>0){
+    rows+='<tr class="pc-price-mut"><td>Удержания WB (комиссия, эквайринг)</td><td>−'+M(hold)+'</td></tr>';
+  } else if(hold<0){
+    rows+='<tr class="pc-price-spp"><td>Доплата WB (компенсация СПП)</td><td>+'+M(-hold)+'</td></tr>';
   }
-  rows+='<tr class="pc-price-sum"><td>Покупатель заплатил</td><td>'+M(amount)+'</td></tr>';
-  if(hold>=0){
-    rows+='<tr class="pc-price-mut"><td>Удержания WB (комиссия и пр.)</td><td>−'+M(hold)+'</td></tr>';
-  } else {
-    rows+='<tr class="pc-price-spp"><td>Доплата WB</td><td>+'+M(-hold)+'</td></tr>';
+  rows+='<tr class="pc-price-sum"><td>Вам выплачено (за товар)</td><td>'+M(payout)+'</td></tr>';
+  var ref='<div class="pc-price-hint" style="margin-top:8px;display:block">';
+  if(spp>0){
+    ref+='🎁 Скидка покупателю −'+M(spp)+' ('+sppPct+'%, СПП) — <b>за счёт WB</b> (компенсирует отдельной операцией), не ваш расход.<br>';
   }
-  rows+='<tr class="pc-price-sum"><td>Вам выплачено</td><td>'+M(ppvz)+'</td></tr>';
-  return '<table class="pc-price"><tbody>'+rows+'</tbody></table>'+
-    '<div class="pc-price-hint" style="margin-top:6px;display:block">Средние значения на единицу по продажам за период. Логистика, хранение и реклама — в блоке «Финансы по дням».</div>';
+  ref+='Покупатель заплатил: '+M(amount)+'/шт. «Вам выплачено» — за проданные единицы (продажи + компенсации СПП); возвраты, логистика и хранение — в блоке «Финансы».</div>';
+  return '<table class="pc-price"><tbody>'+rows+'</tbody></table>'+ref;
 }
 function _pcChartBlock(nm){
   var raw = window.rawData || [];
