@@ -3489,6 +3489,8 @@ async function init(){
   if(isViewingForeign() && typeof goFromHome==='function'){
     try{
       if(typeof loadCostsFromServer==='function') await loadCostsFromServer();
+      if(typeof loadTaxSettings==='function') loadTaxSettings();
+      if(typeof loadFixedExpenses==='function') loadFixedExpenses();
       await goFromHome();
     }catch(_){}
   }
@@ -3505,6 +3507,8 @@ async function init(){
   }
   // Сначала подтягиваем себестоимости с сервера (фоном, не блокирует UI)
   loadCostsFromServer();
+  if(typeof loadTaxSettings==='function') loadTaxSettings();
+  if(typeof loadFixedExpenses==='function') loadFixedExpenses();
   // 🔥 v0.5.0: ждём имя до 2 сек чтобы приветствие сразу было с именем (а не «Здравствуйте!»)
   Promise.race([
     loadSellerName(),
@@ -4230,7 +4234,7 @@ function showSection(name,el){
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
   if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); loadTeam(); /* v0.7.0/v0.7.5/v0.7.7 + Фаза D */ }
-  if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();}
+  if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();if(typeof prefillUnitTaxFromGlobal==='function')prefillUnitTaxFromGlobal();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
     var rs=document.getElementById('results');var ce=document.getElementById('calcEmpty');
@@ -4839,6 +4843,8 @@ async function onWorkspaceChange(ownerId, email){
   }
   // Фаза D шаг1: обновить себестоимость под активное пространство (foreign → владельца в _foreignCosts; своё → свою)
   if(typeof loadCostsFromServer==='function') await loadCostsFromServer();
+  if(typeof loadTaxSettings==='function') loadTaxSettings();
+  if(typeof loadFixedExpenses==='function') loadFixedExpenses();
   showSection('home', document.getElementById('nav-home'));
   loadHomeData();
 }
@@ -5822,6 +5828,99 @@ async function goFromHome(){
   await go(token);
 }
 
+/* ===== Модуль «Расходы и налог» (Часть 2): рантайм налога/расходов ===== */
+function _TAX_DEFAULTS(){ return {tax_mode:'none',tax_rate:0,base_mode:'full_price',patent_amount:0,patent_period:'month'}; }
+function getTaxCfg(){
+  if(isViewingForeign()) return window._foreignTaxCfg || _TAX_DEFAULTS();   // налог владельца оператору недоступен (profile запрещает ?workspace=) → none
+  try{ var c=JSON.parse(localStorage.getItem('wb_tax_cfg')||'null'); return (c&&c.tax_mode) ? c : _TAX_DEFAULTS(); }catch(e){ return _TAX_DEFAULTS(); }
+}
+function getFixedList(){
+  if(isViewingForeign()) return window._foreignFixed || [];
+  try{ return JSON.parse(localStorage.getItem('wb_fixed_expenses')||'[]')||[]; }catch(e){ return []; }
+}
+function getFixedMonthly(){
+  var list=getFixedList(), sum=0, i;
+  for(i=0;i<list.length;i++){ if(list[i] && list[i].active!==false) sum+=Number(list[i].amount)||0; }
+  var cfg=getTaxCfg();
+  if(cfg.tax_mode==='patent'){ var pa=Number(cfg.patent_amount)||0; sum += (cfg.patent_period==='year') ? pa/12 : pa; }   // патент = постоянный расход
+  return sum;
+}
+function getExtras(){
+  if(isViewingForeign()) return window._foreignExtras || {};
+  try{ return JSON.parse(localStorage.getItem('wb_extras')||'{}')||{}; }catch(e){ return {}; }
+}
+function _daysInMonth(iso){ var p=String(iso||'').split('-'), y=+p[0], m=+p[1]; if(!y||!m) return 30; return new Date(y, m, 0).getDate(); }
+function _fixedForDay(iso){ var dim=_daysInMonth(iso); return dim>0 ? getFixedMonthly()/dim : 0; }
+function _fixedForPeriod(df,dt){
+  // Постоянные на период: Σ по календарным дням monthlyFixed/днейВмесяце(d) — точно при пересечении месяцев.
+  var mf=getFixedMonthly(); if(mf<=0) return 0;
+  var sD=new Date(df), eD=new Date(dt); if(isNaN(sD.getTime())||isNaN(eD.getTime())||eD<sD) return 0;
+  var sum=0, cur=new Date(sD);
+  for(; cur<=eD; cur.setDate(cur.getDate()+1)){ var dim=new Date(cur.getFullYear(), cur.getMonth()+1, 0).getDate(); sum += dim>0 ? mf/dim : 0; }
+  return sum;
+}
+function _taxFixed(income, accepted, fixedShare){
+  // ЕДИНЫЙ расчёт налога+постоянных (БЕЗ floor 1% — floor только в кабинетном итоге computeFinancials).
+  var cfg=getTaxCfg(), mode=cfg.tax_mode, rate=Number(cfg.tax_rate)||0, tax=0;
+  if(mode==='usn6') tax=(Number(income)||0)*rate/100;
+  else if(mode==='usn15') tax=Math.max(0,(Number(income)||0)-(Number(accepted)||0))*rate/100;
+  // none/patent → tax=0 (патент уже в fixedShare через getFixedMonthly)
+  var fixed=Number(fixedShare)||0;
+  return {tax:tax, fixed:fixed, total:tax+fixed};
+}
+function _applySnapTaxLayer(snaps){
+  // Слой ОТОБРАЖЕНИЯ (БЕЗ бэкфилла): net = stored_profit − tax − fixed. База = snapshot.revenue
+  // (=retail_price≈полная цена → дефолт full_price на истории точен; after_spp на истории = приближение под дисклеймером).
+  if(!Array.isArray(snaps)) return snaps;
+  var cfg=getTaxCfg(), mf=getFixedMonthly();
+  if(cfg.tax_mode==='none' && mf<=0){ window._taxApproxActive=false; return snaps; }   // НИЧЕГО не настроено → нулевая регрессия (объекты не трогаем)
+  window._taxApproxActive = (cfg.tax_mode!=='none');
+  snaps.forEach(function(sn){
+    var income=Number(sn.revenue||0);
+    var accepted=(Number(sn.commission)||0)+(Number(sn.logistics)||0)+(Number(sn.storage)||0)+(Number(sn.ads)||0)+(Number(sn.cost)||0);
+    var tf=_taxFixed(income, accepted, _fixedForDay(sn.day));
+    sn._gross_profit=Number(sn.profit||0);
+    sn.tax=tf.tax; sn.fixed_share=tf.fixed;
+    sn.profit=sn._gross_profit - tf.total; sn.net_profit=sn.profit;
+    if(Array.isArray(sn.top_items) && sn.top_items.length){
+      var sumRev=0; sn.top_items.forEach(function(it){ if(Number(it.revenue)>0) sumRev+=Number(it.revenue); });
+      sn.top_items.forEach(function(it){
+        var share=(sumRev>0 && Number(it.revenue)>0)?Number(it.revenue)/sumRev:0;
+        it._gross_profit=Number(it.profit||0);
+        it.profit=it._gross_profit - tf.total*share; it.net_profit=it.profit;
+      });
+    }
+  });
+  return snaps;
+}
+async function loadTaxSettings(){
+  try{
+    if(isViewingForeign()) return;   // налог — настройка владельца; оператору недоступен
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt)return;
+    var r=await fetch(withWbAccount('/api/profile?resource=tax'),{headers:{'Authorization':'Bearer '+jwt}});
+    if(!r.ok)return;
+    var d=await r.json();
+    localStorage.setItem('wb_tax_cfg', JSON.stringify({tax_mode:d.tax_mode||'none',tax_rate:Number(d.tax_rate)||0,base_mode:d.base_mode||'full_price',patent_amount:Number(d.patent_amount)||0,patent_period:d.patent_period||'month'}));
+  }catch(e){console.warn('loadTaxSettings error',e);}
+}
+async function loadFixedExpenses(){
+  try{
+    if(isViewingForeign()) return;   // постоянные расходы — кабинетный display-слой владельца; оператору не показываем (симметрично налогу)
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt)return;
+    var r=await fetch(withWbAccount('/api/costs?resource=expenses'),{headers:{'Authorization':'Bearer '+jwt}});
+    if(!r.ok)return; var d=await r.json();
+    localStorage.setItem('wb_fixed_expenses', JSON.stringify(d.expenses||[]));
+  }catch(e){console.warn('loadFixedExpenses error',e);}
+}
+function prefillUnitTaxFromGlobal(){
+  var el=document.getElementById('unitTaxPct'); if(!el || window._unitTaxPrefilled) return;   // префилл ОДИН раз за сессию — не затирает ручной what-if при возврате на вкладку
+  var cfg=getTaxCfg();
+  if(cfg.tax_mode==='usn6'||cfg.tax_mode==='usn15'){ el.value=Number(cfg.tax_rate)||0; window._unitTaxPrefilled=true; }
+}
 function getCosts(){
   // Фаза D шаг1: в чужом пространстве — себестоимость ВЛАДЕЛЬЦА (in-memory, НЕ из своего localStorage,
   // чтобы не смешать со своими данными). Заполняется loadCostsFromServer через ?workspace=.
@@ -5920,12 +6019,14 @@ async function loadCostsFromServer(){
       if(!rf.ok){ window._foreignCosts={}; return; }
       var df2=await rf.json();
       window._foreignCosts=df2.costs||{};
+      window._foreignExtras=df2.extras||{};   // 🔥 Часть2
       return;
     }
     var r=await fetch(withWbAccount('/api/costs'),{headers:{'Authorization':'Bearer '+jwt}});
     if(!r.ok)return;
     var d=await r.json();
     var serverCosts=d.costs||{};
+    try{ localStorage.setItem('wb_extras', JSON.stringify(d.extras||{})); }catch(_){}   // 🔥 Часть2: расходы-на-единицу
     var localCosts=getCosts();
     // Сервер — источник истины. Локальные значения если есть только локально — отправим на сервер.
     var merged=Object.assign({},serverCosts,localCosts);
@@ -6177,6 +6278,8 @@ async function runHistoryImport(){
     // может опередить его и прочитать пустой/устаревший localStorage → cost=0 у новых юзеров.
     if(typeof loadCostsFromServer === 'function'){
       try { await loadCostsFromServer(); } catch(_) {}
+      try { await loadTaxSettings(); } catch(_) {}
+      try { await loadFixedExpenses(); } catch(_) {}
     }
 
     // 🔥 v0.7.12.2 (A): база costByNm — из localStorage (user_costs через /api/costs),
@@ -6572,12 +6675,14 @@ function computeFinancials(rawData, rows){
       var price=Number(r.retail_amount||r.retail_price_withdisc_rub||0);
       var pct=Number(r.commission_percent||0);
       t.revenue+=price;
+      t.revenueFull=(t.revenueFull||0)+Number(r.retail_price_withdisc_rub||r.retail_amount||0);   // 🔥 Часть2: база full_price
       t.commission+=price*pct/100;
     } else if(dt==='возврат'){
       t.returnsCount++;
       var pr=Number(r.retail_amount||r.retail_price_withdisc_rub||0);
       var pc=Number(r.commission_percent||0);
       t.revenue-=pr;
+      t.revenueFull=(t.revenueFull||0)-Number(r.retail_price_withdisc_rub||r.retail_amount||0);   // 🔥 Часть2
       t.commission-=pr*pc/100;
     }
     // total строки операции (без выплаты)
@@ -6586,11 +6691,13 @@ function computeFinancials(rawData, rows){
 
   // 2) Себестоимость — по товарам (rows)
   if(Array.isArray(rows)){
+    var _exFin=(typeof getExtras==='function')?getExtras():{};   // 🔥 Часть2: расходы-на-единицу запекаются как cost
     for(var j=0;j<rows.length;j++){
       var x=rows[j];
-      if(x.cost>0){
-        t.cost+=x.cost*Math.max(x.sales-x.ret,0);
-      }
+      var _unX=Math.max(x.sales-x.ret,0);
+      if(x.cost>0){ t.cost+=x.cost*_unX; }
+      var _exX=Number(_exFin[String(x.nm_id)])||0;
+      if(_exX>0) t.cost+=_exX*_unX;
     }
   }
 
@@ -6622,6 +6729,21 @@ function computeFinancials(rawData, rows){
   var _expOld    = t.commission + t.delivery + t.storage + t.ads + t.penalty + t.wbFinance + t.cost - (wbAdjustRaw < 0 ? wbAdjustRaw : 0);
   t._acqReclassOk = (Math.abs(t.profit - _profitOld) <= 1) && (Math.abs(t.totalExpenses - _expOld) <= 1);
   if(!t._acqReclassOk) console.warn('[acquiring] реклассификация сдвинула итог: profitΔ='+Math.round(t.profit-_profitOld)+' expΔ='+Math.round(t.totalExpenses-_expOld)+' (эквайринг мог быть не в ppvz_for_pay)');
+
+  // 🔥 Модуль «Расходы и налог» (Часть2): налог + постоянные на КАБИНЕТНОМ итоге. floor 1% (УСН-15) — ТОЛЬКО здесь.
+  // Применяется ПОСЛЕ зашитой сверки выше (она проверяет gross-прибыль). none + 0 постоянных → ничего не меняет.
+  (function(){
+    var _cfg=getTaxCfg();
+    var _inc=(_cfg.base_mode==='after_spp') ? t.revenue : (t.revenueFull||t.revenue);
+    var _acc=t.commission + t.delivery + t.storage + t.ads + t.cost;
+    var _dfEl=document.getElementById('df'), _dtEl=document.getElementById('dt');
+    var _fx=(typeof _fixedForPeriod==='function' && _dfEl && _dtEl) ? _fixedForPeriod(_dfEl.value, _dtEl.value) : 0;
+    var _tf=_taxFixed(_inc, _acc, _fx), _tax=_tf.tax;
+    if(_cfg.tax_mode==='usn15') _tax=Math.max(_tax, 0.01*(Number(_inc)||0));   // мин.налог 1% от доходов — кабинетный итог
+    t.tax=_tax; t.fixed_share=_fx;
+    t.profit -= (_tax + _fx);
+    t.totalExpenses += _tax + _fx;
+  })();
 
   return {t:t, byOper:byOper};
 }
@@ -7121,6 +7243,7 @@ var _ordersColFilters = {};     // 🔥 C2: воронки по key → {min,max
 function buildOrdersData(){
   var raw = window.rawData || [];
   var costs = (typeof getCosts==='function') ? getCosts() : {};
+  var _extras = (typeof getExtras==='function') ? getExtras() : {};   // 🔥 Часть2
   var byProd = new Map();
   var orphanPpvz = 0;        // выплата по строкам без артикула — для сверки с дашбордом
   for(var i=0;i<raw.length;i++){
@@ -7133,7 +7256,7 @@ function buildOrdersData(){
     if(!key){ orphanPpvz += ppvz; continue; }
     var p = byProd.get(key);
     if(!p){ p={key:key, nm:nmRaw, name:r.sa_name||'', subject:r.subject_name||'', brand:r.brand_name||'',
-              revenue:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, storage:0, ads:0, penalty:0, wbFinance:0,
+              revenue:0, revFull:0, revSpp:0, commission:0, acquiring:0, ppvz:0, logBuyout:0, logReturn:0, storage:0, ads:0, penalty:0, wbFinance:0,
               soldUnits:0, retUnits:0, lastDate:'', positions:new Map()};
             byProd.set(key,p); }
     if(!p.name && r.sa_name) p.name=r.sa_name;
@@ -7153,6 +7276,8 @@ function buildOrdersData(){
     // товарные итоги
     if(doc==='продажа'||doc==='возврат'){
       p.revenue += sign*price;
+      p.revFull += sign*Number(r.retail_price_withdisc_rub||r.retail_amount||0);   // 🔥 Часть2: база full_price
+      p.revSpp += sign*Number(r.retail_amount||r.retail_price_withdisc_rub||0);     // 🔥 Часть2: база after_spp
       p.commission += sign*(price*pct/100);
       var q = Number(r.quantity||0)||1;
       if(doc==='продажа') p.soldUnits += q; else p.retUnits += q;
@@ -7185,6 +7310,10 @@ function buildOrdersData(){
   var periodDays=(window._rowsPeriodDays)||((typeof _currentPeriod!=='undefined'&&_currentPeriod&&_currentPeriod.days)||30);
   var stocks=window._stocksMap||{};
   var list=[], sumPpvz=0;
+  // 🔥 Часть2: постоянные на период (распределение по доле выручки) + расходы-на-единицу
+  var _dfEl2=document.getElementById('df'), _dtEl2=document.getElementById('dt');
+  var _fixedPeriodP=(typeof _fixedForPeriod==='function' && _dfEl2 && _dtEl2) ? _fixedForPeriod(_dfEl2.value, _dtEl2.value) : 0;
+  var _sumRevPos=0; byProd.forEach(function(p){ if(p.revenue>0) _sumRevPos+=p.revenue; });
   byProd.forEach(function(p){
     var netUnits = Math.max(p.soldUnits - p.retUnits, 0);
     var costPer = parseFloat(costs[p.key]);
@@ -7192,6 +7321,14 @@ function buildOrdersData(){
     p.netUnits = netUnits;
     p.logistics = p.logBuyout + p.logReturn;
     p.cost = p.hasCost ? costPer*netUnits : 0;
+    // 🔥 Часть2: расходы-на-единицу запекаются в cost (как себестоимость); налог+постоянные на товар
+    var _exPer=Number(_extras[p.key])||0;
+    if(_exPer>0) p.cost += _exPer*netUnits;
+    var _cfgB=getTaxCfg();
+    var _incB=(_cfgB.base_mode==='after_spp') ? (p.revSpp||p.revenue) : (p.revFull||p.revenue);
+    var _accB=p.commission + p.logistics + p.storage + p.ads + p.cost;
+    p.tax=_taxFixed(_incB, _accB, 0).tax;   // per-товар без floor (приближение; floor — в кабинетном итоге)
+    p.fixedShare=(_sumRevPos>0 && p.revenue>0) ? _fixedPeriodP*(p.revenue/_sumRevPos) : 0;
     // склад (из _stocksMap по nm)
     var st=(p.nm!=null && stocks[p.nm])?stocks[p.nm]:null;
     p.stockTotal = st? Number(st.total||0):null;
@@ -7206,7 +7343,7 @@ function buildOrdersData(){
     var grossU=p.soldUnits+p.retUnits;
     p.buyoutPct = grossU>0 ? p.soldUnits/grossU*100 : null;
     // полный P&L по товару (налог УСН/НДС пока не включён — placeholder). Реклама из отчёта (как в Калькуляторе).
-    p.profit = p.ppvz - p.logistics - p.storage - p.ads - p.penalty - p.wbFinance - p.cost;   // 🔥 v0.7.12.76 (A): − ВБ-финанс (формула идентична Калькулятору computeFinancials)
+    p.profit = p.ppvz - p.logistics - p.storage - p.ads - p.penalty - p.wbFinance - p.cost - p.tax - p.fixedShare;   // 🔥 Часть2: − налог − постоянные (cost уже включает расходы-на-единицу)
     p.margin = p.profit;          // alias: фильтр прибыль/убыток и сортировка работают по полному P&L
     p.onlyReturns = (p.soldUnits===0);
     // проценты от выручки (продажи−возвраты ₽)
@@ -7465,7 +7602,7 @@ function _pcFinanceTable(nm){
   var _d=_pcDates(), df=_d.df, dt=_d.dt;   // 🔥 v89: период карточки
   if(df && dt) rowsNm = rowsNm.filter(function(r){ return _pcRowInPeriod(r, df, dt); });
   var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
-  var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
+  var days = _applySnapTaxLayer(aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts))
     .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
   var en={}; _pcEnabledMetrics().forEach(function(k){ en[k]=1; });
   var rowsDef=_pcMetrics().filter(function(m){ return en[m.key]; });   // 🔥 v88: строки = выбранные метрики каталога
@@ -7541,7 +7678,7 @@ function _pcChartBlock(nm){
   var _d=_pcDates(), df=_d.df, dt=_d.dt;   // 🔥 v89: период карточки
   if(df && dt) rowsNm = rowsNm.filter(function(r){ return _pcRowInPeriod(r, df, dt); });
   var opts = (df && dt) ? {fillRange:{df:df, dt:dt}} : undefined;
-  var days = aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts)
+  var days = _applySnapTaxLayer(aggregateRowsByDay(rowsNm, (typeof getCosts==='function'?getCosts():{}), opts))
     .sort(function(a,b){ return a.day<b.day?-1:(a.day>b.day?1:0); });
   var en={}; _pcEnabledMetrics().forEach(function(k){ en[k]=1; });   // 🔥 v88: линии = выбранные ₽-метрики
   var series=_pcMetrics().filter(function(m){ return m.unit==='₽' && m.chart && en[m.key]; })
@@ -9550,6 +9687,7 @@ async function fetchWbDay(dateIso,opts){
 // Превращает плоский список WB-строк в массив снапшотов по дням.
 function aggregateRowsByDay(rows,costMap,opts){
   costMap=costMap||{};
+  var extraMap=(typeof getExtras==='function')?getExtras():{};   // 🔥 Часть2: расходы-на-единицу (запекаются в cost)
   var byDay={};
   for(var i=0;i<rows.length;i++){
     var r=rows[i];
@@ -9587,6 +9725,7 @@ function aggregateRowsByDay(rows,costMap,opts){
     // Себестоимость по товарам
     var nm=r.nm_id;
     if(nm&&costMap[nm]&&doc==='продажа'){s.cost+=Number(costMap[nm]);}
+    if(nm&&extraMap[nm]&&doc==='продажа'){s.cost+=Number(extraMap[nm]);}   // 🔥 Часть2
     // Сборка топа
     if(nm){
       if(!s._items[nm])s._items[nm]={nm:nm,name:r.sa_name||('Арт. '+nm),sales:0,profit:0,revenue:0,ad:0,logistics_amount:0};
@@ -9599,6 +9738,7 @@ function aggregateRowsByDay(rows,costMap,opts){
       it.logistics_amount+=Number(r.delivery_rub||0)+Number(r.rebill_logistic_cost||0);
       if(isAdv(r.bonus_type_name,r.supplier_oper_name))it.ad+=Math.abs(r.deduction||0);
       if(costMap[nm]&&doc==='продажа')it.profit-=Number(costMap[nm]);
+      if(extraMap[nm]&&doc==='продажа')it.profit-=Number(extraMap[nm]);   // 🔥 Часть2
     }
   }
   // 🔥 v0.7.12.0: опционально заполняем нулевые дни в диапазоне (используется онбординг-импортом).
@@ -10301,7 +10441,7 @@ async function loadSnapshots(days){
     var r=await fetch(url,{headers:{'Authorization':'Bearer '+jwt}});
     if(!r.ok)return [];
     var d=await r.json();
-    return d.snapshots||[];
+    return _applySnapTaxLayer(d.snapshots||[]);   // 🔥 Часть2: слой налога/постоянных (Главная+Аналитика; none→идентично)
   }catch(e){console.warn('loadSnapshots error',e);return [];}
 }
 
@@ -10940,7 +11080,9 @@ function renderMoneyFlow(s){
     {label:'− Хранение',val:Number(s.storage||0),sign:'−',cls:'red'},
     {label:'− Реклама',val:Number(s.ads||0),sign:'−',cls:'red'},
     {label:'− Штрафы',val:Number(s.penalties||0),sign:'−',cls:'red'},
-    {label:'− Себестоим.',val:Number(s.cost||0),sign:'−',cls:'red'}
+    {label:'− Себестоим.',val:Number(s.cost||0),sign:'−',cls:'red'},
+    {label:'− Налог',val:Number(s.tax||0),sign:'−',cls:'red'},
+    {label:'− Пост. расходы',val:Number(s.fixed_share||0),sign:'−',cls:'red'}
   ];
   var profit=Number(s.profit||0);
   var h='<div class="flow">';
@@ -12178,7 +12320,7 @@ function hideChartTooltip(){
 }
 // === ВИДЖЕТ 2: Структура расходов ===
 function renderExpenseStructure(snaps){
-  var t={commission:0,logistics:0,storage:0,ads:0,penalties:0,wb_finance:0,cost:0};
+  var t={commission:0,logistics:0,storage:0,ads:0,penalties:0,wb_finance:0,cost:0,tax:0,fixed_share:0};
   var rev=0;
   snaps.forEach(function(s){
     rev+=Number(s.revenue||0);
@@ -12189,6 +12331,8 @@ function renderExpenseStructure(snaps){
     t.penalties+=Number(s.penalties||0);
     t.wb_finance+=Number(s.wb_finance||0);
     t.cost+=Number(s.cost||0);
+    t.tax+=Number(s.tax||0);
+    t.fixed_share+=Number(s.fixed_share||0);
   });
   if(rev<=0)return '<div class="home-empty-mini">Нет данных по выручке</div>';
   // 🔥 v0.7.9.4: используем поле profit из snapshot — оно содержит payout от WB (ppvz_for_pay)
@@ -12213,6 +12357,8 @@ function renderExpenseStructure(snaps){
     {key:'penalties',lbl:'Штрафы',val:t.penalties,color:'#dc2626'},
     {key:'wb_finance',lbl:'ВБ Финанс',val:t.wb_finance,color:'#8b5cf6'},
     {key:'wb_adjust',lbl:'Корректировки WB',val:Math.abs(totalAdj),color: totalAdj < 0 ? '#f97316' : '#10b981'},
+    {key:'tax',lbl:'Налог',val:t.tax,color:'#a855f7'},
+    {key:'fixed',lbl:'Пост. расходы',val:t.fixed_share,color:'#64748b'},
     {key:'profit',lbl:'Прибыль',val:Math.max(0,profit),color:'#22c55e'}
   ].filter(function(i){return i.val>0;});
   // 🔥 v0.5.9: Сохраняем для tooltip и клика
