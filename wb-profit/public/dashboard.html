@@ -931,7 +931,7 @@ tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg)}
 tr.loss td{background:#fff5f5}
 .tfoot-row td{font-weight:600;background:var(--bg);border-top:2px solid var(--border);border-bottom:none}
-.ci{width:90px;text-align:right;padding:4px 8px;font-size:13px;height:30px}
+.ci,.ce{width:90px;text-align:right;padding:4px 8px;font-size:13px;height:30px}
 .hint{font-size:12px;color:var(--hint);margin-top:5px}
 .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
 .chart-tabs{display:flex;gap:8px;flex-wrap:wrap}
@@ -2447,7 +2447,7 @@ body{padding-top:var(--beta-h)}
       </div>
       <div class="card" style="margin-top:14px">
         <div class="ct">Контроль кассового потока <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:6px">(необязательно)</span></div>
-        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Укажите ваши обязательные расходы в месяц (аренда, зарплата, налоги, кредиты, личные траты). Мы будем предупреждать, если прибыль от WB не покрывает эти расходы — это часто бывает причиной кассовых разрывов.</p>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Укажите ваши личные/семейные расходы в месяц (личные траты, кредиты, бытовое). Мы будем предупреждать, если прибыль от WB их не покрывает — это частая причина кассовых разрывов. <strong>Эта цифра только для предупреждений и НЕ вычитается из расчёта прибыли.</strong> Расходы бизнеса, которые уменьшают прибыль, заносите в карточку «Постоянные расходы» ниже.</p>
         <div style="margin-bottom:12px">
           <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Расходы в месяц, ₽</label>
           <input type="number" id="personalExpenses" placeholder="например, 80000" min="0" step="1000" style="max-width:240px">
@@ -2458,6 +2458,67 @@ body{padding-top:var(--beta-h)}
           <button class="bulk-btn" onclick="clearPersonalExpenses()">Удалить</button>
         </div>
         <p class="hint" style="margin-top:10px">Эта цифра <strong>хранится только в вашем браузере</strong> (localStorage) и не отправляется на сервер.</p>
+      </div>
+
+      <!-- 🔥 Модуль «Расходы и налог» Часть 3: карточка «Налог» -->
+      <div class="card" id="taxCard" style="margin-top:14px">
+        <div class="ct">Налог</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Выберите налоговый режим — сервис будет вычитать ориентировочный налог из чистой прибыли на всех экранах (Главная, Пульс, карточка товара, Калькулятор).</p>
+        <div style="margin-bottom:12px">
+          <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Режим</label>
+          <select id="taxMode" onchange="onTaxModeChange()" style="max-width:340px;width:100%">
+            <option value="none">Нет (не считать налог)</option>
+            <option value="usn6">УСН «Доходы» 6%</option>
+            <option value="usn15">УСН «Доходы минус расходы» 15%</option>
+            <option value="patent">Патент</option>
+          </select>
+        </div>
+        <!-- УСН 6/15 -->
+        <div id="taxUsnBox" style="display:none">
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Ставка, %</label>
+            <input type="number" id="taxRate" min="1" max="6" step="0.5" style="max-width:140px">
+            <span id="taxRateHint" style="font-size:12px;color:var(--hint);margin-left:8px"></span>
+          </div>
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">База для налога</label>
+            <select id="taxBaseMode" style="max-width:340px;width:100%">
+              <option value="full_price">С полной цены (до скидки WB / СПП)</option>
+              <option value="after_spp">После СПП (сколько заплатил покупатель)</option>
+            </select>
+            <p style="font-size:12px;color:var(--hint);margin-top:6px">«Полная цена» — налог считается от вашей цены до скидки WB. «После СПП» — от суммы, которую реально заплатил покупатель. Какую базу применять — уточните у бухгалтера.</p>
+          </div>
+        </div>
+        <!-- Патент -->
+        <div id="taxPatentBox" style="display:none">
+          <div style="margin-bottom:12px">
+            <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Стоимость патента, ₽</label>
+            <input type="number" id="patentAmount" min="0" step="1000" placeholder="например, 30000" style="max-width:200px">
+            <select id="patentPeriod" style="max-width:140px;margin-left:8px">
+              <option value="month">в месяц</option>
+              <option value="year">в год</option>
+            </select>
+            <p style="font-size:12px;color:var(--hint);margin-top:6px">Патент учитывается как постоянный расход (годовая стоимость делится на 12).</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:4px">
+          <button class="btn-primary" id="saveTaxBtn" onclick="saveTax()" disabled>Сохранить</button>
+          <span id="taxSavedHint" style="display:none;color:var(--green);font-size:13px">Сохранено</span>
+        </div>
+        <!-- Дисклеймер (заметный, юридическая защита) -->
+        <div style="margin-top:14px;border:1px solid var(--border);border-left:3px solid #f59e0b;background:var(--bg);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.55">
+          <strong>⚠️ Расчёт налога — ориентировочный.</strong> База налога зависит от трактовки (полная цена / после СПП) — уточните у бухгалтера. Это не налоговая декларация и не заменяет бухгалтерский учёт.
+          <span id="taxUsn15Note" style="display:none"><br><br>При УСН «Доходы минус расходы» 15% доход уменьшается только на расходы из перечня ст. 346.16 НК РФ. Сервис вычитает комиссию WB, логистику, хранение, рекламу и себестоимость — фактически принимаемый налоговой перечень расходов уточняйте у бухгалтера.</span>
+        </div>
+      </div>
+
+      <!-- 🔥 Модуль «Расходы и налог» Часть 3: карточка «Постоянные расходы» -->
+      <div class="card" id="fixedExpensesCard" style="margin-top:14px">
+        <div class="ct">Постоянные расходы кабинета</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Аренда, зарплаты, бухгалтерия, подписки и прочие ежемесячные расходы бизнеса. <strong>Вычитаются из чистой прибыли</strong> пропорционально дням выбранного периода — на всех экранах.</p>
+        <div id="fixedExpensesList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+        <button class="btn-primary" id="addFixedBtn" onclick="addFixedRow()" style="width:100%">+ Добавить строку</button>
+        <p style="margin-top:12px;font-weight:600;font-size:14px" id="fixedExpensesTotal">Итого: 0 ₽/мес</p>
       </div>
 
       <!-- 🔥 v0.7.10.9: PWA install — карточка появляется когда Chrome поймал beforeinstallprompt -->
@@ -2574,6 +2635,14 @@ body{padding-top:var(--beta-h)}
               <button class="bulk-btn" onclick="applyBulkCost('all')">Применить ко всем</button>
               <label class="bulk-check"><input type="checkbox" id="bulkOnlyEmpty"> Только пустые</label>
             </div>
+            <!-- 🔥 Модуль «Расходы и налог» Часть 3: bulk-ввод доп. расхода ₽/шт (упаковка/маркировка) -->
+            <div class="bulk-row">
+              <label class="bulk-lbl">Доп. расход:</label>
+              <input type="number" id="bulkExtra" placeholder="0" min="0" step="0.01" class="bulk-input">
+              <button class="bulk-btn primary" onclick="applyBulkExtra('selected')" id="bulkExtraSelBtn">Применить к выбранным (0)</button>
+              <button class="bulk-btn" onclick="applyBulkExtra('all')" id="bulkExtraAllBtn">Применить ко всем</button>
+              <label class="bulk-check"><input type="checkbox" id="bulkExtraOnlyEmpty"> Только пустые</label>
+            </div>
           </div>
           <!-- Настройки видимости столбцов -->
           <details class="col-settings">
@@ -2609,6 +2678,7 @@ body{padding-top:var(--beta-h)}
                 <th class="col-cpo th-sort" data-sort="cpo" onclick="onCalcSort('cpo')" style="display:none" title="CPO — стоимость рекламы на 1 заказ (≈ продажу)">CPO <span class="sort-ind"></span></th>
                 <th class="col-penalty th-sort" data-sort="pen" onclick="onCalcSort('pen')" title="Штрафы от WB (за пересортицу, нарушения упаковки, неверные данные)">Штрафы ₽ <span class="sort-ind"></span></th>
                 <th title="Себестоимость 1 шт товара. Заполните чтобы видеть реальную чистую прибыль">Себест. ₽/шт</th>
+                <th title="Доп. расход на 1 шт: упаковка, маркировка, прочие траты. Добавляется к себестоимости в итогах прибыли">Доп. расход ₽/шт</th>
                 <th class="th-sort" data-sort="profit" onclick="onCalcSort('profit')" title="Чистая прибыль = Выплата − Логистика − Хранение − Реклама − Штрафы − Себестоимость. Красное = убыток">Чистая прибыль ₽ <span class="sort-ind"></span></th>
               </tr></thead>
               <tbody id="tb"></tbody>
@@ -4233,7 +4303,13 @@ function showSection(name,el){
   if(name==='product') renderProductCard();
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
-  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); loadTeam(); /* v0.7.0/v0.7.5/v0.7.7 + Фаза D */ }
+  if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); loadTeam(); /* v0.7.0/v0.7.5/v0.7.7 + Фаза D */
+    // 🔥 Модуль «Расходы и налог» Часть 3: мгновенно из localStorage, затем свежее с сервера → ре-рендер
+    if(typeof renderTaxCard==='function') renderTaxCard();
+    if(typeof renderFixedExpenses==='function') renderFixedExpenses();
+    if(typeof loadTaxSettings==='function'){ loadTaxSettings().then(function(){ if(typeof renderTaxCard==='function') renderTaxCard(); }); }
+    if(typeof loadFixedExpenses==='function'){ loadFixedExpenses().then(function(){ if(typeof renderFixedExpenses==='function') renderFixedExpenses(); }); }
+  }
   if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();if(typeof prefillUnitTaxFromGlobal==='function')prefillUnitTaxFromGlobal();}
   if(name==='calc'){
     var hasData=window.rows&&window.rows.length>0;
@@ -5921,6 +5997,233 @@ function prefillUnitTaxFromGlobal(){
   var cfg=getTaxCfg();
   if(cfg.tax_mode==='usn6'||cfg.tax_mode==='usn15'){ el.value=Number(cfg.tax_rate)||0; window._unitTaxPrefilled=true; }
 }
+
+/* ===== Модуль «Расходы и налог» (Часть 3): UI карточки «Налог» ===== */
+// Бэкенд (PATCH /api/profile?resource=tax) валидирует ставку лишь как 0..100 —
+// диапазоны по режиму (УСН-6: 1–6, УСН-15: 5–15) ОБЯЗАН держать фронт.
+function _TAX_RATE_RANGE(mode){
+  if(mode==='usn6')  return {min:1, max:6,  def:6};
+  if(mode==='usn15') return {min:5, max:15, def:15};
+  return {min:0, max:100, def:0};
+}
+function _taxMarkDirty(){
+  var btn=document.getElementById('saveTaxBtn'); if(btn) btn.disabled=false;
+  var hint=document.getElementById('taxSavedHint'); if(hint) hint.style.display='none';
+}
+function onTaxModeChange(silent){
+  var modeEl=document.getElementById('taxMode'); if(!modeEl) return;
+  var mode=modeEl.value;
+  var usn=document.getElementById('taxUsnBox');
+  var pat=document.getElementById('taxPatentBox');
+  var note=document.getElementById('taxUsn15Note');
+  if(usn)  usn.style.display=(mode==='usn6'||mode==='usn15')?'':'none';
+  if(pat)  pat.style.display=(mode==='patent')?'':'none';
+  if(note) note.style.display=(mode==='usn15')?'':'none';
+  var rateEl=document.getElementById('taxRate');
+  var rHint=document.getElementById('taxRateHint');
+  if(mode==='usn6'||mode==='usn15'){
+    var rng=_TAX_RATE_RANGE(mode);
+    if(rateEl){
+      rateEl.min=rng.min; rateEl.max=rng.max;
+      // При РУЧНОМ переключении режима (не silent) — если значение вне диапазона, ставим дефолт режима.
+      if(!silent){
+        var cur=parseFloat(rateEl.value);
+        if(!Number.isFinite(cur)||cur<rng.min||cur>rng.max) rateEl.value=rng.def;
+      }
+    }
+    if(rHint) rHint.textContent='допустимо '+rng.min+'–'+rng.max+'%';
+  } else {
+    if(rHint) rHint.textContent='';
+  }
+}
+function renderTaxCard(){
+  var card=document.getElementById('taxCard'); if(!card) return;
+  if(isViewingForeign()){ card.style.display='none'; return; }   // налог — настройка владельца, оператору скрыт (симметрично формуле)
+  card.style.display='';
+  var cfg=getTaxCfg();
+  var modeEl=document.getElementById('taxMode');
+  var rateEl=document.getElementById('taxRate');
+  var baseEl=document.getElementById('taxBaseMode');
+  var paEl=document.getElementById('patentAmount');
+  var ppEl=document.getElementById('patentPeriod');
+  if(modeEl) modeEl.value=cfg.tax_mode||'none';
+  if(baseEl) baseEl.value=cfg.base_mode||'full_price';
+  if(paEl)   paEl.value=(Number(cfg.patent_amount)||0) ? Number(cfg.patent_amount) : '';
+  if(ppEl)   ppEl.value=cfg.patent_period||'month';
+  if(rateEl) rateEl.value=(cfg.tax_mode==='usn6'||cfg.tax_mode==='usn15') ? (Number(cfg.tax_rate)||'') : '';
+  onTaxModeChange(true);   // видимость блоков + min/max БЕЗ пометки dirty и без подмены значения
+  // Лёгкий change-хендлер активации кнопки (полей несколько → не паттерн data-bind). Навешиваем один раз.
+  if(!card._taxBound){
+    ['taxMode','taxRate','taxBaseMode','patentAmount','patentPeriod'].forEach(function(idd){
+      var e=document.getElementById(idd); if(!e) return;
+      e.addEventListener('input', _taxMarkDirty);
+      e.addEventListener('change', _taxMarkDirty);
+    });
+    card._taxBound=true;
+  }
+  var btn=document.getElementById('saveTaxBtn'); if(btn) btn.disabled=true;
+  var hint=document.getElementById('taxSavedHint'); if(hint) hint.style.display='none';
+}
+async function saveTax(){
+  if(isViewingForeign()) return;
+  var modeEl=document.getElementById('taxMode'); if(!modeEl) return;
+  var mode=modeEl.value;
+  var base_mode=(document.getElementById('taxBaseMode')||{}).value||'full_price';
+  var rate=0, patent_amount=0, patent_period='month';
+  if(mode==='usn6'||mode==='usn15'){
+    rate=parseFloat(String((document.getElementById('taxRate')||{}).value||'').replace(',','.'));
+    var rng=_TAX_RATE_RANGE(mode);
+    if(!Number.isFinite(rate)||rate<rng.min||rate>rng.max){
+      alert('Ставка для '+(mode==='usn6'?'УСН «Доходы» 6%':'УСН «Доходы минус расходы» 15%')+' должна быть в диапазоне '+rng.min+'–'+rng.max+'%');
+      return;
+    }
+  } else if(mode==='patent'){
+    patent_amount=parseFloat(String((document.getElementById('patentAmount')||{}).value||'').replace(',','.'))||0;
+    if(patent_amount<0){ alert('Стоимость патента не может быть отрицательной'); return; }
+    patent_period=(document.getElementById('patentPeriod')||{}).value||'month';
+  }
+  var cfg={tax_mode:mode, tax_rate:rate, base_mode:base_mode, patent_amount:patent_amount, patent_period:patent_period};
+  var btn=document.getElementById('saveTaxBtn'); if(btn) btn.disabled=true;
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt){ alert('Сессия истекла — войдите заново'); if(btn) btn.disabled=false; return; }
+    var r=await fetch(withWbAccount('/api/profile?resource=tax'),{
+      method:'PATCH',
+      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify(cfg)
+    });
+    if(!r.ok){
+      var msg='Не удалось сохранить настройки налога';
+      try{ var ed=await r.json(); if(ed&&ed.message) msg=ed.message; }catch(_){}
+      alert(msg); if(btn) btn.disabled=false; return;
+    }
+    // localStorage-зеркало пишем ТОЛЬКО после 200 — оно всегда совпадает с сервером.
+    try{ localStorage.setItem('wb_tax_cfg', JSON.stringify(cfg)); }catch(_){}
+    var hint=document.getElementById('taxSavedHint'); if(hint) hint.style.display='';
+    recomputeCurrentScreen();
+  }catch(e){ console.warn('saveTax error',e); alert('Ошибка сети при сохранении'); if(btn) btn.disabled=false; }
+}
+
+/* ===== Модуль «Расходы и налог» (Часть 3): UI карточки «Постоянные расходы» ===== */
+function setFixedList(arr){ try{ localStorage.setItem('wb_fixed_expenses', JSON.stringify(arr||[])); }catch(e){} }
+function _fixedTotal(){
+  var list=getFixedList(), sum=0, i;
+  for(i=0;i<list.length;i++){ if(list[i] && list[i].active!==false) sum+=Number(list[i].amount)||0; }
+  return sum;
+}
+function _renderFixedTotal(){
+  var el=document.getElementById('fixedExpensesTotal');
+  if(el) el.textContent='Итого: '+_fixedTotal().toLocaleString('ru-RU')+' ₽/мес';
+}
+function renderFixedExpenses(){
+  var card=document.getElementById('fixedExpensesCard'); if(!card) return;
+  if(isViewingForeign()){ card.style.display='none'; return; }   // постоянные расходы — кабинетный слой владельца, оператору скрыт
+  card.style.display='';
+  var wrap=document.getElementById('fixedExpensesList'); if(!wrap) return;
+  var list=getFixedList();
+  wrap.innerHTML='';
+  list.forEach(function(it){
+    var id=String(it.id||'');
+    var active=it.active!==false;
+    var row=document.createElement('div');
+    row.className='fx-row'; row.setAttribute('data-id',id);
+    row.style.cssText='display:flex;gap:8px;align-items:center;flex-wrap:wrap';
+    row.innerHTML=
+      '<input type="text" class="fx-name" maxlength="100" placeholder="Название" value="'+escHtml(it.name||'')+'" oninput="onFixedRowEdit(\''+id+'\')" style="flex:1;min-width:160px">'+
+      '<input type="number" class="fx-amount" min="0" step="100" placeholder="0" value="'+((Number(it.amount)||0)?Number(it.amount):'')+'" oninput="onFixedRowEdit(\''+id+'\')" style="width:130px">'+
+      '<span style="font-size:13px;color:var(--muted)">₽/мес</span>'+
+      '<label class="bulk-check" style="white-space:nowrap"><input type="checkbox" class="fx-active" '+(active?'checked':'')+' onchange="onFixedRowToggle(\''+id+'\',this.checked)"> вкл</label>'+
+      '<button class="bulk-btn" onclick="deleteFixedRow(\''+id+'\')" title="Удалить">✕</button>';
+    wrap.appendChild(row);
+  });
+  _renderFixedTotal();
+}
+async function addFixedRow(){
+  if(isViewingForeign()) return;
+  var btn=document.getElementById('addFixedBtn'); if(btn) btn.disabled=true;
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt){ alert('Сессия истекла — войдите заново'); return; }
+    if(typeof showSaveStatus==='function') showSaveStatus('saving');
+    var r=await fetch(withWbAccount('/api/costs?resource=expenses'),{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify({name:'Новая статья', amount:0, active:true})
+    });
+    if(!r.ok){ if(typeof showSaveStatus==='function') showSaveStatus('error'); return; }
+    var d=await r.json();
+    if(d&&d.expense){
+      var list=getFixedList(); list.push(d.expense); setFixedList(list);
+      renderFixedExpenses();
+      var nameEl=document.querySelector('#fixedExpensesList .fx-row[data-id="'+String(d.expense.id)+'"] .fx-name');
+      if(nameEl){ nameEl.focus(); nameEl.select(); }
+    }
+    if(typeof showSaveStatus==='function') showSaveStatus('saved');
+  }catch(e){ console.warn('addFixedRow error',e); if(typeof showSaveStatus==='function') showSaveStatus('error'); }
+  finally{ if(btn) btn.disabled=false; }
+}
+var _fixedEditTimers={};
+function onFixedRowEdit(id){
+  if(_fixedEditTimers[id]) clearTimeout(_fixedEditTimers[id]);
+  if(typeof showSaveStatus==='function') showSaveStatus('pending');
+  _fixedEditTimers[id]=setTimeout(function(){ saveFixedRow(id); }, 800);
+}
+function onFixedRowToggle(id, active){ saveFixedRow(id, {active:!!active}); }
+async function saveFixedRow(id, opts){
+  if(isViewingForeign()) return;
+  opts=opts||{};
+  var rowEl=document.querySelector('#fixedExpensesList .fx-row[data-id="'+id+'"]'); if(!rowEl) return;
+  var nameEl=rowEl.querySelector('.fx-name');
+  var amountEl=rowEl.querySelector('.fx-amount');
+  var activeEl=rowEl.querySelector('.fx-active');
+  var name=String((nameEl&&nameEl.value)||'').trim();
+  var amount=parseFloat(String((amountEl&&amountEl.value)||'').replace(',','.'))||0;
+  if(!name) return;          // пустое имя бэкенд отвергнёт — ждём ввода, не дёргаем API
+  if(amount<0) amount=0;
+  var active=(opts.active!==undefined)?!!opts.active:(activeEl?activeEl.checked:true);
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt) return;
+    if(typeof showSaveStatus==='function') showSaveStatus('saving');
+    var r=await fetch(withWbAccount('/api/costs?resource=expenses'),{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
+      body:JSON.stringify({id:id, name:name, amount:amount, active:active})
+    });
+    if(!r.ok){ if(typeof showSaveStatus==='function') showSaveStatus('error'); return; }
+    var d=await r.json();
+    var saved=(d&&d.expense)?d.expense:{id:id, name:name, amount:amount, active:active};
+    // Зеркало: обновляем элемент массива по серверному id (источник истины — ответ API).
+    var list=getFixedList();
+    var idx=list.findIndex(function(x){ return String(x.id)===String(id); });
+    if(idx>=0) list[idx]=saved; else list.push(saved);
+    setFixedList(list);
+    _renderFixedTotal();     // только итог — не перерисовываем список, чтобы не сбить фокус ввода
+    if(typeof showSaveStatus==='function') showSaveStatus('saved');
+    recomputeCurrentScreen();
+  }catch(e){ console.warn('saveFixedRow error',e); if(typeof showSaveStatus==='function') showSaveStatus('error'); }
+}
+async function deleteFixedRow(id){
+  if(isViewingForeign()) return;
+  try{
+    var session=await sb.auth.getSession();
+    var jwt=session&&session.data&&session.data.session&&session.data.session.access_token;
+    if(!jwt) return;
+    if(typeof showSaveStatus==='function') showSaveStatus('saving');
+    var r=await fetch(withWbAccount('/api/costs?resource=expenses&id='+encodeURIComponent(id)),{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+jwt}
+    });
+    if(!r.ok){ if(typeof showSaveStatus==='function') showSaveStatus('error'); return; }
+    setFixedList(getFixedList().filter(function(x){ return String(x.id)!==String(id); }));
+    renderFixedExpenses();
+    if(typeof showSaveStatus==='function') showSaveStatus('saved');
+    recomputeCurrentScreen();
+  }catch(e){ console.warn('deleteFixedRow error',e); if(typeof showSaveStatus==='function') showSaveStatus('error'); }
+}
 function getCosts(){
   // Фаза D шаг1: в чужом пространстве — себестоимость ВЛАДЕЛЬЦА (in-memory, НЕ из своего localStorage,
   // чтобы не смешать со своими данными). Заполняется loadCostsFromServer через ?workspace=.
@@ -5940,6 +6243,7 @@ function saveCosts(c){
   scheduleCostsSync(c);
 }
 var _costsSyncTimer=null,_costsSyncPending={};
+var _extrasSyncPending={};   // 🔥 Часть3: буфер доп.расходов (extras) — летит тем же POST, что и себестоимость
 function scheduleCostsSync(allCosts){
   // Накапливаем изменения и шлём через 1.5 сек
   Object.keys(allCosts).forEach(function(k){_costsSyncPending[k]=allCosts[k];});
@@ -5948,9 +6252,13 @@ function scheduleCostsSync(allCosts){
   _costsSyncTimer=setTimeout(function(){syncCostsNow();},1500);
 }
 async function syncCostsNow(){
-  if(!Object.keys(_costsSyncPending).length)return true;
+  // 🔥 Модуль «Расходы и налог» Часть 3: один POST несёт И себестоимость, И доп.расходы (extras) —
+  // общий debounce-канал, чтобы не плодить гонки/двойные запросы. Дренируем оба буфера.
   var payload=Object.assign({},_costsSyncPending);
   _costsSyncPending={};
+  var extrasPayload=Object.assign({},_extrasSyncPending);
+  _extrasSyncPending={};
+  if(!Object.keys(payload).length && !Object.keys(extrasPayload).length)return true;
   if(typeof showSaveStatus==='function') showSaveStatus('saving');
   try{
     var session=await sb.auth.getSession();
@@ -5959,7 +6267,9 @@ async function syncCostsNow(){
     // Фаза D шаг2: в foreign шлём ?workspace= и БЕЗ своего wb_account_id (сервер берёт дефолт владельца).
     var foreign=isViewingForeign();
     var url='/api/costs'+(foreign?('?'+wsParam().replace(/^&/,'')):'');
-    var body=foreign?{costs:payload}:{costs:payload, wb_account_id: getActiveWbAccountId()};
+    var body=foreign?{}:{wb_account_id: getActiveWbAccountId()};
+    if(Object.keys(payload).length) body.costs=payload;
+    if(Object.keys(extrasPayload).length) body.extras=extrasPayload;
     var r=await fetch(url,{
       method:'POST',
       headers:{'Authorization':'Bearer '+jwt,'Content-Type':'application/json'},
@@ -5968,6 +6278,39 @@ async function syncCostsNow(){
     if(typeof showSaveStatus==='function') showSaveStatus(r.ok?'saved':'error');   // честно — по реальному 200
     return r.ok;
   }catch(e){console.warn('costs sync failed',e); if(typeof showSaveStatus==='function') showSaveStatus('error'); return false;}
+}
+// 🔥 Модуль «Расходы и налог» Часть 3: сохранение доп.расходов (extras). Зеркало saveCosts —
+// localStorage 'wb_extras' (или _foreignExtras), затем общий debounce-канал с себестоимостью.
+function saveExtras(m){
+  if(isViewingForeign()){
+    window._foreignExtras = m;
+    scheduleExtrasSync(m);
+    return;
+  }
+  try{localStorage.setItem('wb_extras',JSON.stringify(m));}catch(e){}
+  scheduleExtrasSync(m);
+}
+function scheduleExtrasSync(extrasMap){
+  // Накапливаем в свой буфер и используем ОБЩИЙ таймер себестоимости → один POST с costs+extras.
+  Object.keys(extrasMap).forEach(function(k){_extrasSyncPending[k]=extrasMap[k];});
+  if(typeof showSaveStatus==='function') showSaveStatus('pending');
+  if(_costsSyncTimer)clearTimeout(_costsSyncTimer);
+  _costsSyncTimer=setTimeout(function(){syncCostsNow();},1500);
+}
+// 🔥 Модуль «Расходы и налог» Часть 3: после сохранения налога/расходов/extras — сбросить мемо
+// 90-дн снапшотов (Главная/Аналитика кэшируют профит с уже применённым налогом) и пересчитать
+// активный экран. Геттеры (getTaxCfg/getFixedList/getExtras) читают localStorage свежими, поэтому
+// дополнительная инвалидация по этим ключам не нужна.
+function recomputeCurrentScreen(){
+  try{ if(typeof invalidateSnaps90==='function') invalidateSnaps90(); }catch(e){}
+  var active=document.querySelector('.section.active');
+  if(!active) return;
+  var id=active.id;
+  if(id==='sectionHome'){ if(typeof loadHomeData==='function') loadHomeData(); }
+  else if(id==='sectionAnalytics'){ if(typeof loadAnalytics==='function') loadAnalytics(); }
+  else if(id==='sectionDetail'){ if(typeof renderDetail==='function') renderDetail(); }
+  else if(id==='sectionProduct'){ if(typeof renderProductCard==='function') renderProductCard(); }
+  else if(id==='sectionCalc'){ if(typeof recalcTotals==='function' && window.rows && window.rows.length) recalcTotals(); }
 }
 // При входе — подтягиваем серверные себестоимости и сливаем с localStorage
 // Подгружает имя селлера из WB seller-info, кеширует в localStorage.
@@ -6691,12 +7034,15 @@ function computeFinancials(rawData, rows){
 
   // 2) Себестоимость — по товарам (rows)
   if(Array.isArray(rows)){
-    var _exFin=(typeof getExtras==='function')?getExtras():{};   // 🔥 Часть2: расходы-на-единицу запекаются как cost
+    // 🔥 Часть3: extra засеян в process идентично cost (ключ nm_id||sa||'x') — берём x.extra.
+    // Фолбэк на карту getExtras() по ТОМУ ЖЕ составному ключу — для строк из старого кэша без сида
+    // (process не перезапускался) и для строк без nm_id (только sa), где re-lookup по nm_id промахивался.
+    var _exFin=(typeof getExtras==='function')?getExtras():{};
     for(var j=0;j<rows.length;j++){
       var x=rows[j];
       var _unX=Math.max(x.sales-x.ret,0);
       if(x.cost>0){ t.cost+=x.cost*_unX; }
-      var _exX=Number(_exFin[String(x.nm_id)])||0;
+      var _exX=(x.extra!==undefined) ? (Number(x.extra)||0) : (Number(_exFin[String(x.nm_id||x.sa||'x')])||0);
       if(_exX>0) t.cost+=_exX*_unX;
     }
   }
@@ -6750,7 +7096,7 @@ function computeFinancials(rawData, rows){
 
 async function process(raw){
   rawData=raw; // глобально сохраняем чтобы Детализация/Аналитика могли использовать
-  var costs=getCosts();var bk={};byMonthData={};
+  var costs=getCosts();var extrasMap=(typeof getExtras==='function')?getExtras():{};var bk={};byMonthData={};
   // Сначала собираем товарные строки (rows) — это нужно для таблицы и себестоимости
   for(var i=0;i<raw.length;i++){
     var r=raw[i];
@@ -6770,7 +7116,7 @@ async function process(raw){
     // Таблица товаров — только строки с артикулом
     if(!r.nm_id&&!r.sa_name) continue;
     var k=String(r.nm_id||r.sa_name||'x');
-    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0,commRub:0,commPct:0,_priceSum:0,_pctSum:0,_n:0};
+    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0,extra:parseFloat(extrasMap[k])||0,commRub:0,commPct:0,_priceSum:0,_pctSum:0,_n:0};
     var a=bk[k];
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
@@ -8701,6 +9047,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       '<td class="col-cpo" style="display:none">'+cpoHtml+'</td>'+
       '<td class="col-penalty red">−'+fmt(a.pen)+' ₽</td>'+
       '<td><input type="number" class="ci" placeholder="0" value="'+(a.cost||'')+'" min="0" oninput="upd('+rows.indexOf(a)+',this.value)"></td>'+
+      '<td><input type="number" class="ce" placeholder="0" value="'+(a.extra||'')+'" min="0" oninput="updExtra('+rows.indexOf(a)+',this.value)"></td>'+
       '<td class="col-profit">'+ps+'</td></tr>');
   }
   var tf=document.getElementById('tfoot');
@@ -8722,6 +9069,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     '<td class="col-cpo" style="display:none">'+(totalCpc>0?fmt(Math.round(totalCpc))+' ₽':'—')+'</td>'+
     '<td class="col-penalty red">−'+fmt(tPn)+' ₽</td>'+
     '<td class="red" id="tfCost">−'+fmt(tCost)+' ₽</td>'+
+    '<td></td>'+
     '<td class="'+(tp>=0?'green':'red')+'" id="tfProfit">'+(tp>=0?'':'−')+fmt(Math.abs(tp))+' ₽</td>';
   // После рендера применяем сохранённые настройки видимости
   applyColPrefs();
@@ -9403,6 +9751,8 @@ function onRowCheckboxChange(){
   var n=document.querySelectorAll('.cb-row:checked').length;
   var btn=document.getElementById('bulkSelBtn');
   if(btn)btn.textContent='Применить к выбранным ('+n+')';
+  var btnEx=document.getElementById('bulkExtraSelBtn');   // 🔥 Часть3: счётчик на bulk доп.расхода
+  if(btnEx)btnEx.textContent='Применить к выбранным ('+n+')';
   // Шапка: галочка только если все выбраны
   var total=document.querySelectorAll('.cb-row').length;
   var head=document.getElementById('cbAll');
@@ -9458,6 +9808,51 @@ function applyBulkCost(mode){
     onRowCheckboxChange();
   }
   var btn=document.querySelector(mode==='selected'?'#bulkSelBtn':'.bulk-btn:not(.primary)');
+  if(btn){
+    var orig=btn.textContent;
+    btn.textContent='✓ Обновлено: '+changed;
+    setTimeout(function(){btn.textContent=orig;onRowCheckboxChange();},1500);
+  }
+}
+// 🔥 Модуль «Расходы и налог» Часть 3: bulk доп.расхода ₽/шт (зеркало applyBulkCost для extras).
+function applyBulkExtra(mode){
+  var input=document.getElementById('bulkExtra');
+  if(!input){alert('Ошибка: поле ввода не найдено');return;}
+  var raw=String(input.value||'').replace(',','.').trim();
+  var val=parseFloat(raw);
+  if(!val||val<=0){alert('Введите положительный доп. расход в поле сверху');return;}
+  if(!rows||!rows.length){alert('Сначала загрузите данные в Калькуляторе');return;}
+  var onlyEmpty=document.getElementById('bulkExtraOnlyEmpty').checked;
+  var indices=[];
+  if(mode==='selected'){
+    var checks=document.querySelectorAll('.cb-row:checked');
+    checks.forEach(function(c){indices.push(parseInt(c.dataset.i,10));});
+    if(!indices.length){alert('Сначала отметьте товары галочкой слева в строках');return;}
+  } else {
+    for(var i=0;i<rows.length;i++)indices.push(i);
+  }
+  var changed=0;
+  var allExtras=getExtras();
+  indices.forEach(function(i){
+    var a=rows[i];
+    if(!a)return;
+    if(onlyEmpty&&a.extra>0)return;
+    a.extra=val;
+    var key=String(a.nm_id||a.sa||'x');
+    allExtras[key]=val;
+    changed++;
+    // Обновляем только input доп.расхода в строке (адресуем по data-ri, как в applyBulkCost).
+    var tr=document.querySelector('#tb tr[data-ri="'+i+'"]');
+    if(tr){ var inp=tr.querySelector('input.ce'); if(inp)inp.value=val; }
+  });
+  saveExtras(allExtras);
+  recalcTotals();
+  input.value='';
+  if(mode==='selected'){
+    document.querySelectorAll('.cb-row').forEach(function(c){c.checked=false;});
+    onRowCheckboxChange();
+  }
+  var btn=document.getElementById(mode==='selected'?'bulkExtraSelBtn':'bulkExtraAllBtn');
   if(btn){
     var orig=btn.textContent;
     btn.textContent='✓ Обновлено: '+changed;
@@ -9586,6 +9981,19 @@ function upd(i,val){
   if(a.cost>0) c[k]=a.cost; else delete c[k];
   saveCosts(c);
   // Пересчитываем все плитки и футер (с учётом всех строк rawData)
+  recalcTotals();
+}
+
+// 🔥 Модуль «Расходы и налог» Часть 3: правка доп.расхода ₽/шт (зеркало upd для extras).
+// Влияет только на ИТОГИ (computeFinancials запекает extras в t.cost) — пер-строчную ячейку
+// прибыли НЕ трогаем (формулу строки правим отдельным релизом, не в этом модуле).
+function updExtra(i,val){
+  if(!rows[i])return;
+  rows[i].extra=parseFloat(val)||0;
+  var a=rows[i];
+  var m=getExtras();var k=String(a.nm_id||a.sa||'x');
+  if(a.extra>0) m[k]=a.extra; else delete m[k];
+  saveExtras(m);
   recalcTotals();
 }
 
