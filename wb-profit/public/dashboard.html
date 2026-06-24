@@ -2477,7 +2477,7 @@ body{padding-top:var(--beta-h)}
         <div id="taxUsnBox" style="display:none">
           <div style="margin-bottom:12px">
             <label style="display:block;font-size:13px;color:var(--muted);margin-bottom:5px">Ставка, %</label>
-            <input type="number" id="taxRate" min="1" max="6" step="0.5" style="max-width:140px">
+            <input type="number" id="taxRate" min="0" max="100" step="0.1" placeholder="ваша ставка, %" style="max-width:200px">
             <span id="taxRateHint" style="font-size:12px;color:var(--hint);margin-left:8px"></span>
           </div>
           <div style="margin-bottom:12px">
@@ -4304,11 +4304,20 @@ function showSection(name,el){
   if(name==='home') loadHomeData();
   if(name==='analytics') loadAnalytics();
   if(name==='settings') { loadAndRenderPlans(); initSettingsChangeTracking(); updateThemeButtons(); loadNotificationSettings(); loadTeam(); /* v0.7.0/v0.7.5/v0.7.7 + Фаза D */
-    // 🔥 Модуль «Расходы и налог» Часть 3: мгновенно из localStorage, затем свежее с сервера → ре-рендер
+    // 🔥 Модуль «Расходы и налог» Часть 3: мгновенно из localStorage, затем свежее с сервера → ре-рендер.
+    // v0.7.12.94 (БАГ 1): асинхронный ре-рендер НЕ перетирает уже начатый ввод пользователя —
+    // налог: только если кнопка ещё disabled (нет несохранённой правки); расходы: только если фокус не в списке.
     if(typeof renderTaxCard==='function') renderTaxCard();
     if(typeof renderFixedExpenses==='function') renderFixedExpenses();
-    if(typeof loadTaxSettings==='function'){ loadTaxSettings().then(function(){ if(typeof renderTaxCard==='function') renderTaxCard(); }); }
-    if(typeof loadFixedExpenses==='function'){ loadFixedExpenses().then(function(){ if(typeof renderFixedExpenses==='function') renderFixedExpenses(); }); }
+    if(typeof loadTaxSettings==='function'){ loadTaxSettings().then(function(){
+      var b=document.getElementById('saveTaxBtn');
+      if(b && b.disabled && typeof renderTaxCard==='function') renderTaxCard();
+    }); }
+    if(typeof loadFixedExpenses==='function'){ loadFixedExpenses().then(function(){
+      var wrap=document.getElementById('fixedExpensesList');
+      if(wrap && wrap.contains(document.activeElement)) return;   // пользователь печатает — не перерисовываем
+      if(typeof renderFixedExpenses==='function') renderFixedExpenses();
+    }); }
   }
   if(name==='unit'){loadUnitHistory();offerUserAverages();renderUnitTemplates();if(typeof prefillUnitTaxFromGlobal==='function')prefillUnitTaxFromGlobal();}
   if(name==='calc'){
@@ -5999,18 +6008,14 @@ function prefillUnitTaxFromGlobal(){
 }
 
 /* ===== Модуль «Расходы и налог» (Часть 3): UI карточки «Налог» ===== */
-// Бэкенд (PATCH /api/profile?resource=tax) валидирует ставку лишь как 0..100 —
-// диапазоны по режиму (УСН-6: 1–6, УСН-15: 5–15) ОБЯЗАН держать фронт.
-function _TAX_RATE_RANGE(mode){
-  if(mode==='usn6')  return {min:1, max:6,  def:6};
-  if(mode==='usn15') return {min:5, max:15, def:15};
-  return {min:0, max:100, def:0};
-}
+// v0.7.12.94: ставку вводит пользователь САМ. Жёсткие диапазоны/дефолты по режиму убраны —
+// региональные/льготные ставки УСН разные (доходы бывают 1–6%, доходы-расходы 5–15% и ниже).
+// Валидация мягкая: 0..100 (как бэкенд), дефолт НЕ навязываем (поле пустое + плейсхолдер).
 function _taxMarkDirty(){
   var btn=document.getElementById('saveTaxBtn'); if(btn) btn.disabled=false;
   var hint=document.getElementById('taxSavedHint'); if(hint) hint.style.display='none';
 }
-function onTaxModeChange(silent){
+function onTaxModeChange(){
   var modeEl=document.getElementById('taxMode'); if(!modeEl) return;
   var mode=modeEl.value;
   var usn=document.getElementById('taxUsnBox');
@@ -6019,22 +6024,9 @@ function onTaxModeChange(silent){
   if(usn)  usn.style.display=(mode==='usn6'||mode==='usn15')?'':'none';
   if(pat)  pat.style.display=(mode==='patent')?'':'none';
   if(note) note.style.display=(mode==='usn15')?'':'none';
-  var rateEl=document.getElementById('taxRate');
   var rHint=document.getElementById('taxRateHint');
-  if(mode==='usn6'||mode==='usn15'){
-    var rng=_TAX_RATE_RANGE(mode);
-    if(rateEl){
-      rateEl.min=rng.min; rateEl.max=rng.max;
-      // При РУЧНОМ переключении режима (не silent) — если значение вне диапазона, ставим дефолт режима.
-      if(!silent){
-        var cur=parseFloat(rateEl.value);
-        if(!Number.isFinite(cur)||cur<rng.min||cur>rng.max) rateEl.value=rng.def;
-      }
-    }
-    if(rHint) rHint.textContent='допустимо '+rng.min+'–'+rng.max+'%';
-  } else {
-    if(rHint) rHint.textContent='';
-  }
+  // v0.7.12.94: дефолт ставки НЕ подставляем (региональные/льготные ставки разные) — пользователь вводит сам.
+  if(rHint) rHint.textContent=(mode==='usn6'||mode==='usn15') ? 'Ставка зависит от региона и вида деятельности — уточните свою' : '';
 }
 function renderTaxCard(){
   var card=document.getElementById('taxCard'); if(!card) return;
@@ -6051,7 +6043,7 @@ function renderTaxCard(){
   if(paEl)   paEl.value=(Number(cfg.patent_amount)||0) ? Number(cfg.patent_amount) : '';
   if(ppEl)   ppEl.value=cfg.patent_period||'month';
   if(rateEl) rateEl.value=(cfg.tax_mode==='usn6'||cfg.tax_mode==='usn15') ? (Number(cfg.tax_rate)||'') : '';
-  onTaxModeChange(true);   // видимость блоков + min/max БЕЗ пометки dirty и без подмены значения
+  onTaxModeChange();   // видимость блоков по сохранённому режиму (значения полей выставлены выше)
   // Лёгкий change-хендлер активации кнопки (полей несколько → не паттерн data-bind). Навешиваем один раз.
   if(!card._taxBound){
     ['taxMode','taxRate','taxBaseMode','patentAmount','patentPeriod'].forEach(function(idd){
@@ -6072,11 +6064,9 @@ async function saveTax(){
   var rate=0, patent_amount=0, patent_period='month';
   if(mode==='usn6'||mode==='usn15'){
     rate=parseFloat(String((document.getElementById('taxRate')||{}).value||'').replace(',','.'));
-    var rng=_TAX_RATE_RANGE(mode);
-    if(!Number.isFinite(rate)||rate<rng.min||rate>rng.max){
-      alert('Ставка для '+(mode==='usn6'?'УСН «Доходы» 6%':'УСН «Доходы минус расходы» 15%')+' должна быть в диапазоне '+rng.min+'–'+rng.max+'%');
-      return;
-    }
+    // v0.7.12.94: мягкая валидация — требуется значение, 0..100 (как бэкенд). Диапазон по региону не навязываем.
+    if(!Number.isFinite(rate)){ alert('Введите вашу ставку налога, %'); return; }
+    if(rate<0||rate>100){ alert('Ставка налога должна быть от 0 до 100%'); return; }
   } else if(mode==='patent'){
     patent_amount=parseFloat(String((document.getElementById('patentAmount')||{}).value||'').replace(',','.'))||0;
     if(patent_amount<0){ alert('Стоимость патента не может быть отрицательной'); return; }
