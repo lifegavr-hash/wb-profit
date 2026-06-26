@@ -5736,8 +5736,11 @@ async function tryRestoreDataFromCache(){
           wbFinHtml+
           acqHtml+
           '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
+          // 🔥 v0.7.12.96: статьи «Налог»/«Постоянные расходы» — готовые поля t.tax/t.fixed_share, всегда видны
+          '<div class="m"><div class="ml">Налог</div><div class="mv red">−'+fmt(t.tax||0)+' ₽</div></div>'+
+          '<div class="m"><div class="ml">Постоянные расходы</div><div class="mv red">−'+fmt(t.fixed_share||0)+' ₽</div></div>'+
           adjHtml+
-          '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="Кликните чтобы показать только убыточные товары"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
+          '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="После налога, постоянных и доп. расходов. Кликните, чтобы показать убыточные товары"><div class="ml">Чистая прибыль (на руки)</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
       }
       var cntEl=document.getElementById('cnt');
       if(cntEl) cntEl.textContent=cache.rows.length+' товаров · '+(cache.raw_count||0)+' записей (из кеша)';
@@ -7255,9 +7258,12 @@ async function process(raw){
     wbFinHtml+
     acqHtml+
     '<div class="m"><div class="ml">Себестоимость</div><div class="mv red" id="costCard">−'+fmt(t.cost)+' ₽</div></div>'+
+    // 🔥 v0.7.12.96: статьи «Налог»/«Постоянные расходы» — готовые поля t.tax/t.fixed_share, всегда видны
+    '<div class="m"><div class="ml">Налог</div><div class="mv red">−'+fmt(t.tax||0)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Постоянные расходы</div><div class="mv red">−'+fmt(t.fixed_share||0)+' ₽</div></div>'+
     adjHtml+
     // Итог
-    '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="Кликните чтобы показать только убыточные товары"><div class="ml">Чистая прибыль</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
+    '<div class="m hi" data-drill="losses" onclick="onCalcDrilldown(\'losses\')" title="После налога, постоянных и доп. расходов. Кликните, чтобы показать убыточные товары"><div class="ml">Чистая прибыль (на руки)</div><div class="mv '+(t.profit>=0?'green':'red')+'" id="profitCard">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
   document.getElementById('cnt').textContent=rows.length+' товаров · '+raw.length+' записей';
   // Free-предупреждение если обрезали
   var freeWarn=document.getElementById('freeLimitWarn');
@@ -9904,7 +9910,9 @@ function recalcTotals(){
   setCard('Реклама WB','−'+fmt(t.ads)+' ₽','mv red');
   setCard('Штрафы','−'+fmt(t.penalty)+' ₽','mv red');
   setCard('Себестоимость','−'+fmt(t.cost)+' ₽','mv red');
-  setCard('Чистая прибыль',(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽','mv '+(t.profit>=0?'green':'red'));
+  setCard('Налог','−'+fmt(t.tax||0)+' ₽','mv red');                       // 🔥 v0.7.12.96: готовое поле t.tax
+  setCard('Постоянные расходы','−'+fmt(t.fixed_share||0)+' ₽','mv red');  // 🔥 v0.7.12.96: готовое поле t.fixed_share
+  setCard('Чистая прибыль (на руки)',(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽','mv '+(t.profit>=0?'green':'red'));   // лейбл синхронен с обоими build-местами
   if(t.wbFinance>0)setCard('ВБ Финанс (кредит)','−'+fmt(t.wbFinance)+' ₽','mv red');
   if(t.acquiring>0)setCard('Эквайринг','−'+fmt(t.acquiring)+' ₽','mv red'); // 🔥 v0.7.12.39
   // Корректировка может быть и плюсом и минусом — подбираем нужный лейбл
