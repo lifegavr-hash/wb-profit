@@ -2846,7 +2846,8 @@ body{padding-top:var(--beta-h)}
               </div>
               <div class="unit-col">
                 <label class="unit-label">Налог, % (УСН доходы)</label>
-                <input type="number" id="unitTaxPct" min="0" max="100" step="0.1" value="7" oninput="calcUnitV2()">
+                <input type="number" id="unitTaxPct" min="0" max="100" step="0.1" value="7" oninput="onUnitTaxEdit()">
+                <div id="unitTaxPrefillHint" style="display:none;font-size:11px;color:#888;margin-top:2px"></div>
                 <label class="unit-label">Эквайринг, %</label>
                 <input type="number" id="unitAcquiringPct" min="0" max="5" step="0.1" value="1.5" oninput="calcUnitV2()">
               </div>
@@ -6004,8 +6005,26 @@ async function loadFixedExpenses(){
 function prefillUnitTaxFromGlobal(){
   var el=document.getElementById('unitTaxPct'); if(!el || window._unitTaxPrefilled) return;   // префилл ОДИН раз за сессию — не затирает ручной what-if при возврате на вкладку
   var cfg=getTaxCfg();
-  if(cfg.tax_mode==='usn6'||cfg.tax_mode==='usn15'){ el.value=Number(cfg.tax_rate)||0; window._unitTaxPrefilled=true; }
+  var hint=document.getElementById('unitTaxPrefillHint');
+  var label='';   // непусто ⇒ был префилл из глобала ⇒ показываем индикатор
+  // v0.7.12.95 (Часть 4): usn6/usn15 → ставка; патент → 0% (доход не облагается %-налогом);
+  // none → НЕ трогаем (дефолт 7 как планировочный для нового товара).
+  if(cfg.tax_mode==='usn6'||cfg.tax_mode==='usn15'){
+    el.value=Number(cfg.tax_rate)||0; window._unitTaxPrefilled=true;
+    label=(cfg.tax_mode==='usn6'?'УСН «Доходы»':'УСН «Доходы минус расходы»')+' '+(Number(cfg.tax_rate)||0)+'%';
+  } else if(cfg.tax_mode==='patent'){
+    el.value=0; window._unitTaxPrefilled=true;
+    label='Патент — доход не облагается %-налогом';
+  }
+  if(hint){
+    if(label){ hint.textContent='Подставлено из ваших настроек налога: '+label+'. Можно изменить для этого расчёта.'; hint.style.display=''; }
+    else { hint.style.display='none'; }
+  }
 }
+// v0.7.12.95: индикатор «из настроек» виден ТОЛЬКО пока значение = глобальный префилл.
+// Любой другой источник ставки (ручная правка, шаблон, сброс, сохранённый расчёт) его прячет.
+function _hideUnitTaxHint(){ var h=document.getElementById('unitTaxPrefillHint'); if(h) h.style.display='none'; }
+function onUnitTaxEdit(){ _hideUnitTaxHint(); calcUnitV2(); }
 
 /* ===== Модуль «Расходы и налог» (Часть 3): UI карточки «Налог» ===== */
 // v0.7.12.94: ставку вводит пользователь САМ. Жёсткие диапазоны/дефолты по режиму убраны —
@@ -6090,6 +6109,9 @@ async function saveTax(){
     }
     // localStorage-зеркало пишем ТОЛЬКО после 200 — оно всегда совпадает с сервером.
     try{ localStorage.setItem('wb_tax_cfg', JSON.stringify(cfg)); }catch(_){}
+    // v0.7.12.95 (Часть 4): режим/ставка изменились → разрешаем повторный префилл юнит-калькулятора
+    // при СЛЕДУЮЩЕМ заходе на «Подбор товара» (текущий открытый what-if не трогаем).
+    window._unitTaxPrefilled=false;
     var hint=document.getElementById('taxSavedHint'); if(hint) hint.style.display='';
     recomputeCurrentScreen();
   }catch(e){ console.warn('saveTax error',e); alert('Ошибка сети при сохранении'); if(btn) btn.disabled=false; }
@@ -9478,7 +9500,7 @@ function applyUnitTemplate(idx){
   if(document.getElementById('unitRedemption')) document.getElementById('unitRedemption').value = t.redemption;
   if(document.getElementById('unitAdPct')) document.getElementById('unitAdPct').value = t.adPct;
   if(document.getElementById('unitFbsShipHours')) document.getElementById('unitFbsShipHours').value = t.fbsShipHours;
-  if(document.getElementById('unitTaxPct')) document.getElementById('unitTaxPct').value = t.taxPct;
+  if(document.getElementById('unitTaxPct')){ document.getElementById('unitTaxPct').value = t.taxPct; if(typeof _hideUnitTaxHint==='function') _hideUnitTaxHint(); }   // v0.7.12.95: значение из шаблона, не из глобала
   if(document.getElementById('unitAcquiringPct')) document.getElementById('unitAcquiringPct').value = t.acquiringPct;
   if(document.getElementById('unitVolume')) document.getElementById('unitVolume').value = t.volume;
   if(document.getElementById('unitWeight')) document.getElementById('unitWeight').value = t.weight;
@@ -9528,6 +9550,7 @@ function resetUnitFormV2() {
   document.getElementById('unitRedemption').value = 80;
   document.getElementById('unitAdPct').value = 5;
   document.getElementById('unitTaxPct').value = 7;
+  if(typeof _hideUnitTaxHint==='function') _hideUnitTaxHint();   // v0.7.12.95: сброс к дефолту, не из глобала
   document.getElementById('unitAcquiringPct').value = 1.5;
   const fbsH = document.getElementById('unitFbsShipHours'); if (fbsH) fbsH.value = 24;
   document.getElementById('unitWarehouse').value = 'auto';
@@ -9681,6 +9704,7 @@ function loadUnitFromHistory(id) {
   document.getElementById('unitRedemption').value = c.redemption_pct || 80;
   document.getElementById('unitAdPct').value = c.ad_pct || 5;
   document.getElementById('unitTaxPct').value = c.tax_pct || 7;
+  if(typeof _hideUnitTaxHint==='function') _hideUnitTaxHint();   // v0.7.12.95: значение из сохранённого расчёта, не из глобала
   if (c.warehouse_name) document.getElementById('unitWarehouse').value = c.warehouse_name;
   // Восстановим категорию
   if (c.subject_id && c.subject_name) {
