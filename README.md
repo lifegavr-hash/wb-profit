@@ -23,9 +23,9 @@ wb-profit/
 │   ├── admin.js            ← админка: создать промокод, список юзеров
 │   ├── calcs.js            ← CRUD истории подборов
 │   ├── config.js           ← конфиг + health-check (?health=1)
-│   ├── costs.js            ← себестоимости товаров
+│   ├── costs.js            ← себестоимости + доп.расход ₽/шт + постоянные расходы (?resource=expenses)
 │   ├── plans.js            ← список тарифов из БД
-│   ├── profile.js          ← GET профиль / DELETE аккаунт
+│   ├── profile.js          ← профиль/аккаунт + WB-кабинеты/экспорт/налог/уведомления/команда (?resource=)
 │   ├── promo.js            ← активация промокода
 │   ├── snapshots.js        ← снапшоты финансовых данных
 │   ├── wb-adv.js           ← реклама WB
@@ -62,7 +62,7 @@ wb-profit/
 
 ## Архитектура безопасности
 
-- **RLS включён на всех пользовательских таблицах** (`profiles`, `daily_snapshots`, `user_costs`, `product_costs`, `unit_calc_history`, `ext_activations`, `ext_products`).
+- **RLS включён на всех пользовательских таблицах** (`profiles`, `daily_snapshots`, `user_costs`, `product_costs`, `unit_calc_history`, `ext_activations`, `ext_products`, `tax_settings`, `fixed_expenses`).
 - **Service-only таблицы** (`promo_codes`, `promo_uses`, `claude_session_journal`): RLS включён, политик для anon нет → доступ только через service_role.
 - **Тарифные ограничения проверяются на бэкенде** через `lib/plan-check.js` — фронтовый `currentProfile` только UX-помощник. Взлом-тест пройден (4 атаки в журнале v0.7.7.1).
 - **Промокоды**: `userId` ТОЛЬКО из JWT, не из body (закрыта уязвимость в v0.7.1).

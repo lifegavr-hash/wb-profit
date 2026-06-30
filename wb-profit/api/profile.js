@@ -1,4 +1,4 @@
-// /api/profile — возвращает полный профиль + управление WB-кабинетами + экспорт данных.
+// /api/profile — профиль + WB-кабинеты + экспорт + налог (+ уведомления/команда, см. ниже по файлу).
 //
 // === Основные endpoints ===
 // GET    /api/profile                    — профиль с лимитами тарифа
@@ -13,6 +13,13 @@
 // === Экспорт данных пользователя (v0.7.11.0, ФЗ-152 ст.14) ===
 // GET    /api/profile?resource=export                 — JSON-выгрузка всех данных юзера
 //        (БЕЗ wb_token, БЕЗ is_admin; user_id берётся ИЗ JWT)
+//
+// === Налог (модуль «Расходы и налог», v0.7.12.91) ===
+// GET    /api/profile?resource=tax[&wb_account_id=]   — настройки налога или дефолты
+// PATCH  /api/profile?resource=tax                    — upsert (tax_mode/tax_rate/base_mode/patent_*)
+//
+// Прочие ветки (есть в файле, см. соответствующие хендлеры): ?resource=notifications, team,
+// team-accept, team-workspaces, invite-info.
 
 import { createClient } from '@supabase/supabase-js';
 import { getUserPlanWithLimits } from '../lib/plan-check.js';

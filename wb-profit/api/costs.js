@@ -1,9 +1,10 @@
-// /api/costs — себестоимости товаров пользователя
-// GET   ?wb_account_id=xxx              — { costs: { nm_id: cost, ... } }
-// POST  { costs: {...}, wb_account_id }  — upsert батчем
-// DELETE ?nm_id=...&wb_account_id=xxx    — удалить одну запись
+// /api/costs — себестоимости + доп.расход ₽/шт (extras) + постоянные расходы кабинета
+// GET   ?wb_account_id=xxx              — { costs: { nm_id: cost }, extras: { nm_id: extra_per_unit } }
+// POST  { costs: {...}, extras: {...}, wb_account_id }  — upsert батчем (costs и/или extras, раздельные колонки)
+// DELETE ?nm_id=...&wb_account_id=xxx    — удалить одну запись себестоимости
 //
 // v0.7.7.30: данные разделены по wb_account_id.
+// Модуль «Расходы и налог»: extras (колонка extra_per_unit, Часть 2) + sub-router ?resource=expenses (см. ниже).
 
 import { createClient } from '@supabase/supabase-js';
 import { resolveWbAccountId } from '../lib/wb-account.js';
