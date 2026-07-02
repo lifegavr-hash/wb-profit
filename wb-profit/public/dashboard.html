@@ -5957,6 +5957,61 @@ function _taxFixed(income, accepted, fixedShare){
   var fixed=Number(fixedShare)||0;
   return {tax:tax, fixed:fixed, total:tax+fixed};
 }
+// 🔥 v0.7.12.97: ЕДИНЫЙ per-product P&L — один источник истины для «Прибыли по товарам»
+// (buildOrdersData) и построчного Калькулятора (_calcRowProfit). Налог per-товар БЕЗ floor
+// (floor 1% УСН-15 — только в кабинетном computeFinancials; остаток → строка «Налоговый минимум /
+// нераспределённое»). Комиссия НЕ вычитается из profit — она уже внутри ppvz_for_pay (нужна лишь
+// как accepted-база для УСН-15). База налога по base_mode: full_price → revFull, after_spp → revSpp.
+// p: {ppvz, logistics, storage, ads, penalty, commission, cost, wbFinance, revFull, revSpp, revenue}
+// ctx: {cfg, fixedShare}  → {tax, fixedShare, profit}
+function _productPnL(p, ctx){
+  var cfg=(ctx&&ctx.cfg)||getTaxCfg();
+  var inc=(cfg.base_mode==='after_spp') ? (Number(p.revSpp)||Number(p.revenue)||0) : (Number(p.revFull)||Number(p.revenue)||0);
+  var acc=(Number(p.commission)||0)+(Number(p.logistics)||0)+(Number(p.storage)||0)+(Number(p.ads)||0)+(Number(p.cost)||0);
+  var tax=_taxFixed(inc, acc, 0).tax;   // БЕЗ floor
+  var fixedShare=Number(ctx&&ctx.fixedShare)||0;
+  var profit=(Number(p.ppvz)||0)-(Number(p.logistics)||0)-(Number(p.storage)||0)-(Number(p.ads)||0)
+            -(Number(p.penalty)||0)-(Number(p.wbFinance)||0)-(Number(p.cost)||0)-tax-fixedShare;
+  return {tax:tax, fixedShare:fixedShare, profit:profit};
+}
+// Контекст построчного расчёта Калькулятора (строится 1 раз на рендер; одиночные правки — локально).
+// fixedShare распределяется по доле REVENUE товара (унифицировано с buildOrdersData, v0.7.12.97).
+function _calcRowCtx(){
+  var dfEl=document.getElementById('df'), dtEl=document.getElementById('dt');
+  var fixedTotal=(typeof _fixedForPeriod==='function' && dfEl && dtEl) ? _fixedForPeriod(dfEl.value, dtEl.value) : 0;
+  var sumRev=0; (window.rows||[]).forEach(function(r){ var rv=Number(r.revenue)||0; if(rv>0) sumRev+=rv; });
+  return {cfg:getTaxCfg(), fixedTotal:fixedTotal, sumRev:sumRev};
+}
+function _calcRowPnL(a, ctx){
+  ctx=ctx||_calcRowCtx();
+  var units=Math.max((Number(a.sales)||0)-(Number(a.ret)||0), 0);
+  var cost=((Number(a.cost)||0)+(Number(a.extra)||0))*units;   // extras запекаются в cost (как в Orders/тоталах)
+  var rv=Number(a.revenue)||0;
+  var fixedShare=(ctx.sumRev>0 && rv>0) ? ctx.fixedTotal*(rv/ctx.sumRev) : 0;
+  return _productPnL({ppvz:a.ppvz, logistics:a.del, storage:a.stor, ads:a.adv, penalty:a.pen,
+    commission:(a.commAmt!=null?a.commAmt:a.commRub), cost:cost, wbFinance:a.wbFin, revFull:a.revFull, revSpp:a.revSpp, revenue:a.revenue},
+    {cfg:ctx.cfg, fixedShare:fixedShare});
+}
+function _calcRowProfit(a, ctx){ return _calcRowPnL(a, ctx).profit; }
+// 🔥 v0.7.12.97: строка-балансир «Налоговый минимум / нераспределённое» (вариант Б).
+// Прочее := футер t.profit − Σ(прибыль строк с cost>0, т.е. реально показанных). Так Σ видимых
+// цифр + Прочее ≡ ИТОГО. Поглощает floor УСН-15, orphan-строки без артикула, прибыль товаров без
+// себестоимости (показаны «—»). Показываем только при |≥1 ₽|. tp — футер-профит (computeFinancials).
+function _renderOtherRow(tp){
+  var tb=document.getElementById('tb'); if(!tb) return;
+  var old=tb.querySelector('.calc-other-row'); if(old) old.remove();
+  if(!window.rows||!window.rows.length) return;
+  var ctx=_calcRowCtx(), shown=0;
+  // Округляем КАЖДУЮ строку как на экране → Σ(показанных) + Прочее ≡ round(футер) точно (без дрейфа ±N/2).
+  window.rows.forEach(function(r){ if((Number(r.cost)||0)>0) shown+=Math.round(_calcRowProfit(r, ctx)); });
+  var other=Math.round(Number(tp)||0)-shown;
+  if(Math.abs(other)<1) return;
+  var oc=other>=0?'green':'red';
+  tb.insertAdjacentHTML('beforeend',
+    '<tr class="calc-other-row" title="Налоговый минимум УСН-15 + кабинетные суммы без привязки к товару (строки без артикула) + прибыль товаров без указанной себестоимости. Нужно, чтобы строки сходились с ИТОГО.">'+
+    '<td colspan="18" style="text-align:right;color:var(--hint);font-style:italic">Налоговый минимум / нераспределённое</td>'+
+    '<td class="col-profit '+oc+'">'+(other>=0?'':'−')+fmt(Math.abs(other))+' ₽</td></tr>');
+}
 function _applySnapTaxLayer(snaps){
   // Слой ОТОБРАЖЕНИЯ (БЕЗ бэкфилла): net = stored_profit − tax − fixed. База = snapshot.revenue
   // (=retail_price≈полная цена → дефолт full_price на истории точен; after_spp на истории = приближение под дисклеймером).
@@ -6325,7 +6380,11 @@ function recomputeCurrentScreen(){
   else if(id==='sectionAnalytics'){ if(typeof loadAnalytics==='function') loadAnalytics(); }
   else if(id==='sectionDetail'){ if(typeof renderDetail==='function') renderDetail(); }
   else if(id==='sectionProduct'){ if(typeof renderProductCard==='function') renderProductCard(); }
-  else if(id==='sectionCalc'){ if(typeof recalcTotals==='function' && window.rows && window.rows.length) recalcTotals(); }
+  else if(id==='sectionCalc'){ if(window.rows && window.rows.length){
+    // 🔥 v0.7.12.97: строки зависят от налога/постоянных → перерисовать строки, затем освежить тоталы/Прочее.
+    if(typeof rerenderCalc==='function') rerenderCalc();
+    if(typeof recalcTotals==='function') recalcTotals();
+  } }
 }
 // При входе — подтягиваем серверные себестоимости и сливаем с localStorage
 // Подгружает имя селлера из WB seller-info, кеширует в localStorage.
@@ -7131,7 +7190,9 @@ async function process(raw){
     // Таблица товаров — только строки с артикулом
     if(!r.nm_id&&!r.sa_name) continue;
     var k=String(r.nm_id||r.sa_name||'x');
-    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0,extra:parseFloat(extrasMap[k])||0,commRub:0,commPct:0,_priceSum:0,_pctSum:0,_n:0};
+    // 🔥 v0.7.12.97: revenue/revFull/revSpp (база налога) + wbFin per-товар — зеркало buildOrdersData,
+    // чтобы построчный профит считался единым _productPnL.
+    if(!bk[k]) bk[k]={nm_id:r.nm_id,sa:r.sa_name||'',cat:r.subject_name||'',sales:0,ret:0,ppvz:0,del:0,stor:0,adv:0,pen:0,cost:parseFloat(costs[k])||0,extra:parseFloat(extrasMap[k])||0,revenue:0,revFull:0,revSpp:0,wbFin:0,commRub:0,commAmt:0,commPct:0,_priceSum:0,_pctSum:0,_n:0};
     var a=bk[k];
     if(doc==='продажа') a.sales+=r.quantity||0;
     if(doc==='возврат') a.ret+=r.quantity||0;
@@ -7140,14 +7201,18 @@ async function process(raw){
       var _pct=Number(r.commission_percent||0);
       var _sign=doc==='возврат'?-1:1;
       a.commRub+=_sign*(_price*_pct/100);
+      a.commAmt+=_sign*(Number(r.retail_amount||r.retail_price_withdisc_rub||0)*_pct/100);   // 🔥 v0.7.12.97: комиссия на базе after-СПП — для налоговой acc-базы (как computeFinancials/Orders); commRub (отображение) не трогаем
       if(_pct>0){a._pctSum+=_pct;a._n++;}
+      a.revenue+=_sign*Number(r.retail_amount||r.retail_price_withdisc_rub||0);              // after-СПП (= t.revenue)
+      a.revFull+=_sign*Number(r.retail_price_withdisc_rub||r.retail_amount||0);              // полная цена (= t.revenueFull)
+      a.revSpp +=_sign*Number(r.retail_amount||r.retail_price_withdisc_rub||0);              // после СПП
     }
     a.ppvz+=_ppvzSigned(r);   // 🔥 v0.7.12.77: возврат вычитает выплату
     a.del+=(Number(r.delivery_rub)||0)+(Number(r.rebill_logistic_cost)||0);
     a.stor+=r.storage_fee||0;
     a.pen+=Number(r.penalty||0)+Number(r.acceptance||0);
     var ded=Math.abs(Number(r.deduction||0));
-    if(isWbFin(r.bonus_type_name,r.supplier_oper_name)){/* ВБФ не в товаре */}
+    if(isWbFin(r.bonus_type_name,r.supplier_oper_name)){ a.wbFin+=ded; }   // 🔥 v0.7.12.97: ВБФ теперь в товаре (вычитается в _productPnL)
     else if(isAdv(r.bonus_type_name,r.supplier_oper_name)){a.adv+=ded;}
     else{a.pen+=ded;}
   }
@@ -7688,11 +7753,10 @@ function buildOrdersData(){
     // 🔥 Часть2: расходы-на-единицу запекаются в cost (как себестоимость); налог+постоянные на товар
     var _exPer=Number(_extras[p.key])||0;
     if(_exPer>0) p.cost += _exPer*netUnits;
-    var _cfgB=getTaxCfg();
-    var _incB=(_cfgB.base_mode==='after_spp') ? (p.revSpp||p.revenue) : (p.revFull||p.revenue);
-    var _accB=p.commission + p.logistics + p.storage + p.ads + p.cost;
-    p.tax=_taxFixed(_incB, _accB, 0).tax;   // per-товар без floor (приближение; floor — в кабинетном итоге)
-    p.fixedShare=(_sumRevPos>0 && p.revenue>0) ? _fixedPeriodP*(p.revenue/_sumRevPos) : 0;
+    // 🔥 v0.7.12.97: единый _productPnL (тот же, что в построчном Калькуляторе). fixedShare по доле REVENUE.
+    var _fixB=(_sumRevPos>0 && p.revenue>0) ? _fixedPeriodP*(p.revenue/_sumRevPos) : 0;
+    var _pnlB=_productPnL(p, {cfg:getTaxCfg(), fixedShare:_fixB});
+    p.tax=_pnlB.tax; p.fixedShare=_pnlB.fixedShare;
     // склад (из _stocksMap по nm)
     var st=(p.nm!=null && stocks[p.nm])?stocks[p.nm]:null;
     p.stockTotal = st? Number(st.total||0):null;
@@ -7707,7 +7771,7 @@ function buildOrdersData(){
     var grossU=p.soldUnits+p.retUnits;
     p.buyoutPct = grossU>0 ? p.soldUnits/grossU*100 : null;
     // полный P&L по товару (налог УСН/НДС пока не включён — placeholder). Реклама из отчёта (как в Калькуляторе).
-    p.profit = p.ppvz - p.logistics - p.storage - p.ads - p.penalty - p.wbFinance - p.cost - p.tax - p.fixedShare;   // 🔥 Часть2: − налог − постоянные (cost уже включает расходы-на-единицу)
+    p.profit = _pnlB.profit;   // 🔥 v0.7.12.97: единый _productPnL (cost уже включает extras; налог по base_mode без floor)
     p.margin = p.profit;          // alias: фильтр прибыль/убыток и сортировка работают по полному P&L
     p.onlyReturns = (p.soldUnits===0);
     // проценты от выручки (продажи−возвраты ₽)
@@ -8826,11 +8890,12 @@ function getFilteredCalcRows(){
   if(window._calcSort.field){
     var f = window._calcSort.field;
     var dir = window._calcSort.dir === 'asc' ? 1 : -1;
+    var _sctx = (f==='profit') ? _calcRowCtx() : null;   // 🔥 v0.7.12.97: сортировка по ТОМУ ЖЕ профиту, что показан
     result.sort(function(a,b){
       var va, vb;
       if(f === 'profit'){
-        va = a.ppvz - a.del - a.stor - a.adv - a.pen - (a.cost||0)*Math.max(a.sales-a.ret,0);
-        vb = b.ppvz - b.del - b.stor - b.adv - b.pen - (b.cost||0)*Math.max(b.sales-b.ret,0);
+        va = _calcRowProfit(a, _sctx);
+        vb = _calcRowProfit(b, _sctx);
       } else if(f === 'drr'){
         var rA = a.commPct>0?(a.commRub/a.commPct*100):0;
         var rB = b.commPct>0?(b.commRub/b.commPct*100):0;
@@ -8955,6 +9020,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
   var tb=document.getElementById('tb');tb.innerHTML='';
   var stocksMap=window._stocksMap||{};
   var totalStock=0;
+  var _rctx=_calcRowCtx();   // 🔥 v0.7.12.97: контекст построчного P&L (налог/постоянные/Σrev) — 1 раз на рендер
   // 🔥 v0.7.3: tbody рендерим по отфильтрованным строкам (плитки и итоги в footer — по всем)
   var filteredRows = getFilteredCalcRows();
   // Если фильтр спрятал всё — покажем empty-state
@@ -8979,7 +9045,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     Object.keys(groupsMap).forEach(function(k){
       groupSums[k] = {count:groupsMap[k].length, profit:0, revenue:0, ppvz:0};
       groupsMap[k].forEach(function(r){
-        var rp = r.ppvz - r.del - r.stor - r.adv - r.pen - (r.cost||0)*Math.max(r.sales-r.ret,0);
+        var rp = _calcRowProfit(r, _rctx);   // 🔥 v0.7.12.97: полный per-product P&L (налог/постоянные/wbFin/extras)
         if(r.cost > 0) groupSums[k].profit += rp;
         groupSums[k].revenue += (r.ppvz || 0); // выплата ≈ выручке после комиссии
         groupSums[k].ppvz += (r.ppvz || 0);
@@ -9002,7 +9068,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
   var prevGroupKey = null;
   // Для CPC/CPO нужны суммы выручки и продаж по товарам — это уже в rows
   for(var i=0;i<filteredRows.length;i++){
-    var a=filteredRows[i],prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+    var a=filteredRows[i],prf=_calcRowProfit(a, _rctx);   // 🔥 v0.7.12.97: полный per-product P&L
     // 🔥 v0.7.7 K4: вставляем заголовок группы перед первой строкой новой группы
     if(window._calcGroupBy && a._groupKey && a._groupKey !== prevGroupKey){
       var gKey = a._groupKey;
@@ -9068,6 +9134,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       '<td><input type="number" class="ce" placeholder="0" value="'+(a.extra||'')+'" min="0" oninput="updExtra('+rows.indexOf(a)+',this.value)"></td>'+
       '<td class="col-profit">'+ps+'</td></tr>');
   }
+  if(filteredRows.length) _renderOtherRow(tp);   // 🔥 v0.7.12.97: строка-балансир (не под empty-state фильтра)
   var tf=document.getElementById('tfoot');
   // Итоги: считаем общий ДРР, CPC
   var totalRevFromComm=rows.reduce(function(s,a){return s+(a.commPct>0?a.commRub/a.commPct*100:0);},0);
@@ -9152,8 +9219,10 @@ async function exportToExcel(ev){
 
     var stocksMap=window._stocksMap||{};
     // Готовим данные построчно
+    var _xctx=_calcRowCtx();   // 🔥 v0.7.12.97: контекст построчного P&L для Excel
     var data=rows.map(function(a){
-      var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+      var _pnl=_calcRowPnL(a, _xctx);   // 🔥 v0.7.12.97: полный per-product P&L (налог/постоянные/wbFin/extras)
+      var units=Math.max((Number(a.sales)||0)-(Number(a.ret)||0), 0);
       var st=stocksMap[a.nm_id]||{avail:0,total:0,inWay:0};
       var revFromComm=a.commPct>0?(a.commRub/a.commPct*100):0;
       var drr=revFromComm>0?(a.adv/revFromComm*100):0;
@@ -9181,9 +9250,34 @@ async function exportToExcel(ev){
         'ROAS':drr>0?Number((100/drr).toFixed(2)):null,
         'Штрафы ₽':Math.round(a.pen||0),
         'Себестоимость ₽/шт':Math.round(a.cost||0),
-        'Чистая прибыль ₽':Math.round(prf)
+        // 🔥 v0.7.12.97: новые статьи в выгрузке (совпадают с экраном)
+        'Доп. расход ₽/шт':Math.round(a.extra||0),
+        'ВБ Финанс ₽':Math.round(a.wbFin||0),
+        'Налог ₽':Math.round(_pnl.tax||0),
+        'Постоянные расходы ₽':Math.round(_pnl.fixedShare||0),
+        // профит пустой при cost==0 — как «—» на экране (и тогда уходит в «Прочее»), иначе ИТОГО не сойдётся
+        'Чистая прибыль ₽':(Number(a.cost)||0)>0 ? Math.round(_pnl.profit) : ''
       };
     });
+    // 🔥 v0.7.12.97: строки «Налоговый минимум / нераспределённое» + «ИТОГО» — Excel сходится с экраном.
+    // Прочее := футер t.profit − Σ(прибыль строк с cost>0). Футер = computeFinancials (тот же, что ИТОГО на экране).
+    if(data.length){
+      var _src=(typeof rawData!=='undefined'&&rawData)?rawData:[];
+      var _tp=computeFinancials(_src, rows).t.profit;
+      // Округляем построчно (как ячейки) → ИТОГО телескопируется в round(_tp) точно.
+      var _shown=0; rows.forEach(function(r){ if((Number(r.cost)||0)>0) _shown+=Math.round(_calcRowProfit(r, _xctx)); });
+      var _other=Math.round(_tp) - _shown;
+      var _blank=Object.keys(data[0]).reduce(function(o,k){o[k]='';return o;},{});
+      if(Math.abs(_other)>=1){
+        var _o=Object.assign({}, _blank); _o['Артикул WB']='Налоговый минимум / нераспределённое'; _o['Чистая прибыль ₽']=_other;
+        data.push(_o);
+      }
+      var _sum=function(key){ return Math.round(data.reduce(function(s,r){ var v=Number(r[key]); return s+(isFinite(v)?v:0); },0)); };
+      var _it=Object.assign({}, _blank);
+      _it['Артикул WB']='ИТОГО';
+      ['Продажи (шт)','Возвраты (шт)','Комиссия WB ₽','Логистика ₽','Хранение ₽','Реклама ₽','Штрафы ₽','ВБ Финанс ₽','Налог ₽','Постоянные расходы ₽','Чистая прибыль ₽'].forEach(function(k){ _it[k]=_sum(k); });
+      data.push(_it);   // «Чистая прибыль ₽» в ИТОГО = Σ строк + Прочее ≡ футер
+    }
     var ws=XLSX.utils.json_to_sheet(data);
     // Подгоняем ширину колонок по содержимому
     var cols=Object.keys(data[0]||{});
@@ -9798,6 +9892,7 @@ function applyBulkCost(mode){
   // Применяем — сразу обновляем массив, costs в localStorage и пересчёт итогов в конце
   var changed=0;
   var allCosts=getCosts();
+  var _bctx=_calcRowCtx();   // 🔥 v0.7.12.97: контекст P&L (1 раз на пакет)
   indices.forEach(function(i){
     var a=rows[i];
     if(!a)return;
@@ -9812,7 +9907,7 @@ function applyBulkCost(mode){
     if(tr){
       var inp=tr.querySelector('input.ci');
       if(inp)inp.value=val;
-      var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+      var prf=_calcRowProfit(a, _bctx);   // 🔥 v0.7.12.97: полный per-product P&L
       var pc=prf>=0?'green':'red';
       var pcell=tr.querySelector('.col-profit');
       if(pcell) pcell.innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>';
@@ -9853,6 +9948,7 @@ function applyBulkExtra(mode){
   }
   var changed=0;
   var allExtras=getExtras();
+  var _bctx=_calcRowCtx();   // 🔥 v0.7.12.97: контекст P&L (1 раз на пакет)
   indices.forEach(function(i){
     var a=rows[i];
     if(!a)return;
@@ -9861,9 +9957,14 @@ function applyBulkExtra(mode){
     var key=String(a.nm_id||a.sa||'x');
     allExtras[key]=val;
     changed++;
-    // Обновляем только input доп.расхода в строке (адресуем по data-ri, как в applyBulkCost).
+    // Обновляем input доп.расхода + ячейку прибыли (extras теперь в профите строки, v0.7.12.97).
     var tr=document.querySelector('#tb tr[data-ri="'+i+'"]');
-    if(tr){ var inp=tr.querySelector('input.ce'); if(inp)inp.value=val; }
+    if(tr){
+      var inp=tr.querySelector('input.ce'); if(inp)inp.value=val;
+      var prf=_calcRowProfit(a, _bctx);
+      var pcell=tr.querySelector('.col-profit');
+      if(pcell && (Number(a.cost)||0)>0){ var pc=prf>=0?'green':'red'; pcell.innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>'; tr.className=prf<0?'loss':''; }
+    }
   });
   saveExtras(allExtras);
   recalcTotals();
@@ -9927,6 +10028,12 @@ function recalcTotals(){
   var tfProfit=document.getElementById('tfProfit');
   if(tfCost)tfCost.innerHTML='−'+fmt(t.cost)+' ₽';
   if(tfProfit){tfProfit.className=t.profit>=0?'green':'red';tfProfit.innerHTML=(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽';}
+  // 🔥 v0.7.12.97: синхронизируем кэш итогов → последующий rerenderCalc (сортировка/группа/фильтр)
+  // строит футер и «Прочее» из свежих чисел, а не из устаревших _lastRenderArgs.
+  if(window._lastRenderArgs){ var _la=window._lastRenderArgs;
+    _la.tP=t.ppvz; _la.tD=t.delivery; _la.tS=t.storage; _la.tAd=t.ads; _la.tPn=t.penalty;
+    _la.tSl=t.salesCount; _la.tRt=t.returnsCount; _la.tCost=t.cost; _la.tp=t.profit; _la.tComm=t.commission; }
+  if(typeof _renderOtherRow==='function') _renderOtherRow(t.profit);   // 🔥 v0.7.12.97: освежаем строку-балансир
   // Запускаем auto-save со снапшотами в БД (debounced)
   scheduleAutoSave();
 }
@@ -9989,7 +10096,7 @@ function upd(i,val){
   if(!rows[i])return;
   rows[i].cost=parseFloat(val)||0;
   var a=rows[i];
-  var prf=a.ppvz-a.del-a.stor-a.adv-a.pen-a.cost*Math.max(a.sales-a.ret,0);
+  var prf=_calcRowProfit(a);   // 🔥 v0.7.12.97: полный per-product P&L
   // 🔥 Фаза D / фикс пересчёта: адресуем строку по data-ri (DOM-порядок ≠ rows[] при группировке/фильтре).
   var tr=document.querySelector('#tb tr[data-ri="'+i+'"]');
   if(tr){
@@ -10006,13 +10113,18 @@ function upd(i,val){
   recalcTotals();
 }
 
-// 🔥 Модуль «Расходы и налог» Часть 3: правка доп.расхода ₽/шт (зеркало upd для extras).
-// Влияет только на ИТОГИ (computeFinancials запекает extras в t.cost) — пер-строчную ячейку
-// прибыли НЕ трогаем (формулу строки правим отдельным релизом, не в этом модуле).
+// 🔥 Модуль «Расходы и налог»: правка доп.расхода ₽/шт (зеркало upd для extras).
+// v0.7.12.97: extras теперь входят в построчный профит → обновляем и ячейку прибыли строки.
 function updExtra(i,val){
   if(!rows[i])return;
   rows[i].extra=parseFloat(val)||0;
   var a=rows[i];
+  var prf=_calcRowProfit(a);   // 🔥 v0.7.12.97
+  var tr=document.querySelector('#tb tr[data-ri="'+i+'"]');
+  if(tr){
+    var pcell=tr.querySelector('.col-profit');
+    if(pcell && (Number(a.cost)||0)>0){ var pc=prf>=0?'green':'red'; pcell.innerHTML='<span class="'+pc+'">'+(prf>=0?'':'−')+fmt(Math.abs(prf))+' ₽</span>'; tr.className=prf<0?'loss':''; }
+  }
   var m=getExtras();var k=String(a.nm_id||a.sa||'x');
   if(a.extra>0) m[k]=a.extra; else delete m[k];
   saveExtras(m);
