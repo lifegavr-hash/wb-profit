@@ -117,7 +117,7 @@ input:focus{border-color:var(--purple)}
     <button class="btn" id="successBtn" onclick="goToDashboard()">Перейти в кабинет</button>
   </div>
 
-  <p class="hint-text">14 дней PRO бесплатно · Карта не нужна</p>
+  <p class="hint-text">7 дней PRO бесплатно · Карта не нужна</p>
   <p class="hint-text" style="margin-top:10px;font-size:13px"><a href="/demo" style="color:#5433c6;font-weight:600;text-decoration:none">🎭 Посмотреть демо без регистрации →</a></p>
   <p class="hint-text" style="margin-top:14px;font-size:11px;opacity:.8;line-height:1.5">ИП Чиркова Алиса Викторовна · ИНН 233304659652 · ОГРНИП 321237500373856</p>
 </div>
@@ -382,7 +382,7 @@ async function register() {
   if (!email||!pass){errBox.textContent='Заполните email и пароль';errBox.style.display='block';return;}
   if (pass.length<8){errBox.textContent='Пароль минимум 8 символов';errBox.style.display='block';return;}
   // 🔥 v0.7.12.17: регистрация ОТКРЫТАЯ и БЕЗ промокода. Просто email+пароль →
-  // signup → автотриал PRO 14 дней через handle_new_user. Промокоды активируются
+  // signup → автотриал PRO 7 дней через set_trial_on_signup. Промокоды активируются
   // в дашборде (Настройки → промокод).
   btn.disabled=true; btn.textContent='Создаём аккаунт...';
   // 🔥 Фаза D: проносим ?next= (с invite) в письмо подтверждения, чтобы после клика

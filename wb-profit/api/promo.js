@@ -16,6 +16,25 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // 🔥 R1 (v0.7.12.99): роутер по ?resource=. Dispatch РАНЬШЕ общих guard'ов — чтобы будущие
+  // ветки (R2+: pay-create / pay-webhook / sub-get / sub-cancel) имели свои правила метода и
+  // авторизации (вебхук ЮКассы — без JWT). Пока веток нет → default = активация промокода,
+  // поведение POST /api/promo идентично прежнему.
+  const resource = (req.query.resource || '').toString();
+  switch (resource) {
+    // case 'pay-create':  return payCreate(req, res);   // R2
+    // case 'pay-webhook': return payWebhook(req, res);  // R2 (без JWT — диспатч до guard'ов)
+    // case 'sub-get':     return subGet(req, res);      // R4
+    // case 'sub-cancel':  return subCancel(req, res);   // R4
+    default:
+      return activatePromo(req, res);
+  }
+}
+
+// Активация промокода. R1-рефактор: вынесена из handler в default-ветку роутера БЕЗ изменений
+// логики/ответа (byte-for-byte). Метод-guard перенесён сюда (для default остаётся POST-only).
+async function activatePromo(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // SECURITY: userId — ТОЛЬКО из JWT, не из body
