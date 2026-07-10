@@ -615,6 +615,14 @@ body.ws-foreign .ws-hide-foreign { display:none !important; }
 .pro-lock{font-size:11px;opacity:.7}
 .nav-lock{margin-left:6px}
 .period-pill .pro-lock{margin-right:4px}
+/* 🔥 v0.7.13.2 (D3a): SVG-иконки (currentColor → тёмная тема) + статус-точки. Фундамент D3. */
+.ic{width:1.15em;height:1.15em;flex-shrink:0;vertical-align:-.15em;display:inline-block}
+.nav-ic{width:18px;height:18px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;flex-shrink:0}
+.dot-red{background:radial-gradient(circle at 35% 30%,#f87171,#dc2626)}
+.dot-green{background:radial-gradient(circle at 35% 30%,#4ade80,#16a34a)}
+.dot-amber{background:radial-gradient(circle at 35% 30%,#fbbf24,#d97706)}
+.ic-chev{transition:transform .2s ease}
 /* Предупреждение о free-лимите товаров */
 .free-limit-warn{background:linear-gradient(135deg,#fef3c7,#fff);border:1px solid #f5c842;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13px;color:#7a5c00}
 .free-limit-warn a{color:#7c3aed;font-weight:600;text-decoration:none;margin-left:6px}
@@ -2120,6 +2128,19 @@ body{padding-top:var(--beta-h)}
 </style>
 </head>
 <body>
+<!-- 🔥 v0.7.13.2 (D3a): SVG-спрайт иконок (Lucide-геометрия, currentColor → тёмная тема бесплатно, stroke 1.75). Растёт по под-релизам D3b/c/d. -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="ic-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="ic-calculator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol>
+<symbol id="ic-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+<symbol id="ic-receipt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V7"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/></symbol>
+<symbol id="ic-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></symbol>
+<symbol id="ic-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+<symbol id="ic-circle-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+<symbol id="ic-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+<symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+</defs></svg>
 <!-- 🔥 v0.7.7.33: БЕТА-полоска. Видна на всех вкладках. Ссылка открывает модалку фидбэка из T3. -->
 <div class="beta-strip" role="banner">БЕТА-версия — данные могут быть неточными. Нашли ошибку? <a onclick="if(typeof openFeedbackModal==='function')openFeedbackModal();return false;">Напишите нам</a></div>
 <input type="hidden" id="df">
@@ -2219,16 +2240,16 @@ body{padding-top:var(--beta-h)}
   </div>
   <div class="nav">
     <div class="nav-sec">Главное</div>
-    <button class="nav-item active" id="nav-home" onclick="showSection('home',this)">🏠 Главная</button>
-    <button class="nav-item" id="nav-calc" onclick="showSection('calc',this)">📊 Калькулятор</button>
-    <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)">🔍 Детализация расходов <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
-    <button class="nav-item" id="nav-orders" onclick="showSection('orders',this)">🧾 Прибыль по товарам <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
-    <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)">📈 Аналитика <span class="pro-lock nav-lock" style="display:none">🔒</span></button>
-    <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)">💰 Подбор товара</button>
+    <button class="nav-item active" id="nav-home" onclick="showSection('home',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-home"/></svg>Главная</button>
+    <button class="nav-item" id="nav-calc" onclick="showSection('calc',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-calculator"/></svg>Калькулятор</button>
+    <button class="nav-item" id="nav-detail" onclick="showSection('detail',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-search"/></svg>Детализация расходов<span class="pro-lock nav-lock" style="display:none"><svg class="ic" aria-hidden="true"><use href="#ic-lock"/></svg></span></button>
+    <button class="nav-item" id="nav-orders" onclick="showSection('orders',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-receipt"/></svg>Прибыль по товарам<span class="pro-lock nav-lock" style="display:none"><svg class="ic" aria-hidden="true"><use href="#ic-lock"/></svg></span></button>
+    <button class="nav-item" id="nav-analytics" onclick="showSection('analytics',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-trending-up"/></svg>Аналитика<span class="pro-lock nav-lock" style="display:none"><svg class="ic" aria-hidden="true"><use href="#ic-lock"/></svg></span></button>
+    <button class="nav-item" id="nav-unit" onclick="showSection('unit',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-target"/></svg>Подбор товара</button>
     <div class="nav-sec">Аккаунт</div>
-    <button class="nav-item" id="nav-help" onclick="showSection('help',this)">❓ Помощь</button>
-    <button class="nav-item" id="nav-settings" onclick="showSection('settings',this)">⚙️ Настройки</button>
-    <button class="nav-item" id="nav-admin" style="display:none" onclick="showSection('admin',this)">⚙️ Админ-панель</button>
+    <button class="nav-item" id="nav-help" onclick="showSection('help',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-circle-help"/></svg>Помощь</button>
+    <button class="nav-item" id="nav-settings" onclick="showSection('settings',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-settings"/></svg>Настройки</button>
+    <button class="nav-item" id="nav-admin" style="display:none" onclick="showSection('admin',this)"><svg class="ic nav-ic" aria-hidden="true"><use href="#ic-shield"/></svg>Админ-панель</button>
   </div>
   <div class="sidebar-bottom">
     <!-- 🔥 v0.7.12.11: PWA install pill — резервная точка для тех, кто закрыл sticky-баннер.
