@@ -20,6 +20,10 @@ try{
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#7c3aed">
+<!-- 🔥 v0.7.13.0 (D1): единый шрифт Inter (бренд-консистентность лендинг↔кабинет) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -190,7 +194,7 @@ window.__ANALYTICS_CONFIG = {
 <!-- ===================================================================== -->
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px;--card-bg:#fff;--input-bg:#fff;--shadow:rgba(0,0,0,.06)}
+:root{--purple:#5433c6;--bg:#f7f7f5;--surface:#fff;--border:rgba(0,0,0,.1);--text:#1a1a18;--muted:#6b6b68;--hint:#a0a09c;--green:#1a7a4a;--red:#c0392b;--red-bg:#fdf0ef;--r:10px;--rs:6px;--card-bg:#fff;--input-bg:#fff;--shadow:rgba(0,0,0,.06);--font:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;--font-mono:'SF Mono', ui-monospace, Menlo, monospace}
 /* 🔥 v0.7.7 G2: тёмная тема через data-theme="dark" на <html> */
 html[data-theme="dark"]{--purple:#a78bfa;--bg:#0f0f1a;--surface:#1a1a2e;--border:rgba(255,255,255,.1);--text:#e8e8eb;--muted:#9ca3af;--hint:#64748b;--green:#22c55e;--red:#ef4444;--red-bg:rgba(239,68,68,.1);--card-bg:#1e1e2e;--input-bg:#252539;--shadow:rgba(0,0,0,.35)}
 html[data-theme="dark"] body{background:var(--bg);color:var(--text)}
@@ -519,7 +523,7 @@ html[data-theme="dark"] [style*="color:#0f172a"],html[data-theme="dark"] [style*
 /* --- Универсал: inline background:#fff / white на тёмной теме --- */
 html[data-theme="dark"] [style*="background:#fff"]:not(.theme-btn):not(.mc-bar):not(svg *),html[data-theme="dark"] [style*="background: #fff"]:not(.theme-btn):not(.mc-bar):not(svg *){background:var(--card-bg)!important}
 html[data-theme="dark"] [style*="background:white"]:not(.theme-btn):not(.mc-bar):not(svg *){background:var(--card-bg)!important}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;display:grid;grid-template-columns:220px 1fr;min-height:100vh}
 /* Скрытые поля и абсолютные оверлеи не должны участвовать в grid-сетке body */
 body > input[type="hidden"]{display:none!important}
 body > .mob-menu-btn,body > .mob-menu-bg,body > .onb{position:fixed}
@@ -663,7 +667,7 @@ html[data-theme="dark"] .cache-fresh-banner.stale{background:#2e1f10;border-colo
 .topbar-search-btn:hover{background:#f5f3ff;border-color:#ddd6fe;color:#7c3aed}
 .topbar-search-icon{font-size:14px}
 .topbar-search-text{}
-.topbar-search-kbd{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;color:#94a3b8;font-family:monospace}
+.topbar-search-kbd{background:#fff;border:1px solid #e2e8f0;border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;color:#94a3b8;font-family:var(--font-mono)}
 @media(max-width:680px){.topbar-search-text{display:none}.topbar-search-kbd{display:none}.topbar-search-btn{padding:7px 10px}}
 
 /* 🔥 v0.7.7.30: Переключатель кабинетов WB в topbar */
@@ -704,7 +708,7 @@ html[data-theme="dark"] .wb-account-item.is-default{background:rgba(124,58,237,.
 .wb-account-actions{display:flex;gap:6px;flex-shrink:0}
 /* 🔥 v0.7.12.15: блок отображения текущего токена кабинета в развёрнутой форме */
 .wb-current-token-box{display:flex;gap:8px;align-items:flex-start;background:#f7f7f5;border:1px solid var(--border);border-radius:8px;padding:10px 12px}
-.wb-current-token-text{font-family:'SF Mono','Monaco','Consolas',monospace;font-size:12px;color:var(--text);word-break:break-all;flex:1;line-height:1.5;user-select:all;background:transparent;padding:0}
+.wb-current-token-text{font-family:var(--font-mono);font-size:12px;color:var(--text);word-break:break-all;flex:1;line-height:1.5;user-select:all;background:transparent;padding:0}
 html[data-theme="dark"] .wb-current-token-box{background:rgba(255,255,255,.04)}
 @media (max-width:640px){
   .wb-current-token-box{flex-direction:column;gap:6px}
@@ -914,7 +918,7 @@ input[type=password],input[type=date],input[type=number],input[type=text]{width:
    иначе Chrome предлагает «сохранить пароль». -webkit-text-security работает
    в Chrome/Safari/Edge, в Firefox текст останется видимым (но это не критично
    для WB-токена и Firefox не имеет такого же password-prompt бага). */
-.wb-token-input{-webkit-text-security:disc;text-security:disc;font-family:monospace}
+.wb-token-input{-webkit-text-security:disc;text-security:disc;font-family:var(--font-mono)}
 input:focus{border-color:var(--purple)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .err{background:var(--red-bg);border:1px solid #f5c6c2;border-radius:var(--rs);padding:.75rem 1rem;font-size:13px;color:var(--red);margin-bottom:1rem;display:none}
@@ -1047,7 +1051,7 @@ tr.loss td{background:#fff5f5}
 .onb-text{font-size:14px;line-height:1.5;color:var(--text);text-align:center}
 .onb-list{margin:14px 0;padding-left:24px;font-size:13px;line-height:1.6;color:var(--text)}
 .onb-list li{margin-bottom:6px}
-.onb-input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-top:14px;font-family:monospace}
+.onb-input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:10px;font-size:13px;margin-top:14px;font-family:var(--font-mono)}
 .onb-input:focus{outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.1)}
 .onb-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:24px}
 /* === UNIT ECONOMICS === */
@@ -1163,7 +1167,7 @@ tr.loss td{background:#fff5f5}
 .info-modal-body p{margin:0 0 10px}
 .info-modal-body p:last-child{margin-bottom:0}
 .info-modal-body strong{color:var(--text);font-weight:600}
-.info-modal-body .info-formula{background:#fafafa;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px;font-family:'SF Mono','Menlo','Monaco',monospace;line-height:1.7}
+.info-modal-body .info-formula{background:#fafafa;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:13px;font-family:var(--font-mono);line-height:1.7}
 .info-modal-body .info-example{background:#f0fdf4;border-left:3px solid #22c55e;padding:10px 14px;margin:10px 0;border-radius:8px;font-size:13px}
 @keyframes infoFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes infoSlideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -1444,7 +1448,7 @@ html[data-theme="dark"] .ev-tb-btn:hover{background:rgba(167,139,250,.12);border
 .rich-alert-loss{margin-left:auto;font-size:11px;font-weight:600;color:#dc2626;background:rgba(220,38,38,.1);padding:2px 8px;border-radius:99px;white-space:nowrap}
 .rich-alert-name{font-size:12px;color:var(--muted);margin-bottom:6px;font-style:italic;word-break:break-word;line-height:1.4}
 /* 🔥 v0.5.5: универсальный класс для артикула — моноширинный, выделенный */
-.art-tag{display:inline-block;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:0.85em;background:rgba(124,58,237,.08);color:#7c3aed;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600;font-style:normal;letter-spacing:.3px;white-space:nowrap;user-select:all;cursor:text}
+.art-tag{display:inline-block;font-family:var(--font-mono);font-size:0.85em;background:rgba(124,58,237,.08);color:#7c3aed;padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600;font-style:normal;letter-spacing:.3px;white-space:nowrap;user-select:all;cursor:text}
 .art-tag:hover{background:rgba(124,58,237,.15)}
 .rich-alert-msg{font-size:12px;color:var(--text);margin-bottom:6px}
 .rich-alert-hint{font-size:12px;color:#7c3aed;padding-top:6px;border-top:1px dashed rgba(124,58,237,.2)}
@@ -2048,7 +2052,7 @@ html[data-theme="dark"] .pc-mx thead th.pc-metric{background:#1a1a2e}
 .pc-mx tbody tr:hover td{background:rgba(124,58,237,.05)}
 .pc-mx tbody tr:hover td.pc-metric{background:#f3eefe}
 html[data-theme="dark"] .pc-mx tbody tr:hover td.pc-metric{background:#262445}
-.oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:'SF Mono',Menlo,Monaco,Consolas,monospace;font-size:12px}
+.oc-wb{color:#3b5bdb;font-weight:600;text-decoration:none;font-family:var(--font-mono);font-size:12px}
 .oc-wb:hover{text-decoration:underline}
 html[data-theme="dark"] .oc-wb{color:#7aa2ff}
 .oc-sa{max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
@@ -3414,7 +3418,7 @@ function installFrontendErrorLogger(){
 function _swMaintShow(){
   if(document.getElementById('swMaint'))return;
   var o=document.createElement('div');o.id='swMaint';
-  o.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#0f0f1a;color:#e8e8eb;display:flex;align-items:center;justify-content:center;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;text-align:center';
+  o.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#0f0f1a;color:#e8e8eb;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,system-ui,-apple-system,sans-serif;text-align:center';
   o.innerHTML='<div style="max-width:440px"><div style="font-size:52px;margin-bottom:14px">🛠</div><div style="font-size:22px;font-weight:700;margin-bottom:10px">Идут технические работы</div><div style="font-size:15px;line-height:1.5;color:#9ca3af;margin-bottom:18px">Устраняем неполадку на сервере базы данных. Приложение скоро вернётся — обычно это занимает несколько минут. Страница обновится автоматически.</div><button id="swMaintReload" style="background:#7c3aed;color:#fff;border:0;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:600;cursor:pointer">Обновить сейчас</button><div style="margin-top:14px;font-size:12px;color:#64748b">SW Profit</div></div>';
   (document.body||document.documentElement).appendChild(o);
   var b=document.getElementById('swMaintReload');if(b)b.onclick=function(){location.reload();};
@@ -4438,7 +4442,7 @@ async function loadAdminData(token){
       else if(uses.some(function(x){return x.period_active;})) nowCell='<span class="badge badge-active">🟢 используется</span>';
       else nowCell='<span class="badge badge-inactive">использован</span>';
       return '<tr>'+
-        '<td style="font-family:monospace">'+esc(p.code)+'</td>'+
+        '<td style="font-family:var(--font-mono)">'+esc(p.code)+'</td>'+
         '<td><span class="badge badge-pro">'+esc(p.plan)+'</span></td>'+
         '<td><input type="number" id="pd_'+p.id+'" value="'+p.days+'" min="1" max="365" style="'+inStyle+'"></td>'+
         '<td>'+usedCell+'</td>'+
@@ -4490,7 +4494,7 @@ function renderUsersRows(list){
       var perMap={yearly:'годовой',monthly:'месячный'};
       trial='<span class="badge badge-pro">'+(perMap[u.billing_period]||u.billing_period)+'</span>';
     } else { trial='<span style="color:var(--hint)">—</span>'; }
-    var codeline=u.used_code?'<div style="font-size:11px;color:var(--hint);font-family:monospace">'+esc(u.used_code)+'</div>':'';
+    var codeline=u.used_code?'<div style="font-size:11px;color:var(--hint);font-family:var(--font-mono)">'+esc(u.used_code)+'</div>':'';
     return '<tr>'+
       '<td>'+esc(u.email)+codeline+'</td>'+
       '<td><span class="badge '+(u.plan==='free'?'badge-free':'badge-pro')+'">'+esc(u.plan)+'</span></td>'+
@@ -9116,7 +9120,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
     var rowDisplay = (a._groupKey && window._calcGroupCollapsed[a._groupKey]) ? ' style="display:none"' : '';
     tb.insertAdjacentHTML('beforeend', '<tr data-ri="'+rows.indexOf(a)+'"'+rowCls+dataGroup+rowDisplay+'>'+
       '<td class="cb-col"><input type="checkbox" class="cb-row" data-i="'+rows.indexOf(a)+'" onchange="onRowCheckboxChange()"></td>'+
-      '<td style="font-family:monospace;font-size:12px">'+(a.nm_id||'—')+'</td>'+
+      '<td style="font-family:var(--font-mono);font-size:12px">'+(a.nm_id||'—')+'</td>'+
       '<td style="font-size:12px">'+(a.sa||'—')+'</td><td>'+a.cat+'</td>'+
       '<td>'+fmt(a.sales)+'</td>'+
       '<td class="col-returns red">'+fmt(a.ret)+'</td>'+

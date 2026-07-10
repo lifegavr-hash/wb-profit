@@ -282,7 +282,7 @@
       }
       ctx.fillStyle = 'rgba(17, 10, 38, ' + (0.08 + fadeBoost) + ')';
       ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
-      ctx.font = '600 ' + fontSize + 'px Manrope, monospace';
+      ctx.font = '600 ' + fontSize + 'px Inter, monospace';
 
       for(var i = 0; i < columns; i++){
         var ch = charArr[Math.floor(Math.random() * charArr.length)];
@@ -361,7 +361,7 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -387,9 +387,9 @@
 .intro-stage.show{opacity:1}
 .intro-stage.exiting{opacity:0;transform:translate(-50%,calc(-50% - 30px)) scale(.95);transition:opacity .45s ease,transform .45s ease}
 
-.intro-label{font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;letter-spacing:.4em;color:rgba(167,139,250,.7);text-transform:uppercase;margin-bottom:18px}
+.intro-label{font-family:var(--font);font-size:13px;font-weight:600;letter-spacing:.4em;color:rgba(167,139,250,.7);text-transform:uppercase;margin-bottom:18px}
 .intro-label-green{color:rgba(52,211,153,.85)}
-.intro-number-big{font-family:'Manrope',sans-serif;font-size:clamp(48px,10vw,108px);font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 0 60px rgba(124,58,237,.4),0 0 100px rgba(167,139,250,.2);white-space:nowrap}
+.intro-number-big{font-family:var(--font);font-size:clamp(48px,10vw,108px);font-weight:800;line-height:1;letter-spacing:-.04em;color:#fff;text-shadow:0 0 60px rgba(124,58,237,.4),0 0 100px rgba(167,139,250,.2);white-space:nowrap}
 /* 🔥 v0.7.7.25: ЧЁТКАЯ зелёная цифра — solid color + drop-shadow glow вокруг,
    без background-clip:text (тот размывал текст на retina + text-shadow blur).
    Shimmer через пульсацию drop-shadow яркости. */
@@ -406,25 +406,25 @@
 .intro-number-big.intro-profit .intro-currency{color:rgba(167,243,208,.85)}
 
 /* 🔥 v0.7.7.25: Мотивационная подпись под каждой стадией */
-.intro-motiv{font-family:'Manrope',sans-serif;font-size:clamp(14px,1.7vw,18px);font-weight:500;color:rgba(255,255,255,.55);margin-top:24px;letter-spacing:.005em;line-height:1.45;width:100%;text-align:center;padding:0 20px}
+.intro-motiv{font-family:var(--font);font-size:clamp(14px,1.7vw,18px);font-weight:500;color:rgba(255,255,255,.55);margin-top:24px;letter-spacing:.005em;line-height:1.45;width:100%;text-align:center;padding:0 20px}
 .intro-motiv-red{color:rgba(248,113,113,.6)}
 .intro-motiv-green{color:rgba(167,243,208,.7);font-weight:600}
 
 /* 🔥 v0.7.7.25: Стадия с цитатой/мотивацией */
-.intro-quote{font-family:'Manrope',sans-serif;font-size:clamp(22px,3.5vw,42px);font-weight:700;color:#fff;line-height:1.3;letter-spacing:-.02em;max-width:780px;margin:0 auto;font-style:italic;text-shadow:0 0 40px rgba(124,58,237,.35)}
+.intro-quote{font-family:var(--font);font-size:clamp(22px,3.5vw,42px);font-weight:700;color:#fff;line-height:1.3;letter-spacing:-.02em;max-width:780px;margin:0 auto;font-style:italic;text-shadow:0 0 40px rgba(124,58,237,.35)}
 
 /* Стадия 2 — зачёркивание */
 .intro-strike{position:relative;display:inline-block}
-.intro-strike-text{font-family:'Manrope',sans-serif;font-size:clamp(36px,7vw,72px);font-weight:800;color:#f87171;letter-spacing:-.03em;line-height:1;position:relative;text-shadow:0 0 40px rgba(248,113,113,.35);white-space:nowrap}
+.intro-strike-text{font-family:var(--font);font-size:clamp(36px,7vw,72px);font-weight:800;color:#f87171;letter-spacing:-.03em;line-height:1;position:relative;text-shadow:0 0 40px rgba(248,113,113,.35);white-space:nowrap}
 .intro-strike.show .intro-strike-text::after{content:'';position:absolute;top:50%;left:-10%;right:-10%;height:4px;background:linear-gradient(90deg,transparent,#f87171 20%,#f87171 80%,transparent);transform:scaleX(0);transform-origin:left;animation:strikeLine .55s cubic-bezier(.76,0,.24,1) .2s forwards}
 @keyframes strikeLine{to{transform:scaleX(1)}}
-.intro-strike-label{font-family:'Manrope',sans-serif;font-size:14px;font-weight:500;color:rgba(248,113,113,.6);margin-top:14px;letter-spacing:.3em;text-transform:uppercase}
+.intro-strike-label{font-family:var(--font);font-size:14px;font-weight:500;color:rgba(248,113,113,.6);margin-top:14px;letter-spacing:.3em;text-transform:uppercase}
 
 /* Финальная стадия — логотип */
-.intro-logo{font-family:'Manrope',sans-serif;font-size:clamp(48px,9vw,96px);font-weight:800;letter-spacing:-.04em;line-height:1;display:flex;align-items:baseline;justify-content:center;gap:16px}
+.intro-logo{font-family:var(--font);font-size:clamp(48px,9vw,96px);font-weight:800;letter-spacing:-.04em;line-height:1;display:flex;align-items:baseline;justify-content:center;gap:16px}
 .intro-logo-sw{color:#fff}
 .intro-logo-profit{background:linear-gradient(135deg,#a78bfa 0%,#c4b5fd 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.intro-tagline{font-family:'Manrope',sans-serif;font-size:clamp(13px,1.6vw,17px);color:rgba(255,255,255,.55);margin-top:18px;font-weight:500;letter-spacing:.02em}
+.intro-tagline{font-family:var(--font);font-size:clamp(13px,1.6vw,17px);color:rgba(255,255,255,.55);margin-top:18px;font-weight:500;letter-spacing:.02em}
 
 .intro-skip{position:absolute;top:24px;right:24px;z-index:4;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:9px 18px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;backdrop-filter:blur(8px);transition:all .2s;letter-spacing:.02em}
 .intro-skip:hover{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
@@ -445,9 +445,9 @@
   .intro-label{font-size:11px;letter-spacing:.3em;margin-bottom:14px}
 }
 
-:root{--purple:#5433c6;--purple-dark:#1a0f3c;--green:#1a7a4a;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5}
+:root{--purple:#5433c6;--purple-dark:#1a0f3c;--green:#1a7a4a;--text:#1a1818;--muted:#6b6b68;--border:rgba(0,0,0,.08);--surface:#fff;--bg:#f7f7f5;--font:'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;--font-mono:'SF Mono', ui-monospace, Menlo, monospace}
 html{scroll-behavior:smooth}
-body{font-family:'Manrope',sans-serif;background:var(--surface);color:var(--text);line-height:1.6;font-size:16px}
+body{font-family:var(--font);background:var(--surface);color:var(--text);line-height:1.6;font-size:16px}
 nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;align-items:center;justify-content:space-between;height:60px;background:rgba(26,15,60,.95);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
 .nav-logo{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.5px}
 .nav-logo span{color:#a78bfa}
