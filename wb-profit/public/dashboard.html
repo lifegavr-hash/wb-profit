@@ -623,6 +623,7 @@ body.ws-foreign .ws-hide-foreign { display:none !important; }
 .dot-green{background:radial-gradient(circle at 35% 30%,#4ade80,#16a34a)}
 .dot-amber{background:radial-gradient(circle at 35% 30%,#fbbf24,#d97706)}
 .ic-chev{transition:transform .2s ease}
+.ct-ic{margin-right:7px;color:var(--purple)}   /* D3b: иконка заголовка карточки — акцентная */
 /* Предупреждение о free-лимите товаров */
 .free-limit-warn{background:linear-gradient(135deg,#fef3c7,#fff);border:1px solid #f5c842;border-radius:10px;padding:10px 14px;margin:0 0 14px;font-size:13px;color:#7a5c00}
 .free-limit-warn a{color:#7c3aed;font-weight:600;text-decoration:none;margin-left:6px}
@@ -2140,6 +2141,18 @@ body{padding-top:var(--beta-h)}
 <symbol id="ic-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol>
 <symbol id="ic-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
 <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+<symbol id="ic-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 3 8 9l4 13 4-13-2.5-6"/><path d="M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z"/><path d="M2 9h20"/></symbol>
+<symbol id="ic-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+<symbol id="ic-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></symbol>
+<symbol id="ic-message-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/></symbol>
+<symbol id="ic-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></symbol>
+<symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+<symbol id="ic-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
+<symbol id="ic-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8"/><path d="M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5"/><rect x="3" y="7" width="18" height="4" rx="1"/></symbol>
+<symbol id="ic-chart-column" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+<symbol id="ic-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7"/><rect x="2" y="4" width="20" height="16" rx="2"/></symbol>
+<symbol id="ic-wrench" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/></symbol>
+<symbol id="ic-ticket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></symbol>
 </defs></svg>
 <!-- 🔥 v0.7.7.33: БЕТА-полоска. Видна на всех вкладках. Ссылка открывает модалку фидбэка из T3. -->
 <div class="beta-strip" role="banner">БЕТА-версия — данные могут быть неточными. Нашли ошибку? <a onclick="if(typeof openFeedbackModal==='function')openFeedbackModal();return false;">Напишите нам</a></div>
@@ -2411,7 +2424,7 @@ body{padding-top:var(--beta-h)}
     <div class="section" id="sectionSettings">
       <!-- 🔥 v0.7.0: блок с тарифами — динамически из /api/plans -->
       <div class="card">
-        <div class="ct">💎 Тарифы</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-gem"/></svg>Тарифы</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Выберите подходящий план. Текущий тариф: <strong id="currentPlanLabel">Free</strong>.</p>
         <div id="plansGrid" class="plans-grid">
           <div class="plans-loading">Загружаем тарифы...</div>
@@ -2422,7 +2435,7 @@ body{padding-top:var(--beta-h)}
       </div>
       <!-- 🔥 v0.7.7 G2: переключатель темы -->
       <div class="card" style="margin-top:14px">
-        <div class="ct">🎨 Внешний вид</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-palette"/></svg>Внешний вид</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Выберите тему оформления. Настройка сохраняется на этом устройстве.</p>
         <div class="theme-toggle">
           <button class="theme-btn" data-theme-value="light" onclick="setTheme('light')">
@@ -2548,21 +2561,21 @@ body{padding-top:var(--beta-h)}
 
       <!-- 🔥 v0.7.10.9: PWA install — карточка появляется когда Chrome поймал beforeinstallprompt -->
       <div class="card" id="pwaInstallCard" style="margin-top:14px;display:none">
-        <div class="ct">📲 Установить приложение</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-smartphone"/></svg>Установить приложение</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Установите SW Profit как приложение — иконка на рабочем столе/смартфоне, запуск без браузера.</p>
         <button class="btn-primary" onclick="pwaInstall()">Установить</button>
       </div>
 
       <!-- 🔥 v0.7.7.33: Обратная связь — модалка вызывает sb.rpc('submit_feedback', ...) -->
       <div class="card" style="margin-top:14px">
-        <div class="ct">💬 Обратная связь</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-message-circle"/></svg>Обратная связь</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Нашли ошибку, есть идея или вопрос? Напишите нам — каждое сообщение читается лично.</p>
         <button class="btn-primary" onclick="openFeedbackModal()">Сообщить об ошибке / предложение</button>
       </div>
 
       <!-- 👥 Команда (Фаза D, Бизнес) -->
       <div class="card" id="teamCard" style="margin-top:14px;display:none">
-        <div class="ct">👥 Команда <span id="teamSeats" style="font-size:12px;color:var(--muted);font-weight:400"></span></div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-users"/></svg>Команда<span id="teamSeats" style="font-size:12px;color:var(--muted);font-weight:400"></span></div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Участники видят вашу Главную и Аналитику (только чтение). Доступ к токену, настройкам и кабинетам не передаётся.</p>
         <div id="teamMembers"></div>
         <div id="teamInvites"></div>
@@ -2575,7 +2588,7 @@ body{padding-top:var(--beta-h)}
 
       <!-- 🔔 Уведомления (Фаза C, email-дайджест) -->
       <div class="card" style="margin-top:14px">
-        <div class="ct">🔔 Уведомления</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-bell"/></svg>Уведомления</div>
         <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
           <input type="checkbox" id="dailyEmailToggle" onchange="toggleDailyEmail(this)" style="width:18px;height:18px;flex-shrink:0;margin-top:2px">
           <span>
@@ -2588,7 +2601,7 @@ body{padding-top:var(--beta-h)}
 
       <!-- 🔥 v0.7.11.0: Экспорт данных (ФЗ-152 ст.14 — право на машиночитаемую выгрузку) -->
       <div class="card" style="margin-top:14px">
-        <div class="ct">📦 Экспорт данных</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-package"/></svg>Экспорт данных</div>
         <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Выгрузка всех ваших расчётов, себестоимостей, расходов и истории в машиночитаемом формате JSON (ФЗ-152 ст.14). WB-токены не выгружаются.</p>
         <button class="btn-primary" id="exportDataBtn" onclick="exportUserData()">Скачать мои данные (JSON)</button>
       </div>
@@ -2962,25 +2975,25 @@ body{padding-top:var(--beta-h)}
     <div class="section" id="sectionAdmin">
       <!-- 🔥 v0.7.7.33: 4 view беты (admin_beta_stats / admin_available_codes / admin_beta_users / admin_new_feedback) -->
       <div class="card">
-        <div class="ct">📊 Бета-статистика</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-chart-column"/></svg>Бета-статистика</div>
         <div class="tw" id="adminBetaStats" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
       </div>
       <div class="card">
-        <div class="ct">📬 Новый фидбэк</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-mail"/></svg>Новый фидбэк</div>
         <div class="tw" id="adminNewFeedback" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
       </div>
       <!-- 🔥 v0.7.12.17: управление фидбэком — статус / ответ / удаление -->
       <div class="card">
-        <div class="ct">🛠️ Управление фидбэком</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-wrench"/></svg>Управление фидбэком</div>
         <p class="hint" style="margin-bottom:12px">Меняйте статус, отвечайте и удаляйте обращения. Показаны все статусы (последние 200).</p>
         <div id="feedbackBody"><div class="hint">Загружаем...</div></div>
       </div>
       <div class="card">
-        <div class="ct">🎟️ Доступные промокоды</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-ticket"/></svg>Доступные промокоды</div>
         <div class="tw" id="adminAvailableCodes" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
       </div>
       <div class="card">
-        <div class="ct">👥 Бета-пользователи</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-users"/></svg>Бета-пользователи</div>
         <div class="tw" id="adminBetaUsers" style="overflow-x:auto"><div class="hint">Загружаем...</div></div>
       </div>
 
@@ -3030,7 +3043,7 @@ body{padding-top:var(--beta-h)}
     <!-- 🔥 v0.7.12.9: Помощь / FAQ — справка прямо в дашборде, чтобы тестер не уходил на блог -->
     <div class="section" id="sectionHelp">
       <div class="card">
-        <div class="ct">❓ Частые вопросы</div>
+        <div class="ct"><svg class="ic ct-ic" aria-hidden="true"><use href="#ic-circle-help"/></svg>Частые вопросы</div>
         <p class="hint" style="margin-bottom:14px">Ответы на типичные вопросы новых пользователей. Если ответа нет — напишите нам.</p>
 
         <div class="faq-group">
@@ -8103,7 +8116,7 @@ function _pcPriceBlock(nm){
     rows+='<tr class="pc-price-mut"><td>Ваша скидка</td><td>−'+M(ownDisc)+'</td></tr>';
   }
   rows+='<tr><td>Ваша цена (со скидкой продавца)</td><td>'+M(W)+'</td></tr>';
-  if(SPP>0) rows+='<tr class="pc-price-spp"><td>🎁 Скидка покупателю · СПП ('+sppPct+'%) <span class="pc-price-hint">за счёт WB</span></td><td>−'+M(SPP)+'</td></tr>';
+  if(SPP>0) rows+='<tr class="pc-price-spp"><td><svg class="ic" style="margin-right:5px;color:var(--purple)" aria-hidden="true"><use href="#ic-gift"/></svg>Скидка покупателю · СПП ('+sppPct+'%) <span class="pc-price-hint">за счёт WB</span></td><td>−'+M(SPP)+'</td></tr>';
   else if(SPP<0) rows+='<tr class="pc-price-mut"><td>Надбавка/корректировка WB</td><td>+'+M(-SPP)+'</td></tr>';
   rows+='<tr class="pc-price-sum"><td>Покупатель заплатил</td><td>'+M(A)+'</td></tr>';
   if(hasReward){
@@ -8119,7 +8132,7 @@ function _pcPriceBlock(nm){
   }
   rows+='<tr class="pc-price-sum"><td>Вам выплачено</td><td>'+M(P)+'</td></tr>';
   var ref='<div class="pc-price-hint" style="margin-top:8px;display:block">';
-  if(SPP>0) ref+='🎁 СПП −'+M(SPP)+' ('+sppPct+'%) — скидку покупателю даёт <b>WB за свой счёт</b> (снижает свою комиссию вплоть до отрицательной → тогда «Компенсация WB»). Не ваш расход.<br>';
+  if(SPP>0) ref+='<svg class="ic" style="margin-right:5px;color:var(--purple)" aria-hidden="true"><use href="#ic-gift"/></svg>СПП −'+M(SPP)+' ('+sppPct+'%) — скидку покупателю даёт <b>WB за свой счёт</b> (снижает свою комиссию вплоть до отрицательной → тогда «Компенсация WB»). Не ваш расход.<br>';
   ref+='Значения на проданную единицу за период. Возвраты, логистика и хранение — в блоке «Финансы».</div>';
   return '<table class="pc-price"><tbody>'+rows+'</tbody></table>'+ref;
 }
@@ -13007,7 +13020,7 @@ function renderExpenseStructure(snaps){
     // 🔥 v0.7.9.6: одна точность .toFixed(1) — как в pie-легенде.
     // Иначе юзер видит "27%" в одном месте и "27.3%" в другом и думает что числа разные.
     var bp=(biggest.val/rev*100).toFixed(1);
-    h+='<div class="an-insight">Самая крупная статья WB-расходов: <strong>'+biggest.lbl+'</strong> ('+bp+'% от выручки, '+fmtR(biggest.val)+' за период). 👆 Кликни сегмент или строку легенды для деталей.</div>';
+    h+='<div class="an-insight">Самая крупная статья WB-расходов: <strong>'+biggest.lbl+'</strong> ('+bp+'% от выручки, '+fmtR(biggest.val)+' за период). Кликни сегмент или строку легенды для деталей.</div>';
   }
   // 🔥 v0.7.9.4: показываем фактическую дельту WB-выплаты без интерпретаций.
   if(totalAdj !== 0){
@@ -13035,7 +13048,7 @@ function showPieTooltip(e, idx){
     html += '<div class="chart-tooltip-row"><div class="chart-tooltip-row-lbl">От выручки</div><div class="chart-tooltip-row-val">'+pctRev+'%</div></div>';
   }
   if(it.key !== 'profit'){
-    html += '<div class="chart-tooltip-hint">👆 Кликни для детализации по дням</div>';
+    html += '<div class="chart-tooltip-hint">Кликни для детализации по дням</div>';
   }
   showChartTooltip(html, e);
 }
