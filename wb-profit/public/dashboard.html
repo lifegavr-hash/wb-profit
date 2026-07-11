@@ -7562,7 +7562,12 @@ function renderDetail(){
 
   // Сводка сверху — арифметически точная.
   // Прибыль = Выручка − Все расходы + Доплаты WB (если есть)
-  var totalExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost+t.acquiring;
+  // 🔥 v0.7.13.5 хотфикс: «Все расходы» и самопроверка P&L ДОЛЖНЫ включать налог+постоянные,
+  // иначе плитка/формула расходятся с ЧистойПрибылью (она уже нетто) → ложный алерт «Арифметика не сходится».
+  // wbExpenses (без налога/фикс) держим отдельно — для сверки с суммой групп (группы налог/фикс не содержат).
+  var wbExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost+t.acquiring;
+  var taxFixed=(t.tax||0)+(t.fixed_share||0);
+  var totalExpenses=wbExpenses+taxFixed;
   var adjBlock='';
   if(Math.abs(t.wbAdjust)>=50){
     var pos=t.wbAdjust>0;
@@ -7578,7 +7583,7 @@ function renderDetail(){
   var prevTotalExpenses = prevT ? (prevT.commission+prevT.delivery+prevT.storage+prevT.ads+prevT.penalty+prevT.wbFinance+prevT.cost+(prevT.acquiring||0)) : 0;
   document.getElementById('detailMetrics').innerHTML=
     '<div class="m"><div class="ml">Выручка'+(prevT?pctChangeHtml(t.revenue, prevT.revenue, false):'')+'</div><div class="mv green">'+fmt(t.revenue)+' ₽</div></div>'+
-    '<div class="m"><div class="ml">Все расходы'+(prevT?pctChangeHtml(totalExpenses, prevTotalExpenses, true):'')+'</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
+    '<div class="m"><div class="ml">Все расходы'+(prevT?pctChangeHtml(wbExpenses, prevTotalExpenses, true):'')+'</div><div class="mv red">−'+fmt(totalExpenses)+' ₽</div></div>'+
     adjBlock+
     '<div class="m hi"><div class="ml">Чистая прибыль'+(prevT?pctChangeHtml(t.profit, prevT.profit, false):'')+'</div><div class="mv '+(t.profit>=0?'green':'red')+'">'+(t.profit>=0?'':'−')+fmt(Math.abs(t.profit))+' ₽</div></div>';
 
@@ -7603,6 +7608,9 @@ function renderDetail(){
   if(t.penalty>0)formulaHtml+='<div class="detail-formula-row"><span>− Штрафы и удержания</span><span class="red">−'+fmt(t.penalty)+' ₽</span></div>';
   if(t.wbFinance>0)formulaHtml+='<div class="detail-formula-row"><span>− ВБ Финанс (кредит)</span><span class="red">−'+fmt(t.wbFinance)+' ₽</span></div>';
   if(t.cost>0)formulaHtml+='<div class="detail-formula-row"><span>− Себестоимость</span><span class="red">−'+fmt(t.cost)+' ₽</span></div>';
+  // 🔥 v0.7.13.5 хотфикс: налог и постоянные — всегда видны (−0 при отсутствии), как в KPI-плитках Калькулятора v0.7.12.96
+  formulaHtml+='<div class="detail-formula-row"><span>− Налог</span><span class="red">−'+fmt(t.tax||0)+' ₽</span></div>';
+  formulaHtml+='<div class="detail-formula-row"><span>− Постоянные расходы</span><span class="red">−'+fmt(t.fixed_share||0)+' ₽</span></div>';
   if(Math.abs(t.wbAdjust)>=50){
     var pos2=t.wbAdjust>0;
     var lbl2=pos2?'+ Доплаты WB (премии, корректировки)':'− Удержано WB (доп. удержания)';
@@ -7666,8 +7674,8 @@ function renderDetail(){
   // Если расхождение >1 ₽ — показываем предупреждение, чтобы я мог поправить
   var sumGroups=0;
   Object.keys(groups).forEach(function(k){if(groups[k].total>0)sumGroups+=groups[k].total;});
-  if(Math.abs(sumGroups-totalExpenses)>1){
-    html='<div style="background:#fff8e6;border:1px solid #f5c842;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Внутренняя ошибка: сумма групп ('+fmt(sumGroups)+') ≠ итог ('+fmt(totalExpenses)+'). Сообщите в поддержку.</div>'+html;
+  if(Math.abs(sumGroups-wbExpenses)>1){
+    html='<div style="background:#fff8e6;border:1px solid #f5c842;padding:10px;border-radius:8px;margin-bottom:14px;font-size:13px">⚠️ Внутренняя ошибка: сумма групп ('+fmt(sumGroups)+') ≠ итог ('+fmt(wbExpenses)+'). Сообщите в поддержку.</div>'+html;
   }
   // Проверка арифметики P&L: Выручка − Расходы + Корректировка = Прибыль
   var expected=t.revenue - totalExpenses + t.wbAdjust;
