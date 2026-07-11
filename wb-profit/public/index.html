@@ -597,12 +597,12 @@ html{scroll-behavior:smooth}
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:1000px;margin:0 auto}
 
 /* 🔥 v0.7.7.23: Скидка интегрирована в цены, никакого отдельного баннера */
-.plan-price-wrap{margin:16px 0 6px}
+.plan-price-wrap{margin:22px 0 14px}   /* 🔥 v0.7.13.9: больше воздуха вокруг цены */
 /* 🔥 v0.7.12.25: «было» + бейдж экономии в одну строку */
-.price-was{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;min-height:22px}
-.price-old{display:block;font-size:17px;color:#9ca3af;text-decoration:line-through;font-weight:500;transition:opacity .25s}
+.price-was{display:flex;align-items:center;gap:8px;margin-bottom:7px;flex-wrap:wrap;min-height:22px}
+.price-old{display:block;font-size:15px;color:#9ca3af;text-decoration:line-through;font-weight:500;transition:opacity .25s}
 .pricing.show-yearly .price-old{display:block;animation:fadeInDown .35s ease}
-.price-cut{display:inline-block;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(135deg,#5433c6,#7c5ce0);padding:2px 8px;border-radius:6px;letter-spacing:.02em;box-shadow:0 2px 6px rgba(84,51,198,.25)}
+.price-cut{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:linear-gradient(135deg,#5433c6,#7c5ce0);padding:2px 7px;border-radius:6px;letter-spacing:.02em;box-shadow:0 2px 6px rgba(84,51,198,.25)}
 /* 🔥 v0.7.12.24: маркетинговая надпись над карточками тарифов (v0.7.12.25: ярче) */
 .pricing-promo{display:block;max-width:580px;margin:0 auto 36px;text-align:center;font-size:14px;font-weight:700;color:var(--purple);background:linear-gradient(135deg,rgba(84,51,198,.10),rgba(124,92,224,.05));border:1px solid rgba(84,51,198,.22);border-radius:12px;padding:12px 20px;line-height:1.45;box-shadow:0 4px 14px rgba(84,51,198,.07)}
 @keyframes fadeInDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
@@ -628,10 +628,10 @@ html{scroll-behavior:smooth}
 .plan-badge.starter{background:rgba(84,51,198,.08);color:#6b5bc4}
 .plan-badge.pro{background:rgba(84,51,198,.14);color:#5433c6}
 .plan-badge.biz{background:linear-gradient(135deg,#5433c6,#7c5ce0);color:#fff;box-shadow:0 4px 12px rgba(84,51,198,.35);transform:translateY(-2px)}
-.plan-name{font-size:18px;font-weight:800;margin-bottom:4px}
+.plan-name{font-size:20px;font-weight:800;margin-bottom:4px}   /* 🔥 v0.7.13.9: заголовок наравне с ценой */
 .plan-price-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;line-height:1}
-.price-now{font-size:60px;font-weight:800;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#5433c6 0%,#9170ec 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#5433c6}
-.price-unit{font-size:16px;font-weight:600;color:var(--muted)}
+.price-now{font-size:clamp(38px,6vw,46px);font-weight:700;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#5433c6 0%,#9170ec 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#5433c6}   /* 🔥 v0.7.13.9: спокойная иерархия — 60→clamp(38-46), 800→700 */
+.price-unit{font-size:15px;font-weight:500;color:var(--muted)}   /* 🔥 v0.7.13.9: тоньше/мельче, baseline из .plan-price-main */
 .plan-price-sub{font-size:12px;color:var(--muted);margin-bottom:6px}
 .plan-desc{font-size:13px;color:var(--muted);padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:26px}
@@ -746,7 +746,6 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   .pricing{padding:48px 4%}
   .pricing-grid{grid-template-columns:1fr}
   .plan{padding:24px 20px}
-  .price-now{font-size:46px}
 
   /* FAQ */
   .faq{padding:48px 4%}
@@ -767,8 +766,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   .billing-toggle{margin-bottom:24px}
   .billing-btn{padding:9px 18px;font-size:13px}
   .billing-save{font-size:10px;padding:2px 6px}
-  .price-old{font-size:16px;display:block;margin-bottom:2px}
-  .price-now{font-size:46px}
+  .price-old{font-size:14px;display:block;margin-bottom:2px}
   .pricing-promo{font-size:13px;margin-bottom:24px;padding:11px 16px}
 
   /* 🔥 v0.7.7.23: новые блоки на мобиле */
