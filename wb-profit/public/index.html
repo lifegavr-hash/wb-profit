@@ -557,6 +557,11 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 5%;display:flex;al
 .feat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;transition:all .25s cubic-bezier(.4,0,.2,1)}
 .feat-card:hover{transform:translateY(-3px);box-shadow:0 8px 24px rgba(0,0,0,.06),0 2px 6px rgba(124,58,237,.06);border-color:#c4b5fd}
 .feat-icon{font-size:26px;margin-bottom:14px;display:inline-block;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+/* 🔥 v0.7.13.8 (D4): размеры/цвет SVG-иконок (эмодзи→SVG). Размеры = прежним px, layout не сдвигается. */
+.feat-icon{width:26px;height:26px;color:var(--purple)}   /* монохром-фиолет */
+.trust-icon,.case-card-icon{width:28px;height:28px}
+.d4-ic{width:1em;height:1em;vertical-align:-.14em}   /* инлайн-иконка размером с текст (currentColor) */
+.pain-card-label .d4-ic{width:1.05em;height:1.05em;vertical-align:-.16em;margin-right:4px}
 .feat-card:hover .feat-icon{transform:scale(1.18) rotate(-5deg)}
 .feat-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
 .feat-card p{font-size:13px;color:var(--muted);line-height:1.65}
@@ -632,6 +637,7 @@ html{scroll-behavior:smooth}
 .plan-features{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:26px}
 .plan-features li{font-size:13.5px;display:flex;align-items:flex-start;gap:10px;line-height:1.4}
 .plan-features li::before{content:'✓';flex-shrink:0;width:18px;height:18px;border-radius:50%;background:rgba(84,51,198,.12);color:#5433c6;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.plan-features li.soon::before{content:none}   /* 🔥 v0.7.13.8 (D4): «скоро» — без ✓ (не готовая фича), маркером служит clock-иконка */
 /* 🔥 v0.7.7.27: фичи "скоро" — приглушённо + бейдж */
 .plan-features li.feature-soon{color:var(--muted);opacity:.7}
 .plan-features li.feature-soon::before{content:'⏳';background:rgba(0,0,0,.05);color:#9ca3af}
@@ -812,6 +818,30 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
 </head>
 <body>
 
+<!-- 🔥 v0.7.13.8 (D4): SVG-спрайт лендинга (Lucide, currentColor, stroke 1.75). Эмодзи→SVG, финал дизайн-серии. -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false"><defs>
+<symbol id="ic-chart-column" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+<symbol id="ic-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></symbol>
+<symbol id="ic-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+<symbol id="ic-trending-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/></symbol>
+<symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+<symbol id="ic-calculator" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol>
+<symbol id="ic-lock-keyhole" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1"/><rect width="18" height="12" x="3" y="10" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></symbol>
+<symbol id="ic-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="ic-scroll" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></symbol>
+<symbol id="ic-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/></symbol>
+<symbol id="ic-clipboard-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></symbol>
+<symbol id="ic-receipt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17V7"/><path d="M16 8h-6a2 2 0 0 0 0 4h4a2 2 0 0 1 0 4H8"/><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/></symbol>
+<symbol id="ic-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></symbol>
+<symbol id="ic-shirt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></symbol>
+<symbol id="ic-cpu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></symbol>
+<symbol id="ic-circle-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+<symbol id="ic-circle-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+<symbol id="ic-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+<symbol id="ic-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+<symbol id="ic-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09"/><path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"/></symbol>
+<symbol id="ic-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+</defs></svg>
 <!-- 🔥 v0.7.7.24: Intro Matrix-rain заставка с цифровой драматургией -->
 <div id="introOverlay" class="intro-overlay" aria-hidden="true">
   <canvas id="introCanvas" class="intro-canvas"></canvas>
@@ -867,11 +897,11 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
     <p class="hero-sub">Логистика, хранение, реклама, штрафы, кредиты ВБ — всё учтено автоматически. Узнайте реальную прибыль за 2 минуты.</p>
     <div class="hero-btns">
       <a href="/login.html" class="btn-white">Попробовать бесплатно →</a>
-      <a href="/demo" class="btn-ghost">🎭 Демо без регистрации</a>
+      <a href="/demo" class="btn-ghost"><svg class="d4-ic" aria-hidden="true"><use href="#ic-play"/></svg> Демо без регистрации</a>
     </div>
     <p class="hero-social"><span style="color:#a78bfa;font-weight:600">7 дней бесплатно</span> — все возможности PRO · <a href="/demo" style="color:#a78bfa;text-decoration:none;font-weight:600">демо за 1 клик</a></p>
     <div class="hero-calc">
-      <div class="hero-calc-title">⚡ Быстрый расчёт — введи свои цифры</div>
+      <div class="hero-calc-title"><svg class="d4-ic" aria-hidden="true"><use href="#ic-zap"/></svg> Быстрый расчёт — введи свои цифры</div>
       <div class="calc-row"><span class="calc-label">Выплата от WB</span><input class="calc-input" id="cRevenue" type="number" placeholder="300 000"></div>
       <div class="calc-result" id="calcResult">
         <div class="calc-result-row red"><span>Логистика (~18%)</span><span id="rLog">—</span></div>
@@ -889,8 +919,8 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
     <h2>Вы теряете деньги прямо сейчас</h2>
     <p class="pain-sub">Большинство продавцов путают выручку с прибылью и не замечают как деньги уходят</p>
     <div class="pain-grid">
-      <div class="pain-card bad"><div class="pain-card-label">❌ Без SW Profit</div><p>Видите выплату <strong>380 000 ₽</strong> и думаете что заработали. На самом деле логистика съела 68 000 ₽, хранение 11 000 ₽, реклама 30 000 ₽, штрафы 8 000 ₽. Реальная прибыль — <strong>23 000 ₽</strong>.</p></div>
-      <div class="pain-card good"><div class="pain-card-label">✅ С SW Profit</div><p>Видите <strong>каждую статью расходов</strong> в разбивке. Замечаете что реклама даёт ДРР 35% и отключаете неэффективные кампании. Штрафы выросли — узнаёте за что и устраняете причину. Прибыль растёт.</p></div>
+      <div class="pain-card bad"><div class="pain-card-label"><svg class="d4-ic" aria-hidden="true"><use href="#ic-circle-x"/></svg> Без SW Profit</div><p>Видите выплату <strong>380 000 ₽</strong> и думаете что заработали. На самом деле логистика съела 68 000 ₽, хранение 11 000 ₽, реклама 30 000 ₽, штрафы 8 000 ₽. Реальная прибыль — <strong>23 000 ₽</strong>.</p></div>
+      <div class="pain-card good"><div class="pain-card-label"><svg class="d4-ic" aria-hidden="true"><use href="#ic-circle-check"/></svg> С SW Profit</div><p>Видите <strong>каждую статью расходов</strong> в разбивке. Замечаете что реклама даёт ДРР 35% и отключаете неэффективные кампании. Штрафы выросли — узнаёте за что и устраняете причину. Прибыль растёт.</p></div>
     </div>
   </div>
 </section>
@@ -900,7 +930,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
     <h3 class="reveal" data-reveal-delay="100">Что показывает SW Profit вместо привычных «выплат»</h3>
     <div class="cases-grid">
       <div class="case-card reveal" data-reveal-delay="100">
-        <div class="case-card-icon">💄</div>
+        <svg class="case-card-icon" style="color:#ec4899" aria-hidden="true"><use href="#ic-sparkles"/></svg>
         <div class="case-card-tag">Косметика</div>
         <h4>Думал что зарабатывает 80 000 ₽</h4>
         <div class="case-numbers">
@@ -911,7 +941,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
         <p class="case-quote">Реклама съедала треть выплаты. После отключения 4 неэффективных кампаний прибыль выросла вдвое за месяц.</p>
       </div>
       <div class="case-card reveal" data-reveal-delay="200">
-        <div class="case-card-icon">👕</div>
+        <svg class="case-card-icon" style="color:#3b82f6" aria-hidden="true"><use href="#ic-shirt"/></svg>
         <div class="case-card-tag">Одежда</div>
         <h4>Логистика превысила выручку</h4>
         <div class="case-numbers">
@@ -922,7 +952,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
         <p class="case-quote">3 артикула с логистикой 35% от цены товара. SW Profit нашёл их за минуту — перенесли на FBS, вернулись в плюс.</p>
       </div>
       <div class="case-card reveal" data-reveal-delay="300">
-        <div class="case-card-icon">🎯</div>
+        <svg class="case-card-icon" style="color:#8b5cf6" aria-hidden="true"><use href="#ic-cpu"/></svg>
         <div class="case-card-tag">Электроника</div>
         <h4>50 SKU без понимания ДРР</h4>
         <div class="case-numbers">
@@ -947,12 +977,12 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   <div class="section-label reveal">Всё что влияет на прибыль — в одном месте</div>
   <div class="section-h2 reveal" data-reveal-delay="100">Возможности</div>
   <div class="features-grid">
-    <div class="feat-card reveal"><span class="feat-icon">📊</span><h3>Реальная прибыль</h3><p>Выплата WB минус логистика, хранение, реклама, штрафы и себестоимость</p></div>
-    <div class="feat-card reveal" data-reveal-delay="100"><span class="feat-icon">📈</span><h3>График по месяцам</h3><p>Динамика прибыли, выручки, рекламы и возвратов в разрезе</p></div>
-    <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">⚡</span><h3>Живые данные</h3><p>Подключается к кабинету WB через API. Данные всегда актуальны</p></div>
-    <div class="feat-card reveal"><span class="feat-icon">📉</span><h3>ДРР по товарам</h3><p>Доля рекламных расходов по каждому артикулу — видите что работает</p></div>
-    <div class="feat-card reveal" data-reveal-delay="100"><span class="feat-icon">🔔</span><h3>Умные алерты</h3><p>Уведомляет об убыточных товарах, росте штрафов и аномалиях</p></div>
-    <div class="feat-card reveal" data-reveal-delay="200"><span class="feat-icon">🧮</span><h3>Калькулятор юнит-экономики</h3><p>Подбор цены, точка безубыточности, разбор расходов по товару</p></div>
+    <div class="feat-card reveal"><svg class="feat-icon" aria-hidden="true"><use href="#ic-chart-column"/></svg><h3>Реальная прибыль</h3><p>Выплата WB минус логистика, хранение, реклама, штрафы и себестоимость</p></div>
+    <div class="feat-card reveal" data-reveal-delay="100"><svg class="feat-icon" aria-hidden="true"><use href="#ic-trending-up"/></svg><h3>График по месяцам</h3><p>Динамика прибыли, выручки, рекламы и возвратов в разрезе</p></div>
+    <div class="feat-card reveal" data-reveal-delay="200"><svg class="feat-icon" aria-hidden="true"><use href="#ic-zap"/></svg><h3>Живые данные</h3><p>Подключается к кабинету WB через API. Данные всегда актуальны</p></div>
+    <div class="feat-card reveal"><svg class="feat-icon" aria-hidden="true"><use href="#ic-trending-down"/></svg><h3>ДРР по товарам</h3><p>Доля рекламных расходов по каждому артикулу — видите что работает</p></div>
+    <div class="feat-card reveal" data-reveal-delay="100"><svg class="feat-icon" aria-hidden="true"><use href="#ic-bell"/></svg><h3>Умные алерты</h3><p>Уведомляет об убыточных товарах, росте штрафов и аномалиях</p></div>
+    <div class="feat-card reveal" data-reveal-delay="200"><svg class="feat-icon" aria-hidden="true"><use href="#ic-calculator"/></svg><h3>Калькулятор юнит-экономики</h3><p>Подбор цены, точка безубыточности, разбор расходов по товару</p></div>
   </div>
 </section>
 
@@ -962,32 +992,32 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
   <div class="section-h2 reveal" data-reveal-delay="100">Почему данные у нас в безопасности</div>
   <div class="trust-grid">
     <div class="trust-card reveal">
-      <div class="trust-icon">🔐</div>
+      <svg class="trust-icon" style="color:#8b5cf6" aria-hidden="true"><use href="#ic-lock-keyhole"/></svg>
       <h4>Официальный WB API</h4>
       <p>Подключение только через официальный API Wildberries по вашему токену. Никаких парсеров.</p>
     </div>
     <div class="trust-card reveal" data-reveal-delay="100">
-      <div class="trust-icon">🛡️</div>
+      <svg class="trust-icon" style="color:#22c55e" aria-hidden="true"><use href="#ic-shield-check"/></svg>
       <h4>HTTPS + TLS 1.3</h4>
       <p>Все соединения зашифрованы. HSTS preload, Content Security Policy, защита от XSS.</p>
     </div>
     <div class="trust-card reveal" data-reveal-delay="200">
-      <div class="trust-icon">📜</div>
+      <svg class="trust-icon" style="color:#3b82f6" aria-hidden="true"><use href="#ic-scroll"/></svg>
       <h4>152-ФЗ</h4>
       <p>Обработка персональных данных в соответствии с законодательством РФ. Согласие пользователя.</p>
     </div>
     <div class="trust-card reveal">
-      <div class="trust-icon">⚙️</div>
+      <svg class="trust-icon" style="color:#06b6d4" aria-hidden="true"><use href="#ic-database"/></svg>
       <h4>RLS на уровне БД</h4>
       <p>Postgres Row Level Security. Каждый пользователь видит только свои данные. Защита и от ошибок кода.</p>
     </div>
     <div class="trust-card reveal" data-reveal-delay="100">
-      <div class="trust-icon">📋</div>
+      <svg class="trust-icon" style="color:#a78bfa" aria-hidden="true"><use href="#ic-clipboard-list"/></svg>
       <h4>Публичная оферта</h4>
       <p>Чёткие условия, цены, реквизиты ИП. Никаких скрытых платежей. Отмена подписки в один клик.</p>
     </div>
     <div class="trust-card reveal" data-reveal-delay="200">
-      <div class="trust-icon">🧾</div>
+      <svg class="trust-icon" style="color:#22c55e" aria-hidden="true"><use href="#ic-receipt"/></svg>
       <h4>Чеки по 54-ФЗ</h4>
       <p>Электронный чек на email после каждого платежа. Платежи через ЮKassa — сертификат PCI DSS Level 1.</p>
     </div>
@@ -1020,7 +1050,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
     <button type="button" class="billing-btn" id="billBtnYear" onclick="setBilling('yearly')">За год <span class="billing-save">−30%</span></button>
   </div>
 
-  <p class="pricing-promo">🚀 Стартовые цены — для первых пользователей. Успейте подключиться до повышения</p>
+  <p class="pricing-promo"><svg class="d4-ic" aria-hidden="true"><use href="#ic-rocket"/></svg> Стартовые цены — для первых пользователей. Успейте подключиться до повышения</p>
 
   <!-- 🔥 v0.7.12.27: с основной цены (price-now/price-unit) убран ₽ — число воспринимается мягче.
        Зачёркнутая (price-old) ₽ СОХРАНЯЕТ: контраст «было дорого в ₽ → стало просто 990».
@@ -1049,11 +1079,11 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       </div>
       <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="Эффективно 692 ₽/мес">Безлимит и все возможности</div>
       <div class="plan-desc">Для серьёзного селлера</div>
-      <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>1 кабинет WB</li><li>История 1 год</li><li>Сводка прибыли по email</li><li style="opacity:.5;list-style:none;margin-left:-18px">🔜 Telegram-уведомления — скоро</li></ul>
+      <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>1 кабинет WB</li><li>История 1 год</li><li>Сводка прибыли по email</li><li class="soon" style="opacity:.5;list-style:none;margin-left:-18px"><svg class="d4-ic" aria-hidden="true"><use href="#ic-clock"/></svg> Telegram-уведомления — скоро</li></ul>
       <a href="/login.html" class="plan-btn outline">Начать 7 дней бесплатно</a>
     </div>
     <div class="plan popular reveal" data-reveal-delay="200">
-      <div class="plan-badge biz">⭐ Популярный</div>
+      <div class="plan-badge biz"><svg class="d4-ic" aria-hidden="true"><use href="#ic-star"/></svg> Популярный</div>
       <div class="plan-name">Бизнес</div>
       <div class="plan-price-wrap">
         <div class="price-was"><span class="price-old" data-monthly-old="3 990 ₽" data-yearly-old="23 880 ₽">3 990 ₽</span><span class="price-cut" data-monthly-cut="−50%" data-yearly-cut="−30%">−50%</span></div>
