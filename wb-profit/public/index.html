@@ -630,7 +630,7 @@ html{scroll-behavior:smooth}
 .plan-badge.biz{background:linear-gradient(135deg,#5433c6,#7c5ce0);color:#fff;box-shadow:0 4px 12px rgba(84,51,198,.35);transform:translateY(-2px)}
 .plan-name{font-size:20px;font-weight:800;margin-bottom:4px}   /* 🔥 v0.7.13.9: заголовок наравне с ценой */
 .plan-price-main{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;line-height:1}
-.price-now{font-size:clamp(38px,6vw,46px);font-weight:700;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#5433c6 0%,#9170ec 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#5433c6}   /* 🔥 v0.7.13.9: спокойная иерархия — 60→clamp(38-46), 800→700 */
+.price-now{font-size:clamp(36px,5.5vw,42px);font-weight:700;letter-spacing:-.03em;line-height:1;background:linear-gradient(135deg,#5433c6 0%,#9170ec 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#5433c6}   /* 🔥 v0.7.13.10: чуть меньше — clamp(36-42) */
 .price-unit{font-size:15px;font-weight:500;color:var(--muted)}   /* 🔥 v0.7.13.9: тоньше/мельче, baseline из .plan-price-main */
 .plan-price-sub{font-size:12px;color:var(--muted);margin-bottom:6px}
 .plan-desc{font-size:13px;color:var(--muted);padding-bottom:18px;border-bottom:1px solid var(--border);margin-bottom:18px}
@@ -645,8 +645,13 @@ html{scroll-behavior:smooth}
 .plan-btn{display:block;width:100%;text-align:center;padding:14px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;transition:all .2s cubic-bezier(.4,0,.2,1)}
 .plan-btn.outline{border:1.5px solid var(--border);color:var(--text)}
 .plan-btn.outline:hover{border-color:#5433c6;color:#5433c6;background:rgba(84,51,198,.05)}
-.plan-btn.filled{background:linear-gradient(135deg,#5433c6,#7c5ce0);color:#fff;box-shadow:0 6px 18px rgba(84,51,198,.32)}
+.plan-btn.filled{background:linear-gradient(135deg,#5433c6,#7c5ce0);color:#fff;box-shadow:0 6px 18px rgba(84,51,198,.32)}   /* v0.7.13.10: НЕ используется (Бизнес → .green); оставлено на будущее */
 .plan-btn.filled:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(84,51,198,.42)}
+/* 🔥 v0.7.13.10: зелёные CTA на приоритетных тарифах (PRO+Бизнес). #15803d — белый текст WCAG AA. */
+.plan-btn.green{background:#15803d;color:#fff;box-shadow:0 6px 18px rgba(22,163,74,.30)}
+.plan-btn.green:hover{background:#166534;transform:translateY(-2px);box-shadow:0 10px 26px rgba(22,163,74,.42)}
+.plan-btn:focus-visible{outline:2px solid #5433c6;outline-offset:2px}
+.plan-btn.green:focus-visible{outline-color:#16a34a}
 .faq{background:var(--surface);padding:72px 5%}
 .faq-list{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:2px}
 .faq-item{border-bottom:1px solid var(--border)}
@@ -1078,7 +1083,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-price-sub" data-monthly="Безлимит и все возможности" data-yearly="Эффективно 692 ₽/мес">Безлимит и все возможности</div>
       <div class="plan-desc">Для серьёзного селлера</div>
       <ul class="plan-features"><li>Безлимит SKU</li><li>Период до 365 дней</li><li>Полная Детализация расходов</li><li>Аналитика с историей событий</li><li>Подбор товара</li><li>1 кабинет WB</li><li>История 1 год</li><li>Сводка прибыли по email</li><li class="soon" style="opacity:.5;list-style:none;margin-left:-18px"><svg class="d4-ic" aria-hidden="true"><use href="#ic-clock"/></svg> Telegram-уведомления — скоро</li></ul>
-      <a href="/login.html" class="plan-btn outline">Начать 7 дней бесплатно</a>
+      <a href="/login.html" class="plan-btn green">Начать 7 дней бесплатно</a>
     </div>
     <div class="plan popular reveal" data-reveal-delay="200">
       <div class="plan-badge biz"><svg class="d4-ic" aria-hidden="true"><use href="#ic-star"/></svg> Популярный</div>
@@ -1091,7 +1096,7 @@ footer .legal-links a:hover{color:rgba(255,255,255,.85)}
       <div class="plan-price-sub" data-monthly="Для команды и нескольких магазинов" data-yearly="Эффективно 1 392 ₽/мес">Для команды и нескольких магазинов</div>
       <div class="plan-desc">3 кабинета WB + Excel + команда</div>
       <ul class="plan-features"><li>Всё что в PRO</li><li>3 кабинета WB</li><li>Командный доступ (до 3 пользователей)</li><li>Экспорт в Excel/CSV</li><li>Приоритетная поддержка (4 часа)</li><li>История 2 года</li><li>Сводка прибыли по email</li></ul>
-      <a href="/login.html" class="plan-btn filled">Выбрать Бизнес</a>
+      <a href="/login.html" class="plan-btn green">Выбрать Бизнес</a>
     </div>
   </div>
   <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:18px;">Все цены в рублях ₽</p>
