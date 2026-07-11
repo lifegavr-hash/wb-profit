@@ -622,7 +622,10 @@ body.ws-foreign .ws-hide-foreign { display:none !important; }
 .dot-red{background:radial-gradient(circle at 35% 30%,#f87171,#dc2626)}
 .dot-green{background:radial-gradient(circle at 35% 30%,#4ade80,#16a34a)}
 .dot-amber{background:radial-gradient(circle at 35% 30%,#fbbf24,#d97706)}
+.dot-orange{background:radial-gradient(circle at 35% 30%,#fb923c,#ea580c)}
 .ic-chev{transition:transform .2s ease}
+.ic-chev.open{transform:rotate(90deg)}   /* D3d: chevron-right → вниз при раскрытии */
+.rich-alert-icon .dot,.calc-alerts-group-head .dot{width:10px;height:10px;margin-right:2px}
 .ct-ic{margin-right:7px;color:var(--purple)}   /* D3b: иконка заголовка карточки — акцентная */
 .bic{margin-right:6px}   /* D3c: иконка перед текстом кнопки */
 /* Предупреждение о free-лимите товаров */
@@ -878,7 +881,7 @@ html[data-theme="dark"] .theme-btn.active{background:rgba(167,139,250,.15);color
 .calc-group-header:hover{background:linear-gradient(90deg,#ede9fe 0%,#f5f3ff 100%)}
 .calc-group-header td{padding:10px 12px!important;color:#6d28d9;font-size:13px}
 .calc-group-arrow{display:inline-block;width:12px;font-size:10px;color:#7c3aed;margin-right:6px;transition:transform .2s}
-.calc-group-header.collapsed .calc-group-arrow{transform:rotate(-90deg)}
+.calc-group-header:not(.collapsed) .calc-group-arrow{transform:rotate(90deg)}   /* D3d: collapsed=вправо, раскрыто=вниз */
 .calc-group-name{font-weight:700}
 .calc-group-count{font-weight:400;color:#94a3b8;font-size:11px;margin-left:6px}
 .calc-group-totals{float:right;display:inline-flex;gap:14px;font-size:12px;color:#64748b;font-weight:500}
@@ -2165,6 +2168,7 @@ body{padding-top:var(--beta-h)}
 <symbol id="ic-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></symbol>
 <symbol id="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></symbol>
 <symbol id="ic-alert-triangle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+<symbol id="ic-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="ic-pie-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/></symbol>
 <symbol id="ic-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
 <symbol id="ic-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09"/><path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"/></symbol>
@@ -2389,8 +2393,8 @@ body{padding-top:var(--beta-h)}
           <button type="button" class="period-pill" data-period="1" onclick="setPeriod(1)">Вчера</button>
           <button type="button" class="period-pill" data-period="7" onclick="setPeriod(7)">7 дней</button>
           <button type="button" class="period-pill" data-period="30" onclick="setPeriod(30)">30 дней</button>
-          <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)"><span class="pro-lock" style="display:none">🔒</span>90 дней</button>
-          <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()"><span class="pro-lock" style="display:none">🔒</span>📅 Свой</button>
+          <button type="button" class="period-pill" data-period="90" onclick="setPeriod(90)"><span class="pro-lock" style="display:none"><svg class="ic" aria-hidden="true"><use href="#ic-lock"/></svg></span>90 дней</button>
+          <button type="button" class="period-pill" data-period="custom" onclick="openCustomPeriod()"><span class="pro-lock" style="display:none"><svg class="ic" aria-hidden="true"><use href="#ic-lock"/></svg></span>📅 Свой</button>
         </div>
         <button class="btn-primary" id="loadBtnHome" onclick="goFromHome()">Загрузить</button>
       </div>
@@ -7497,6 +7501,15 @@ function pctChangeHtml(cur, prev, growthIsBad){
   return '<span class="'+cls+'" title="Изменение vs предыдущий период ('+fmt(prev)+' ₽)">'+arrow+' '+sign+pct+'%</span>';
 }
 
+// 🔥 v0.7.13.7 (D3d): статус-эмодзи → CSS-точка; chevron-эмодзи → SVG с поворотом.
+function statusDot(g){
+  var m={'🔴':'red','🟢':'green','🟡':'amber','🟠':'orange'};
+  var c=m[g];
+  return c ? '<span class="dot dot-'+c+'"></span>' : (g||'');
+}
+function chevSvg(open){
+  return '<svg class="ic ic-chev'+(open?' open':'')+'" aria-hidden="true"><use href="#ic-chevron"/></svg>';
+}
 function renderDetail(){
   if(!rawData||!rawData.length){
     document.getElementById('detailEmpty').style.display='block';
@@ -7562,7 +7575,7 @@ function renderDetail(){
 
   // Сводка сверху — арифметически точная.
   // Прибыль = Выручка − Все расходы + Доплаты WB (если есть)
-  // 🔥 v0.7.13.5 хотфикс: «Все расходы» и самопроверка P&L ДОЛЖНЫ включать налог+постоянные,
+  // 🔥 v0.7.13.6 хотфикс: «Все расходы» и самопроверка P&L ДОЛЖНЫ включать налог+постоянные,
   // иначе плитка/формула расходятся с ЧистойПрибылью (она уже нетто) → ложный алерт «Арифметика не сходится».
   // wbExpenses (без налога/фикс) держим отдельно — для сверки с суммой групп (группы налог/фикс не содержат).
   var wbExpenses=t.commission+t.delivery+t.storage+t.ads+t.penalty+t.wbFinance+t.cost+t.acquiring;
@@ -7608,7 +7621,7 @@ function renderDetail(){
   if(t.penalty>0)formulaHtml+='<div class="detail-formula-row"><span>− Штрафы и удержания</span><span class="red">−'+fmt(t.penalty)+' ₽</span></div>';
   if(t.wbFinance>0)formulaHtml+='<div class="detail-formula-row"><span>− ВБ Финанс (кредит)</span><span class="red">−'+fmt(t.wbFinance)+' ₽</span></div>';
   if(t.cost>0)formulaHtml+='<div class="detail-formula-row"><span>− Себестоимость</span><span class="red">−'+fmt(t.cost)+' ₽</span></div>';
-  // 🔥 v0.7.13.5 хотфикс: налог и постоянные — всегда видны (−0 при отсутствии), как в KPI-плитках Калькулятора v0.7.12.96
+  // 🔥 v0.7.13.6 хотфикс: налог и постоянные — всегда видны (−0 при отсутствии), как в KPI-плитках Калькулятора v0.7.12.96
   formulaHtml+='<div class="detail-formula-row"><span>− Налог</span><span class="red">−'+fmt(t.tax||0)+' ₽</span></div>';
   formulaHtml+='<div class="detail-formula-row"><span>− Постоянные расходы</span><span class="red">−'+fmt(t.fixed_share||0)+' ₽</span></div>';
   if(Math.abs(t.wbAdjust)>=50){
@@ -7659,7 +7672,7 @@ function renderDetail(){
       var metaTxt = fmt(op.count)+' '+plurOps(op.count) + (grp.ops.length>1 ? ' · '+sharePct+'% категории' : '');
       html+='<div class="detail-op-block expense-subrow" data-key="'+rowKey+'">';
       html+='<div class="detail-clickable expense-subrow-head" onclick="toggleDetailOp(\''+rowKey+'\',\''+escHtml(op.source)+'\',\''+escHtml(op.matchName||op.name)+'\')">';
-      html+=  '<div class="expense-subrow-top"><span class="expense-subrow-amount">−'+fmt(op.amount)+' ₽</span><span class="detail-expand" id="exp-'+rowKey+'">▶</span></div>';
+      html+=  '<div class="expense-subrow-top"><span class="expense-subrow-amount">−'+fmt(op.amount)+' ₽</span><span class="detail-expand" id="exp-'+rowKey+'">'+chevSvg(false)+'</span></div>';
       html+=  '<span class="expense-subrow-name" title="'+escHtml(op.name)+'">'+escHtml(op.name)+'</span>';
       if(op.hint) html+= '<span class="expense-subrow-hint">'+escHtml(op.hint)+'</span>';
       html+=  '<span class="expense-subrow-meta">'+metaTxt+'</span>';
@@ -7946,7 +7959,7 @@ async function loadFunnelData(){
 // 🔥 Слой3/3a: карточка товара (drill-down). Шапка из _cardsMap+p+_stocksMap, блок «Воронка» Метрика×Дни (funnel-history).
 function _pcShortDate(d){ var x=String(d).split('-'); return x.length===3? x[2]+'.'+x[1] : String(d); }
 function _pcPhotoFail(img){ try{ img.outerHTML='<div class="pc-ph"></div>'; }catch(e){} }
-function _pcToggleBlock(h){ var c=h.nextElementSibling; if(!c) return; var open=c.style.display!=='none'; c.style.display=open?'none':''; var a=h.querySelector('.pc-arrow'); if(a) a.textContent=open?'▶':'▼'; }
+function _pcToggleBlock(h){ var c=h.nextElementSibling; if(!c) return; var open=c.style.display!=='none'; c.style.display=open?'none':''; var a=h.querySelector('.pc-arrow'); if(a) a.innerHTML=chevSvg(!open); }
 function _pcFunnelTable(hist){
   if(!hist || !hist.length) return '<div class="pc-empty">Нет данных воронки за период.</div>';
   var rowsDef=[
@@ -8236,15 +8249,15 @@ function renderProductCard(){
   window._pcPeriod = null;   // 🔥 v89: транзиентный период карточки — дефолт = глобальный при открытии
   document.getElementById('pcBody').innerHTML =
     '<div id="pcPeriodBar" class="pc-period-bar"></div>'+   // 🔥 v89: селектор периода (над графиком)
-    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> График</div>'+
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">'+chevSvg(true)+'</span> График</div>'+
     '<div class="pc-block-c" id="pcChart">'+_pcChartBlock(nm)+'</div></div>'+   // 🔥 3c: график динамики по дням
-    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Цена</div>'+
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">'+chevSvg(true)+'</span> Цена</div>'+
     '<div class="pc-block-c" id="pcPrice">'+_pcPriceBlock(nm)+'</div></div>'+   // 🔥 3c (v85): водопад цены на единицу
-    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Воронка продаж</div>'+
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">'+chevSvg(true)+'</span> Воронка продаж</div>'+
     '<div class="pc-block-c" id="pcFunnel"><div class="pc-empty">Загрузка воронки…</div></div></div>'+
-    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Финансы по дням</div>'+
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">'+chevSvg(true)+'</span> Финансы по дням</div>'+
     '<div class="pc-block-c" id="pcFinance">'+_pcFinanceTable(nm)+'</div></div>'+   // 🔥 3b: финансы синхронно из rawData
-    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">▼</span> Потери на отменах</div>'+
+    '<div class="pc-block"><div class="pc-block-h" onclick="_pcToggleBlock(this)"><span class="pc-arrow">'+chevSvg(true)+'</span> Потери на отменах</div>'+
     '<div class="pc-block-c" id="pcCancel">'+_pcCancelBlock(nm)+'</div></div>';   // 🔥 v90: потери на логистике отмен/невыкупов
   _pcRenderPeriodBar();
   _pcLoadFunnelHistory(nm);
@@ -8664,14 +8677,14 @@ function toggleDetailOp(rowKey, source, opName){
   
   if(body.style.display !== 'none'){
     body.style.display = 'none';
-    exp.textContent = '▶';
+    exp.innerHTML = chevSvg(false);
     return;
   }
   
   // Уже отрендерили один раз
   if(body.dataset.rendered === '1'){
     body.style.display = 'block';
-    exp.textContent = '▼';
+    exp.innerHTML = chevSvg(true);
     return;
   }
   
@@ -8808,7 +8821,7 @@ function toggleDetailOp(rowKey, source, opName){
   body.innerHTML = html;
   body.dataset.rendered = '1';
   body.style.display = 'block';
-  exp.textContent = '▼';
+  exp.innerHTML = chevSvg(true);
 }
 
 // 🔥 v0.7.12.28: подсказка ⓘ в детализации — тап на мобиле (hover там не работает).
@@ -9142,7 +9155,7 @@ function renderTable(tP,tD,tS,tAd,tPn,tSl,tRt,tCost,tp,tComm){
       var profitStr = (gSum.profit >= 0 ? '+' : '−') + fmt(Math.abs(gSum.profit)) + ' ₽';
       var isCollapsed = !!window._calcGroupCollapsed[gKey];
       var hdrHtml = '<tr class="calc-group-header'+(isCollapsed?' collapsed':'')+'" data-group-header="'+escHtml(gKey)+'" onclick="toggleCalcGroup(\''+escHtml(gKey).replace(/\\/g,'\\\\').replace(/\'/g,"\\'")+'\')">'+
-        '<td colspan="20"><span class="calc-group-arrow">▼</span><span class="calc-group-name">'+escHtml(gKey)+'</span><span class="calc-group-count">('+gSum.count+' '+plural(gSum.count,'товар','товара','товаров')+')</span>'+
+        '<td colspan="20"><span class="calc-group-arrow"><svg class="ic ic-chev" aria-hidden="true"><use href="#ic-chevron"/></svg></span><span class="calc-group-name">'+escHtml(gKey)+'</span><span class="calc-group-count">('+gSum.count+' '+plural(gSum.count,'товар','товара','товаров')+')</span>'+
         '<span class="calc-group-totals">Выплата: '+fmt(gSum.ppvz)+' ₽ · Прибыль: <span class="'+profitCls+'">'+profitStr+'</span></span>'+
         '</td></tr>';
       tb.insertAdjacentHTML('beforeend', hdrHtml);
@@ -10202,10 +10215,10 @@ function togglePen(btn){
   if(sec.style.display==='block'){
     sec.style.display='none';
     var cnt=sec.querySelectorAll('tbody tr').length;
-    btn.textContent='▶ Показать детали ('+cnt+' операций)';
+    btn.innerHTML=chevSvg(false)+' Показать детали ('+cnt+' операций)';
   } else {
     sec.style.display='block';
-    btn.textContent='▼ Скрыть детали';
+    btn.innerHTML=chevSvg(true)+' Скрыть детали';
   }
 }
 init();
@@ -10928,7 +10941,7 @@ function renderRichAlertsBlock(){
     h+='<div class="rich-alert '+sevCls+'">';
     h+='<button class="alert-close-btn" onclick="hideAlert(\''+hash+'\')" title="Скрыть этот риск на 14 дней"><svg class="ic" aria-hidden="true"><use href="#ic-x"/></svg></button>';
     h+='<div class="rich-alert-head">';
-    h+='<span class="rich-alert-icon">'+a.icon+'</span>';
+    h+='<span class="rich-alert-icon">'+statusDot(a.icon)+'</span>';
     h+='<span class="rich-alert-title">'+escHtml(a.title)+'</span>';
     if(a.loss && a.loss>=100){
       h+='<span class="rich-alert-loss">~'+fmtRub(a.loss)+' ₽</span>';
@@ -10968,7 +10981,7 @@ function renderCalcAlertsCompact(){
   if(totalLoss>=100){
     h+='<span class="calc-alerts-loss">потенциально ~'+fmtRub(totalLoss)+' ₽</span>';
   }
-  h+='<button class="calc-alerts-toggle" onclick="toggleCalcAlerts()">Подробнее ▼</button>';
+  h+='<button class="calc-alerts-toggle" onclick="toggleCalcAlerts()">Подробнее '+chevSvg(false)+'</button>';
   h+='</div>';
   h+='<div class="calc-alerts-body" id="calcAlertsBody" style="display:none">';
   typeOrder.forEach(function(tp){
@@ -10976,7 +10989,7 @@ function renderCalcAlertsCompact(){
     if(!g||!g.items.length)return;
     var sevCls=g.severity==='critical'?'rich-alert-crit':(g.severity==='warning'?'rich-alert-warn':'rich-alert-info');
     h+='<div class="calc-alerts-group">';
-    h+='<div class="calc-alerts-group-head '+sevCls+'">'+g.icon+' '+escHtml(g.title)+' — '+g.items.length+' '+plural(g.items.length,'товар','товара','товаров')+'</div>';
+    h+='<div class="calc-alerts-group-head '+sevCls+'">'+statusDot(g.icon)+' '+escHtml(g.title)+' — '+g.items.length+' '+plural(g.items.length,'товар','товара','товаров')+'</div>';
     g.items.forEach(function(a){
       h+='<div class="rich-alert '+sevCls+'" style="margin-top:6px">';
       h+='<div class="rich-alert-head">';
@@ -11001,10 +11014,10 @@ function toggleCalcAlerts(){
   var btn=document.querySelector('.calc-alerts-toggle');
   if(b.style.display==='none'){
     b.style.display='block';
-    if(btn)btn.textContent='Свернуть ▲';
+    if(btn)btn.innerHTML='Свернуть '+chevSvg(true);
   } else {
     b.style.display='none';
-    if(btn)btn.textContent='Подробнее ▼';
+    if(btn)btn.innerHTML='Подробнее '+chevSvg(false);
   }
 }
 async function saveSnapshots(snapshots,token){
@@ -11147,7 +11160,7 @@ function renderHomeIdle(reason){
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:12px">'+
         '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px">💰</div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Реальная прибыль</div><div style="font-size:11px;color:#666">По каждому SKU, с учётом всех расходов WB</div></div>'+
         '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px">🎯</div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Подбор товара</div><div style="font-size:11px;color:#666">Расчёт юнит-экономики до закупки</div></div>'+
-        '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px">⚠️</div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Тревоги</div><div style="font-size:11px;color:#666">Предупреждения когда что-то идёт не так</div></div>'+
+        '<div style="padding:14px;background:#fff;border:1px solid #eee;border-radius:10px"><div style="font-size:22px;margin-bottom:4px;color:#f59e0b"><svg class="ic" aria-hidden="true"><use href="#ic-alert-triangle"/></svg></div><div style="font-size:13px;font-weight:600;margin-bottom:3px">Тревоги</div><div style="font-size:11px;color:#666">Предупреждения когда что-то идёт не так</div></div>'+
       '</div>';
     return;
   }
@@ -11288,7 +11301,7 @@ function toggleSection(sectionId){
   var body = document.querySelector('[data-section-body="'+sectionId+'"]');
   var icon = document.querySelector('[data-section-icon="'+sectionId+'"]');
   if(body) body.style.display = collapsed[sectionId] ? 'none' : '';
-  if(icon) icon.textContent = collapsed[sectionId] ? '▶' : '▼';
+  if(icon) icon.innerHTML = chevSvg(!collapsed[sectionId]);
 }
 // H6: прогресс реализации советов
 function getDoneActions(){
@@ -11322,7 +11335,7 @@ function homeCardTitle(sectionId, icon, text, opts){
   // без пользы. opts.noRefresh оставлен для обратной совместимости.
   opts = opts || {};
   var collapsed = getCollapsedSections()[sectionId];
-  var ic = collapsed ? '▶' : '▼';
+  var ic = chevSvg(!collapsed);
   return '<div class="home-card-title-row" onclick="toggleSection(\''+sectionId+'\')">'+
     '<span class="home-card-collapse-icon" data-section-icon="'+sectionId+'">'+ic+'</span>'+
     '<div class="home-card-title">'+icon+' '+text+'</div>'+
@@ -12383,8 +12396,8 @@ function renderEventHistory(snaps){
   var h = '<div class="ev-summary">За '+snaps.length+' дн.: '+sumChips.join(' ')+'</div>';
   // 🔥 v0.7.7.31: Toolbar Развернуть/Свернуть всё + лента с collapse
   h += '<div class="ev-collapse-toolbar">';
-  h += '<button type="button" class="ev-tb-btn" onclick="evToggleAll(true)">▼ Развернуть всё</button>';
-  h += '<button type="button" class="ev-tb-btn" onclick="evToggleAll(false)">▶ Свернуть всё</button>';
+  h += '<button type="button" class="ev-tb-btn" onclick="evToggleAll(true)">'+chevSvg(true)+' Развернуть всё</button>';
+  h += '<button type="button" class="ev-tb-btn" onclick="evToggleAll(false)">'+chevSvg(false)+' Свернуть всё</button>';
   h += '<span class="ev-tb-hint">Клик по дате — раскрыть/свернуть. Свежие 3 дня раскрыты по умолчанию.</span>';
   h += '</div>';
   // Лента событий — обратный порядок (свежее сверху)
@@ -12398,7 +12411,7 @@ function renderEventHistory(snaps){
     var critClass = critCount > 0 ? ' has-crit' : '';
     h += '<div class="ev-day'+(isCollapsed ? ' collapsed' : '')+critClass+'">';
     h += '<div class="ev-day-date" onclick="evToggleDay(this)">';
-    h += '<span class="ev-day-toggle">▶</span>';
+    h += '<span class="ev-day-toggle"><svg class="ic ic-chev" aria-hidden="true"><use href="#ic-chevron"/></svg></span>';
     h += '<span class="ev-day-label">'+d.date+'</span>';
     h += '<span class="ev-day-count">';
     if(critCount > 0) h += '🔴 '+critCount+' критич · ';
@@ -12495,7 +12508,7 @@ function renderTopMovers(snaps){
   var h = '<div style="font-size:11px;color:#94a3b8;margin-bottom:10px">Сравнение: <strong>'+secondLabel+'</strong> vs <strong>'+firstLabel+'</strong></div>';
   h += '<div class="movers-grid">';
   // Растут
-  h += '<div class="movers-col"><div class="movers-col-title green">🟢 Лидеры роста</div>';
+  h += '<div class="movers-col"><div class="movers-col-title green"><span class="dot dot-green"></span> Лидеры роста</div>';
   if(growers.length){
     growers.forEach(function(m){
       var pctStr = m.pctSales >= 999 ? '+999%+' : (m.pctSales >= 0 ? '+' : '') + m.pctSales + '%';
@@ -12509,7 +12522,7 @@ function renderTopMovers(snaps){
   }
   h += '</div>';
   // Падают
-  h += '<div class="movers-col"><div class="movers-col-title red">🔴 Падение продаж</div>';
+  h += '<div class="movers-col"><div class="movers-col-title red"><span class="dot dot-red"></span> Падение продаж</div>';
   if(fallers.length){
     fallers.forEach(function(m){
       var pctStr = m.pctSales + '%';
@@ -12605,7 +12618,7 @@ function renderAdsCampaigns(snaps, adsData){
 
   function noAccessPlate(reason){
     return '<div style="background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:10px;padding:14px;font-size:13px;line-height:1.5;color:var(--text)">'+
-      '<div style="font-weight:600;margin-bottom:6px">🔒 Разбивка по кампаниям недоступна</div>'+
+      '<div style="font-weight:600;margin-bottom:6px"><svg class="ic" aria-hidden="true"><use href="#ic-lock"/></svg> Разбивка по кампаниям недоступна</div>'+
       '<div style="color:var(--muted)">'+
         (reason === 'heuristic'
           ? 'WB advert-api не отдал список ваших кампаний, хотя в финансовом отчёте реклама была. Скорее всего <b>у токена нет права «Продвижение»</b> — добавьте его в WB-токен (Настройки WB → Доступ к API). '
@@ -13324,7 +13337,7 @@ function renderABC(snaps){
   function renderGroup(cat, label, sub, list, totalCat, isOpen){
     if(!list.length) return '';
     var id='abc-grp-'+cat;
-    var arrow=isOpen?'▼':'▶';
+    var arrow=chevSvg(isOpen);
     var displayStyle=isOpen?'block':'none';
     var s='<div class="abc-group" data-cat="'+cat+'">';
     s+='<button class="abc-group-header" onclick="toggleAbcGroup(\''+id+'\', this)">';
@@ -13428,7 +13441,7 @@ function showAbcComparison(){
     h += '</div>';
   });
   h += '</div>';
-  h += '<div class="abc-cmp-legend">🟢 — лучший по метрике · 🔴 — худший</div>';
+  h += '<div class="abc-cmp-legend"><span class="dot dot-green"></span> — лучший по метрике · <span class="dot dot-red"></span> — худший</div>';
   h += '</div>';
   // Вставляем в body
   var wrap = document.createElement('div');
@@ -13448,10 +13461,10 @@ function toggleAbcGroup(id, btn){
   var arrow=btn.querySelector('.arrow');
   if(body.style.display==='none'){
     body.style.display='block';
-    if(arrow)arrow.textContent='▼';
+    if(arrow)arrow.innerHTML=chevSvg(true);
   } else {
     body.style.display='none';
-    if(arrow)arrow.textContent='▶';
+    if(arrow)arrow.innerHTML=chevSvg(false);
   }
 }
 
